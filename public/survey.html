@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>고객 만족도 통합 설문</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f7f9fb;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background-color: #fff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 12px rgba(0, 0, 0, 0.1);
+    }
+
+    h2 {
+      text-align: center;
+      color: #003366;
+      margin-bottom: 20px;
+    }
+
+    input, select, textarea, button {
+      width: 100%;
+      margin-top: 10px;
+      margin-bottom: 20px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 16px;
+    }
+
+    button {
+      background-color: #007bff;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    .success {
+      color: green;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .error {
+      color: red;
+      text-align: center;
+    }
+
+    .survey-list {
+      margin-top: 40px;
+    }
+
+    .survey-item {
+      padding: 15px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .survey-item h4 {
+      margin: 0 0 5px 0;
+    }
+
+    .survey-item p {
+      margin: 2px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>📋 고객 만족도 설문</h2>
+
+    <form id="surveyForm">
+      <label for="name">이름 (선택):</label>
+      <input type="text" id="name" name="name" placeholder="이름을 입력하세요" />
+
+      <label for="satisfaction">서비스 전반에 대한 만족도는?</label>
+      <select id="satisfaction" name="satisfaction" required>
+        <option value="">-- 선택하세요 --</option>
+        <option value="매우 만족">매우 만족</option>
+        <option value="만족">만족</option>
+        <option value="보통">보통</option>
+        <option value="불만족">불만족</option>
+        <option value="매우 불만족">매우 불만족</option>
+      </select>
+
+      <label for="opinion">추가 의견이나 건의사항이 있다면 적어주세요:</label>
+      <textarea id="opinion" name="opinion" rows="4" placeholder="의견 입력"></textarea>
+
+      <button type="submit">설문 제출</button>
+    </form>
+
+    <div class="success" id="successMsg" style="display: none;">✅ 설문이 성공적으로 제출되었습니다.</div>
+    <div class="error" id="errorMsg" style="display: none;">❌ 제출에 실패했습니다. 다시 시도해주세요.</div>
+
+    <div class="survey-list">
+      <h2>📊 설문 결과</h2>
+      <div id="surveyResults"></div>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('surveyForm');
+    const successMsg = document.getElementById('successMsg');
+    const errorMsg = document.getElementById('errorMsg');
+    const resultsContainer = document.getElementById('surveyResults');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const data = {
+        name: document.getElementById('name').value,
+        satisfaction: document.getElementById('satisfaction').value,
+        opinion: document.getElementById('opinion').value
+      };
+
+      try {
+        const res = await fetch('/api/survey', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+          successMsg.style.display = 'block';
+          errorMsg.style.display = 'none';
+          form.reset();
+          loadSurveys();
+        } else {
+          throw new Error();
+        }
+      } catch (err) {
+        successMsg.style.display = 'none';
+        errorMsg.style.display = 'block';
+      }
+    });
+
+    async function loadSurveys() {
+      try {
+        const res = await fetch('/api/survey');
+        const surveys = await res.json();
+
+        if (surveys.length === 0) {
+          resultsContainer.innerHTML = "<p>등록된 설문 결과가 없습니다.</p>";
+          return;
+        }
+
+        resultsContainer.innerHTML = surveys.map(s => `
+          <div class="survey-item">
+            <h4>🧑 이름: ${s.name || '익명'}</h4>
+            <p>💬 만족도: ${s.satisfaction}</p>
+            <p>📝 의견: ${s.opinion}</p>
+            <p>🕒 작성일: ${new Date(s.date).toLocaleString()}</p>
+          </div>
+        `).join('');
+      } catch (err) {
+        resultsContainer.innerHTML = '<p class="error">설문 데이터를 불러오지 못했습니다.</p>';
+      }
+    }
+
+    // 페이지 로드시 자동으로 설문 결과 불러오기
+    window.onload = loadSurveys;
+  </script>
+</body>
+</html>
