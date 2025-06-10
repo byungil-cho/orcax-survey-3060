@@ -23,6 +23,7 @@ const farmSchema = new mongoose.Schema({
   fertilizer: Number,
   potatoCount: Number,
   inventory: Array,
+  seedPotato: { type: Number, default: 0 } // ✅ 추가됨
 });
 const Farm = mongoose.model('Farm', farmSchema);
 
@@ -41,10 +42,10 @@ app.get('/api/userdata', async (req, res) => {
 // ✅ POST /api/userdata
 app.post('/api/userdata', async (req, res) => {
   try {
-    const { nickname, token, water, fertilizer, inventory } = req.body;
+    const { nickname, token, water, fertilizer, inventory, potatoCount, seedPotato } = req.body;
     const updated = await Farm.findOneAndUpdate(
       { nickname },
-      { token, water, fertilizer, inventory },
+      { token, water, fertilizer, inventory, potatoCount, seedPotato },
       { new: true }
     );
     res.json(updated);
@@ -88,7 +89,8 @@ app.post('/api/harvest', async (req, res) => {
 
   res.json({ success: true, harvested });
 });
-// ✅ 씨감자 교환 API
+
+// ✅ POST /api/exchange-seed (씨감자 교환)
 app.post('/api/exchange-seed', async (req, res) => {
   const { nickname } = req.body;
   const user = await Farm.findOne({ nickname });
@@ -102,12 +104,10 @@ app.post('/api/exchange-seed', async (req, res) => {
 
   user.token -= seedPrice;
   user.seedPotato = (user.seedPotato || 0) + 1;
-
   await user.save();
 
   res.json({ success: true, seedGained: 1 });
 });
-
 
 // ✅ GET /
 app.get('/', (req, res) => {
