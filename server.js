@@ -1,28 +1,29 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const app = express();
 
+const app = express();
 const PORT = 3060;
 
-// ✅ 환경설정
 app.use(cors());
 app.use(express.json());
 
-// ✅ MongoDB 연결 (이미 연결된 상태라 가정)
-mongoose.connect(process.env.MONGO_URL || 'mongodb://localhost:27017/orcax', {
+// ✅ MongoDB 연결
+mongoose.connect('mongodb://localhost:27017/orcax', {
   useNewUrlParser: true,
   useUnifiedTopology: true
-}).then(() => console.log('✅ MongoDB 연결됨'))
+}).then(() => console.log('✅ MongoDB 연결 완료'))
   .catch(err => console.error('❌ MongoDB 연결 실패:', err));
 
-// ✅ /api/userdata 라우터 (기존)
-const Farm = mongoose.model('Farm', new mongoose.Schema({
+// ✅ Farm 모델 정의
+const farmSchema = new mongoose.Schema({
   nickname: String,
   token: Number,
   inventory: Array
-}));
+});
+const Farm = mongoose.model('Farm', farmSchema);
 
+// ✅ /api/userdata GET
 app.get('/api/userdata', async (req, res) => {
   const { nickname } = req.query;
   const user = await Farm.findOne({ nickname });
@@ -30,6 +31,7 @@ app.get('/api/userdata', async (req, res) => {
   res.json(user);
 });
 
+// ✅ /api/userdata POST
 app.post('/api/userdata', async (req, res) => {
   const { nickname, token, inventory } = req.body;
   const updated = await Farm.findOneAndUpdate(
@@ -40,7 +42,7 @@ app.post('/api/userdata', async (req, res) => {
   res.json(updated);
 });
 
-// ✅ 추가된 /api/market 라우터 (전광판 시세 제공)
+// ✅ /api/market (🟢 이게 핵심!!)
 app.get('/api/market', (req, res) => {
   res.json([
     { name: "감자칩", price: 15 },
