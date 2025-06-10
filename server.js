@@ -38,7 +38,7 @@ app.get('/api/userdata', async (req, res) => {
   }
 });
 
-// ✅ 유저 정보 POST (토큰 및 인벤토리 업데이트용)
+// ✅ 유저 정보 POST (토큰, 인벤토리, 자원 업데이트)
 app.post('/api/userdata', async (req, res) => {
   try {
     const { nickname, token, water, fertilizer, inventory } = req.body;
@@ -53,13 +53,18 @@ app.post('/api/userdata', async (req, res) => {
   }
 });
 
-// ✅ 감자 시세 전광판용 market API
+// ✅ 감자 시세 전광판 API
 app.get('/api/market', (req, res) => {
   res.json([
     { name: "감자칩", price: 15 },
     { name: "감자전", price: 20 },
     { name: "감자튀김", price: 30 }
   ]);
+});
+
+// ✅ 감자밭 서버 연결 확인용 루트 경로
+app.get('/', (req, res) => {
+  res.send('✅ OrcaX 감자 서버 정상 작동 중!');
 });
 
 // ✅ 서버 실행
