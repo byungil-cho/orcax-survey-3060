@@ -1,4 +1,3 @@
-
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -69,6 +68,24 @@ app.get('/api/users', async (req, res) => {
   try {
     const users = await Farm.find({}, 'nickname water fertilizer token potatoCount seedPotato');
     res.json({ success: true, users });
+  } catch (err) {
+    res.status(500).json({ success: false, message: '서버 오류' });
+  }
+});
+
+/* ========== 단일 유저 조회 ========== */
+app.get('/api/userdata', async (req, res) => {
+  const { nickname } = req.query;
+  if (!nickname) {
+    return res.status(400).json({ success: false, message: '닉네임이 필요합니다.' });
+  }
+
+  try {
+    const user = await Farm.findOne({ nickname });
+    if (!user) {
+      return res.status(404).json({ success: false, message: '유저 없음' });
+    }
+    res.json({ success: true, user });
   } catch (err) {
     res.status(500).json({ success: false, message: '서버 오류' });
   }
