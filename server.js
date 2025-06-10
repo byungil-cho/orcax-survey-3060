@@ -155,6 +155,66 @@ app.get('/api/users', async (req, res) => {
     res.status(500).json({ success: false, message: '서버 오류' });
   }
 });
+// ✅ 거래소 시세 조회 (전광판)
+app.get('/api/market/prices', (req, res) => {
+  res.json({
+    notice: "📈 오늘도 감자 시세가 출렁입니다!",
+    prices: [
+      { type: "감자칩", count: 120, price: 15 },
+      { type: "감자전", count: 80, price: 20 },
+      { type: "감자튀김", count: 60, price: 30 }
+    ]
+  });
+});
+
+// ✅ 개인 보관소 조회
+app.get('/api/storage/:kakaoId', async (req, res) => {
+  const { kakaoId } = req.params;
+  try {
+    const user = await Farm.findOne({ nickname: kakaoId });
+    if (!user) return res.json([]);
+    res.json(user.inventory || []);
+  } catch (err) {
+    res.status(500).json({ error: "보관소 조회 실패" });
+  }
+});
+
+// ✅ 유저 토큰 잔액 조회
+app.get('/api/user/token/:kakaoId', async (req, res) => {
+  const { kakaoId } = req.params;
+  try {
+    const user = await Farm.findOne({ nickname: kakaoId });
+    res.json({ token: user?.token ?? 0 });
+  } catch (err) {
+    res.status(500).json({ error: "토큰 조회 실패" });
+  }
+});
+
+// ✅ 제품 판매 처리
+app.post('/api/market/sell', async (req, res) => {
+  const { kakaoId, type, count } = req.body;
+  try {
+    const user = await Farm.findOne({ nickname: kakaoId });
+    if (!user) return res.status(404).json({ error: "유저 없음" });
+
+    const item = user.inventory.find(i => i.type === type);
+    if (!item || item.count < count) {
+      return res.status(400).json({ error: "수량 부족 또는 항목 없음" });
+    }
+
+    item.count -= count;
+    if (item.count === 0) {
+      user.inventory = user.inventory.filter(i => i.type !== type);
+    }
+
+    // 간단한 시세 계산: 기본 토큰 10 * 수량
+    user.token += count * 10;
+    await user.save();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "판매 처리 실패" });
+  }
+});
 
 // ✅ 기본 루트
 app.get('/', (req, res) => {
