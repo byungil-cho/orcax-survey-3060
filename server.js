@@ -55,5 +55,3 @@ app.get('/api/market', (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 서버 작동 중: http://localhost:${PORT}`);
 });
-
-
