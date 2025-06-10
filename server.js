@@ -111,6 +111,17 @@ app.post('/api/exchange-seed', async (req, res) => {
 
   res.json({ success: true, seedGained: 1 });
 });
+// ✅ POST /api/use-seed (씨감자 1개 사용)
+app.post('/api/use-seed', async (req, res) => {
+  const { nickname } = req.body;
+  const user = await Farm.findOne({ nickname });
+  if (!user || (user.seedPotato ?? 0) < 1) {
+    return res.json({ success: false, message: "씨감자가 부족합니다." });
+  }
+  user.seedPotato -= 1;
+  await user.save();
+  res.json({ success: true });
+});
 
 // ✅ GET /
 app.get('/', (req, res) => {
