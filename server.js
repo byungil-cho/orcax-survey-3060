@@ -88,6 +88,26 @@ app.post('/api/harvest', async (req, res) => {
 
   res.json({ success: true, harvested });
 });
+// ✅ 씨감자 교환 API
+app.post('/api/exchange-seed', async (req, res) => {
+  const { nickname } = req.body;
+  const user = await Farm.findOne({ nickname });
+
+  if (!user) return res.status(404).json({ success: false, message: "유저 없음" });
+
+  const seedPrice = 2;
+  if ((user.token ?? 0) < seedPrice) {
+    return res.json({ success: false, message: "ORCX 부족" });
+  }
+
+  user.token -= seedPrice;
+  user.seedPotato = (user.seedPotato || 0) + 1;
+
+  await user.save();
+
+  res.json({ success: true, seedGained: 1 });
+});
+
 
 // ✅ GET /
 app.get('/', (req, res) => {
