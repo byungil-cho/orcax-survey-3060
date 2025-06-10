@@ -146,6 +146,15 @@ app.post('/api/use-seed', async (req, res) => {
   await user.save();
   res.json({ success: true, seedPotato: user.seedPotato });
 });
+// ✅ 유저 전체 조회 API (admin-users.html 에서 사용됨)
+app.get('/api/users', async (req, res) => {
+  try {
+    const users = await Farm.find({}, 'nickname water fertilizer token potatoCount');
+    res.json({ success: true, users });
+  } catch (err) {
+    res.status(500).json({ success: false, message: '서버 오류' });
+  }
+});
 
 // ✅ 기본 루트
 app.get('/', (req, res) => {
