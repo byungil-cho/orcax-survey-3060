@@ -42,7 +42,10 @@ app.get('/api/userdata', async (req, res) => {
 // ✅ POST /api/userdata
 app.post('/api/userdata', async (req, res) => {
   try {
-    const { nickname, token, water, fertilizer, inventory, potatoCount, seedPotato } = req.body;
+    const {
+      nickname, token, water,
+      fertilizer, inventory, potatoCount, seedPotato
+    } = req.body;
     const updated = await Farm.findOneAndUpdate(
       { nickname },
       { token, water, fertilizer, inventory, potatoCount, seedPotato },
@@ -102,8 +105,8 @@ app.post('/api/exchange-seed', async (req, res) => {
     return res.json({ success: false, message: "ORCX 부족" });
   }
 
-  user.token -= seedPrice;
-  user.seedPotato = (user.seedPotato || 0) + 1;
+  user.token = (user.token ?? 0) - seedPrice;         // ✅ 정확한 차감 처리
+  user.seedPotato = (user.seedPotato ?? 0) + 1;
   await user.save();
 
   res.json({ success: true, seedGained: 1 });
