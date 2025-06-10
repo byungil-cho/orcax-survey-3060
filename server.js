@@ -5,7 +5,6 @@ const cors = require('cors');
 const app = express();
 const PORT = 3060;
 
-// ✅ 미들웨어
 app.use(cors());
 app.use(express.json());
 
@@ -22,23 +21,24 @@ const farmSchema = new mongoose.Schema({
   token: Number,
   water: Number,
   fertilizer: Number,
+  potatoCount: Number,
   inventory: Array,
 });
 const Farm = mongoose.model('Farm', farmSchema);
 
-// ✅ 유저 정보 GET
+// ✅ GET /api/userdata
 app.get('/api/userdata', async (req, res) => {
   try {
     const { nickname } = req.query;
     const user = await Farm.findOne({ nickname });
     if (!user) return res.status(404).json({ message: "유저 없음" });
-    res.json(user);  // 통일된 응답 형식
+    res.json(user);
   } catch (err) {
     res.status(500).json({ message: "서버 오류" });
   }
 });
 
-// ✅ 유저 정보 POST (토큰, 인벤토리, 자원 업데이트)
+// ✅ POST /api/userdata
 app.post('/api/userdata', async (req, res) => {
   try {
     const { nickname, token, water, fertilizer, inventory } = req.body;
@@ -53,7 +53,7 @@ app.post('/api/userdata', async (req, res) => {
   }
 });
 
-// ✅ 감자 시세 전광판 API
+// ✅ GET /api/market
 app.get('/api/market', (req, res) => {
   res.json([
     { name: "감자칩", price: 15 },
@@ -62,7 +62,34 @@ app.get('/api/market', (req, res) => {
   ]);
 });
 
-// ✅ 감자밭 서버 연결 확인용 루트 경로
+// ✅ POST /api/use-resource (물/거름 사용)
+app.post('/api/use-resource', async (req, res) => {
+  const { nickname, type } = req.body;
+  const user = await Farm.findOne({ nickname });
+  if (!user) return res.status(404).json({ success: false, message: "유저 없음" });
+
+  if (type === "water" && user.water > 0) user.water--;
+  else if (type === "fertilizer" && user.fertilizer > 0) user.fertilizer--;
+  else return res.json({ success: false, message: "자원 부족" });
+
+  await user.save();
+  res.json({ success: true });
+});
+
+// ✅ POST /api/harvest (감자 수확)
+app.post('/api/harvest', async (req, res) => {
+  const { nickname } = req.body;
+  const user = await Farm.findOne({ nickname });
+  if (!user) return res.status(404).json({ success: false, message: "유저 없음" });
+
+  const harvested = 5;  // 기본 수확량
+  user.potatoCount = (user.potatoCount || 0) + harvested;
+  await user.save();
+
+  res.json({ success: true, harvested });
+});
+
+// ✅ GET /
 app.get('/', (req, res) => {
   res.send('✅ OrcaX 감자 서버 정상 작동 중!');
 });
