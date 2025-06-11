@@ -34,7 +34,6 @@ const farmSchema = new mongoose.Schema({
   inventory: Array,
   seedPotato: { type: Number, default: 0 }
 });
-const Farm = mongoose.model('Farm', farmSchema);
 
 // ✅ 최초 입장
 app.post('/api/login', async (req, res) => {
