@@ -17,4 +17,5 @@ const farmSchema = new mongoose.Schema({
     freeFarmCount: Number
 });
 
-module.exports = mongoose.model('Farm', farmSchema);
+// ✅ 중복 선언 방지 코드
+module.exports = mongoose.models.Farm || mongoose.model('Farm', farmSchema);
