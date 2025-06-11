@@ -2,12 +2,14 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const farmRoutes = require('./routes/farm'); 
 
 const app = express();
 const PORT = 3060;
 
 app.use(cors());
 app.use(express.json());
+app.use('/api/farm', farmRoutes);
 
 app.use(cors({
   origin: '*', // 또는 'https://byungil-cho.github.io' 로 명시
