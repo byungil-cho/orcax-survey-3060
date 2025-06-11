@@ -1,4 +1,3 @@
-
 const mongoose = require('mongoose');
 
 const farmSchema = new mongoose.Schema({
@@ -18,5 +17,5 @@ const farmSchema = new mongoose.Schema({
   freeFarmCount: Number
 });
 
-// ✅ 중복 선언 방지 방식 적용
+// ✅ 이 줄이 반드시 있어야 오류 방지됨!
 module.exports = mongoose.models.Farm || mongoose.model('Farm', farmSchema);
