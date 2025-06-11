@@ -3,6 +3,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const farmRoutes = require('./routes/farm'); 
+const Farm = require('./models/Farm');
 
 const app = express();
 const PORT = 3060;
