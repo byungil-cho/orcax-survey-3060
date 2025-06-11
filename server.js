@@ -15,6 +15,9 @@ app.use('/api/farm', farmRoutes);
 app.use(cors({
   origin: '*', // 또는 'https://byungil-cho.github.io' 로 명시
 }));
+app.get('/api/status', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
 
 
 // ✅ MongoDB 연결
