@@ -9,6 +9,12 @@ const PORT = 3060;
 app.use(cors());
 app.use(express.json());
 
+const cors = require('cors');
+app.use(cors({
+  origin: '*', // 또는 'https://byungil-cho.github.io' 로 명시
+}));
+
+
 // ✅ MongoDB 연결
 mongoose.connect('mongodb://localhost:27017/orcax', {
   useNewUrlParser: true,
