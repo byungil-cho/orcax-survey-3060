@@ -225,3 +225,34 @@ app.get('/', (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 서버 실행 중: http://localhost:${PORT}`);
 });
+// ✅ 사용자 정보 조회 시 seedPotato 포함 보장
+app.get('/api/users', async (req, res) => {
+  try {
+    const users = await Farm.find({}, 'nickname water fertilizer token potatoCount seedPotato');
+    res.json({ success: true, users });
+  } catch (err) {
+    res.status(500).json({ success: false, message: '서버 오류' });
+  }
+});
+
+// ✅ 씨감자 구매 기능 추가
+app.post('/api/buy-seed', async (req, res) => {
+  try {
+    const { nickname, amount } = req.body;
+    if (!nickname || !amount) return res.status(400).json({ success: false, message: '잘못된 요청' });
+
+    const user = await Farm.findOne({ nickname });
+    if (!user) return res.status(404).json({ success: false, message: '사용자 없음' });
+
+    const totalCost = 2 * amount;
+    if (user.token < totalCost) return res.json({ success: false, message: '토큰 부족' });
+
+    user.token -= totalCost;
+    user.seedPotato = (user.seedPotato || 0) + amount;
+    await user.save();
+
+    res.json({ success: true, message: '씨감자 구매 완료' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: '서버 오류 발생' });
+  }
+});
