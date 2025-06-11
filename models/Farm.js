@@ -17,5 +17,6 @@ const farmSchema = new mongoose.Schema({
   freeFarmCount: Number
 });
 
-// ✅ 중복 선언 방지 조건 포함!
+// ✅ 핵심 부분: 중복 선언 방지!
 module.exports = mongoose.models.Farm || mongoose.model('Farm', farmSchema);
+
