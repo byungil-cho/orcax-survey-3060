@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const Farm = require('../models/Farm');
 
 const farmSchema = new mongoose.Schema({
   nickname: String,
