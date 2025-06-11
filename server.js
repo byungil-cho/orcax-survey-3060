@@ -256,3 +256,18 @@ app.post('/api/buy-seed', async (req, res) => {
     res.status(500).json({ success: false, message: '서버 오류 발생' });
   }
 });
+
+// 보관함 정보 불러오기용 API
+app.get('/api/storage/:nickname', async (req, res) => {
+  const nickname = req.params.nickname;
+  try {
+    const user = await Farm.findOne({ nickname });
+    if (!user || !user.products) {
+      return res.json([]);
+    }
+    res.json(user.products); // 또는 user.storage 등으로 맞춰주시면 됩니다
+  } catch (err) {
+    console.error('보관소 조회 오류:', err);
+    res.status(500).json({ success: false, message: '서버 오류' });
+  }
+});
