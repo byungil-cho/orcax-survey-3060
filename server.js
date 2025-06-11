@@ -9,7 +9,6 @@ const PORT = 3060;
 app.use(cors());
 app.use(express.json());
 
-const cors = require('cors');
 app.use(cors({
   origin: '*', // 또는 'https://byungil-cho.github.io' 로 명시
 }));
