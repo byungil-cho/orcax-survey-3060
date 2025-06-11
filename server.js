@@ -256,8 +256,7 @@ app.post('/api/buy-seed', async (req, res) => {
     res.status(500).json({ success: false, message: '서버 오류 발생' });
   }
 });
-
-// 보관함 정보 불러오기용 API
+// 개인 보관함 조회
 app.get('/api/storage/:nickname', async (req, res) => {
   const nickname = req.params.nickname;
   try {
@@ -265,9 +264,22 @@ app.get('/api/storage/:nickname', async (req, res) => {
     if (!user || !user.products) {
       return res.json([]);
     }
-    res.json(user.products); // 또는 user.storage 등으로 맞춰주시면 됩니다
+    res.json(user.products);  // 또는 user.storage 등 저장 형태 확인 필요
   } catch (err) {
-    console.error('보관소 조회 오류:', err);
-    res.status(500).json({ success: false, message: '서버 오류' });
+    console.error("보관소 조회 오류:", err);
+    res.status(500).json({ success: false, message: "서버 오류" });
+  }
+});
+
+// 토큰 잔액 조회
+app.get('/api/user/token/:nickname', async (req, res) => {
+  const nickname = req.params.nickname;
+  try {
+    const user = await Farm.findOne({ nickname });
+    if (!user) return res.json({ token: 0 });
+    res.json({ token: user.token || 0 });
+  } catch (err) {
+    console.error("토큰 조회 오류:", err);
+    res.status(500).json({ success: false, message: "서버 오류" });
   }
 });
