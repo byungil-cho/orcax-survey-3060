@@ -168,26 +168,9 @@ app.get('/api/market/prices', (req, res) => {
 });
 
 // ✅ 개인 보관소 조회
-app.get('/api/storage/:kakaoId', async (req, res) => {
-  const { kakaoId } = req.params;
-  try {
-    const user = await Farm.findOne({ nickname: kakaoId });
-    if (!user) return res.json([]);
-    res.json(user.inventory || []);
-  } catch (err) {
-    res.status(500).json({ error: "보관소 조회 실패" });
-  }
 });
 
 // ✅ 유저 토큰 잔액 조회
-app.get('/api/user/token/:kakaoId', async (req, res) => {
-  const { kakaoId } = req.params;
-  try {
-    const user = await Farm.findOne({ nickname: kakaoId });
-    res.json({ token: user?.token ?? 0 });
-  } catch (err) {
-    res.status(500).json({ error: "토큰 조회 실패" });
-  }
 });
 
 // ✅ 제품 판매 처리
@@ -272,6 +255,32 @@ app.get('/api/storage/:nickname', async (req, res) => {
 });
 
 // 토큰 잔액 조회
+app.get('/api/user/token/:nickname', async (req, res) => {
+  const nickname = req.params.nickname;
+  try {
+    const user = await Farm.findOne({ nickname });
+    if (!user) return res.json({ token: 0 });
+    res.json({ token: user.token || 0 });
+  } catch (err) {
+    console.error("토큰 조회 오류:", err);
+    res.status(500).json({ success: false, message: "서버 오류" });
+  }
+});
+
+// ✅ 안정화: 개인 보관함 조회 (inventory 필드 기준)
+app.get('/api/storage/:nickname', async (req, res) => {
+  const nickname = req.params.nickname;
+  try {
+    const user = await Farm.findOne({ nickname });
+    if (!user) return res.json([]);
+    res.json(user.inventory || []);
+  } catch (err) {
+    console.error("보관소 조회 오류:", err);
+    res.status(500).json({ success: false, message: "서버 오류" });
+  }
+});
+
+// ✅ 안정화: 토큰 잔액 조회 (nickname 기준)
 app.get('/api/user/token/:nickname', async (req, res) => {
   const nickname = req.params.nickname;
   try {
