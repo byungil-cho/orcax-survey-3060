@@ -1,3 +1,4 @@
+
 const mongoose = require('mongoose');
 
 const farmSchema = new mongoose.Schema({
@@ -17,6 +18,5 @@ const farmSchema = new mongoose.Schema({
   freeFarmCount: Number
 });
 
-// ✅ 핵심 부분: 중복 선언 방지!
+// ✅ 중복 선언 방지 방식 적용
 module.exports = mongoose.models.Farm || mongoose.model('Farm', farmSchema);
-
