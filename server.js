@@ -2,64 +2,51 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const app = express();
-const PORT = 3060;
+const path = require('path');
+require('dotenv').config();
+
+const PORT = process.env.PORT || 3060;
+
+// ✅ 미들웨어
+app.use(cors());
+app.use(express.json());
 
 // ✅ MongoDB 연결
-mongoose.connect('mongodb://localhost:27017/orcax', {
+mongoose.connect(process.env.MONGO_URL || 'mongodb://localhost:27017/orcax', {
   useNewUrlParser: true,
   useUnifiedTopology: true
 }).then(() => console.log('✅ MongoDB 연결됨'))
   .catch(err => console.error('❌ MongoDB 연결 실패:', err));
 
-app.use(cors());
-app.use(express.json());
-
-// ✅ 감자 라우터 경로 수정 (기존 유지)
-const gamjaRoutes = require('./routes/farm'); // 기존 'gamja' → 'farm'으로 수정
-app.use('/api', gamjaRoutes);
-
-// ✅ 보리 수확 API
-const { Farm } = require('./models/Farm');
-app.post('/api/harvest-barley', async (req, res) => {
-  const { nickname, amount } = req.body;
-  if (!nickname || !amount) {
-    return res.json({ success: false, message: "필수값 누락" });
-  }
-
-  try {
-    let user = await Farm.findOne({ nickname });
-    if (!user) {
-      user = await Farm.create({ nickname, barley: 0 });
-    }
-
-    user.barley += Number(amount);
-    await user.save();
-
-    res.json({ success: true, amount });
-  } catch (err) {
-    console.error("❌ 수확 실패:", err);
-    res.status(500).json({ success: false, message: "서버 오류" });
-  }
-});
-
-// ✅ 공통 유저 정보 조회 API
-app.get('/api/userdata/:nickname', async (req, res) => {
-  const nickname = req.params.nickname;
-  let user = await Farm.findOne({ nickname });
-
-  if (!user) {
-    user = await Farm.create({ nickname, barley: 0 });
-  }
-
-  res.json({ user });
-});
-
-// ✅ 전기 상태 API
+// ✅ 전기 상태 라우터
 app.get('/api/status', (req, res) => {
-  res.json({ status: "ok" });
+  res.status(200).send('🟢 서버 작동 중');
 });
+app.get('/api/power', (req, res) => {
+  res.json({ power: true });
+});
+
+// ✅ 감자 라우터 연결
+const farmRoutes = require('./routes/farm');
+app.use('/api', farmRoutes);
+
+// ✅ 제품 라우터 (감자/보리 공통)
+const productRoutes = require('./routes/product');
+app.use('/api', productRoutes);
+
+// ✅ 보리 라우터 추가
+const barleyRoutes = require('./routes/barley');
+app.use('/api', barleyRoutes);
+
+// ✅ 관리자, 마켓 등 (추후 확장)
+const adminRoutes = require('./routes/admin');
+const authRoutes = require('./routes/auth');
+const marketRoutes = require('./routes/market');
+app.use('/api', adminRoutes);
+app.use('/api', authRoutes);
+app.use('/api', marketRoutes);
 
 // ✅ 서버 실행
 app.listen(PORT, () => {
-  console.log(`✅ 서버 실행 중: http://localhost:${PORT}`);
+  console.log(`✅ 서버 실행 중 : http://localhost:${PORT}`);
 });
