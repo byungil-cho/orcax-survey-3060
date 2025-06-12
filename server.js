@@ -22,6 +22,25 @@ app.get('/api/status', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
+app.post("/api/water-barley", async (req, res) => {
+  const { nickname } = req.body;
+  const user = await Farm.findOne({ nickname });
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  user.water = (user.water || 0) + 1;
+  await user.save();
+  res.status(204).send();
+});
+
+app.post("/api/fertilize-barley", async (req, res) => {
+  const { nickname } = req.body;
+  const user = await Farm.findOne({ nickname });
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  user.fertilizer = (user.fertilizer || 0) + 1;
+  await user.save();
+  res.status(204).send();
+});
 
 // ✅ MongoDB 연결
 mongoose.connect('mongodb://localhost:27017/orcax', {
