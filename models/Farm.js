@@ -1,12 +1,20 @@
+// models/Farm.js
 const mongoose = require('mongoose');
-
-const FarmSchema = new mongoose.Schema({
+const farmSchema = new mongoose.Schema({
   nickname: String,
-  potatoCount: { type: Number, default: 0 },
-  barleyCount: { type: Number, default: 0 },
-  token: { type: Number, default: 0 },
-  water: { type: Number, default: 10 },
-  fertilizer: { type: Number, default: 10 }
+  barley: Number,
+  water: Number,
+  fertilizer: Number,
+  token: Number,
+  potatoCount: Number
 });
+module.exports = mongoose.model('Farm', farmSchema);
 
-module.exports = mongoose.model('Farm', FarmSchema);
+// models/BarleyProduct.js
+const mongoose = require('mongoose');
+const barleyProductSchema = new mongoose.Schema({
+  nickname: String,
+  product: String,
+  quantity: Number
+});
+module.exports = mongoose.model('BarleyProduct', barleyProductSchema);
