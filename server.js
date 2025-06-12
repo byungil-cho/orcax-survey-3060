@@ -109,7 +109,9 @@ const farmSchema = new mongoose.Schema({
   fertilizer: Number,
   potatoCount: Number,
   inventory: Array,
-  seedPotato: { type: Number, default: 0 }
+  seedPotato: { type: Number, default: 0 },
+  waterGiven: { type: Number, default: 0 },
+  fertilizerGiven: { type: Number, default: 0 }
 });
 
 // ✅ 최초 입장
