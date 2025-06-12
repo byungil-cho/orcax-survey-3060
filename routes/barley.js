@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Farm = require('../models/Farm');
+const Product = require('../models/Product');
 
 // 🌾 보리 수확 API
 router.post('/harvest-barley', async (req, res) => {
@@ -24,6 +25,43 @@ router.post('/harvest-barley', async (req, res) => {
   } catch (err) {
     console.error('보리 수확 오류:', err);
     res.status(500).json({ success: false, message: '서버 오류로 보리 수확 실패' });
+  }
+});
+
+// 🏭 보리 가공 API
+router.post('/convert-barley', async (req, res) => {
+  const { nickname, product, amount } = req.body;
+
+  if (!nickname || !product || typeof amount !== 'number') {
+    return res.status(400).json({ success: false, message: '닉네임, 제품명, 수량이 필요합니다.' });
+  }
+
+  try {
+    const user = await Farm.findOne({ nickname });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: '사용자 없음' });
+    }
+
+    if ((user.barleyCount || 0) < amount) {
+      return res.status(400).json({ success: false, message: '보리 부족' });
+    }
+
+    user.barleyCount -= amount;
+    await user.save();
+
+    await Product.create({
+      nickname,
+      product,
+      type: 'barley',
+      count: amount,
+      createdAt: new Date()
+    });
+
+    res.json({ success: true, message: `${product} 가공 성공`, barleyCount: user.barleyCount });
+  } catch (err) {
+    console.error('보리 가공 오류:', err);
+    res.status(500).json({ success: false, message: '서버 오류로 보리 가공 실패' });
   }
 });
 
