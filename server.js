@@ -8,6 +8,9 @@ const Farm = require('./models/Farm');
 const app = express();
 const PORT = 3060;
 
+const barleyRoutes = require('./routes/barley');
+app.use('/api', barleyRoutes);
+
 app.use(cors());
 app.use(express.json());
 app.use('/api/farm', farmRoutes);
