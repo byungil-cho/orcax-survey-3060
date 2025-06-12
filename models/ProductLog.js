@@ -1,10 +1,11 @@
 const mongoose = require('mongoose');
 
-const ProductLogSchema = new mongoose.Schema({
+const ProductSchema = new mongoose.Schema({
   nickname: String,
   product: String,
-  quantity: Number,
-  createdAt: Date
+  type: String, // 'potato' or 'barley'
+  count: { type: Number, default: 1 },
+  createdAt: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model('ProductLog', ProductLogSchema);
+module.exports = mongoose.model('Product', ProductSchema);
