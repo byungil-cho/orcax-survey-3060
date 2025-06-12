@@ -76,6 +76,24 @@ app.post("/api/fertilize-barley", async (req, res) => {
   res.status(200).json({ success: true });
 });
 
+app.get("/api/userdata", async (req, res) => {
+  const { nickname } = req.query;
+  const user = await Farm.findOne({ nickname });
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  res.json({
+    nickname: user.nickname,
+    potatoCount: user.potatoCount,
+    barleyCount: user.barleyCount,
+    water: user.water,
+    fertilizer: user.fertilizer,
+    token: user.token,
+    farmName: user.farmName,
+    waterGiven: user.waterGiven,
+    fertilizerGiven: user.fertilizerGiven
+  });
+});
+
 // ✅ MongoDB 연결
 mongoose.connect('mongodb://localhost:27017/orcax', {
   useNewUrlParser: true,
