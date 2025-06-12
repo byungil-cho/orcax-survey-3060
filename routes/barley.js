@@ -3,6 +3,11 @@ const router = express.Router();
 const Farm = require('../models/Farm');
 const Product = require('../models/Product');
 
+// ✅ 서버 상태 확인 API
+router.get('/status', (req, res) => {
+  res.status(200).json({ success: true, message: '서버 전기 공급 중 ⚡' });
+});
+
 // 🌾 보리 수확 API
 router.post('/harvest-barley', async (req, res) => {
   const { nickname, amount } = req.body;
