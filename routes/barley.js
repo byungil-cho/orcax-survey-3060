@@ -1,25 +1,30 @@
-// routes/barley.js
 const express = require('express');
 const router = express.Router();
 const Farm = require('../models/Farm');
+const ProductLog = require('../models/ProductLog');
 
-router.post('/harvest-barley', async (req, res) => {
-  const { nickname, amount } = req.body;
-  if (!nickname || typeof amount !== 'number') {
-    return res.status(400).json({ success: false, message: '닉네임 또는 수확량 누락' });
+router.post('/convert-barley', async (req, res) => {
+  const { nickname, product, amount } = req.body;
+  if (!nickname || !product || !amount) {
+    return res.status(400).json({ success: false, message: '요청 데이터 누락' });
   }
 
-  try {
-    const user = await Farm.findOne({ nickname });
-    if (!user) return res.status(404).json({ success: false, message: '유저 정보 없음' });
-
-    user.barley = (user.barley || 0) + amount;
-    await user.save();
-    res.json({ success: true, barley: user.barley });
-  } catch (err) {
-    console.error('보리 수확 오류:', err);
-    res.status(500).json({ success: false, message: '서버 오류' });
+  const user = await Farm.findOne({ nickname });
+  if (!user || (user.barley || 0) < amount) {
+    return res.status(400).json({ success: false, message: '보리 부족 또는 유저 없음' });
   }
+
+  user.barley -= amount;
+  await user.save();
+
+  const savedProduct = await ProductLog.create({
+    nickname,
+    product,
+    quantity: amount,
+    createdAt: new Date()
+  });
+
+  res.json({ success: true, product: savedProduct.product });
 });
 
 module.exports = router;
