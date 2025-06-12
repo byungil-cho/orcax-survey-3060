@@ -14,11 +14,11 @@ mongoose.connect('mongodb://localhost:27017/orcax', {
 app.use(cors());
 app.use(express.json());
 
-// ✅ 감자 경로는 건들지 않음 (단, 실제 존재해야 작동 가능)
-const gamjaRoutes = require('./routes/gamja'); // 🔒 감자 유지
+// ✅ 감자 라우터 경로 수정 (기존 유지)
+const gamjaRoutes = require('./routes/farm'); // 기존 'gamja' → 'farm'으로 수정
 app.use('/api', gamjaRoutes);
 
-// ✅ 보리 수확 API (추가만)
+// ✅ 보리 수확 API
 const { Farm } = require('./models/Farm');
 app.post('/api/harvest-barley', async (req, res) => {
   const { nickname, amount } = req.body;
@@ -42,7 +42,7 @@ app.post('/api/harvest-barley', async (req, res) => {
   }
 });
 
-// ✅ 기타 유지
+// ✅ 공통 유저 정보 조회 API
 app.get('/api/userdata/:nickname', async (req, res) => {
   const nickname = req.params.nickname;
   let user = await Farm.findOne({ nickname });
@@ -54,10 +54,12 @@ app.get('/api/userdata/:nickname', async (req, res) => {
   res.json({ user });
 });
 
+// ✅ 전기 상태 API
 app.get('/api/status', (req, res) => {
   res.json({ status: "ok" });
 });
 
+// ✅ 서버 실행
 app.listen(PORT, () => {
   console.log(`✅ 서버 실행 중: http://localhost:${PORT}`);
 });
