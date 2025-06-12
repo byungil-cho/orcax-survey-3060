@@ -21,6 +21,30 @@ app.use(cors({
 app.get('/api/status', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
+app.post("/api/harvest-barley", async (req, res) => {
+  const { nickname } = req.body;
+  const user = await Farm.findOne({ nickname });
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  // 수확 조건: 물 3, 거름 2 이상
+  if ((user.water || 0) < 3 || (user.fertilizer || 0) < 2) {
+    return res.status(400).json({ error: "물 또는 거름이 부족하여 수확할 수 없습니다." });
+  }
+
+  // 인벤토리에 보리 제품 추가
+  const barleyItem = { type: "barley-알곡", count: 1 };
+  user.inventory = user.inventory || [];
+
+  const existing = user.inventory.find(i => i.type === barleyItem.type);
+  if (existing) existing.count += 1;
+  else user.inventory.push(barleyItem);
+
+  user.water -= 3;
+  user.fertilizer -= 2;
+  await user.save();
+
+  res.status(200).json({ message: "보리 수확 완료", item: barleyItem });
+});
 
 app.post("/api/water-barley", async (req, res) => {
   const { nickname } = req.body;
