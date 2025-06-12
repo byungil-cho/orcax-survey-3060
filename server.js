@@ -42,6 +42,9 @@ app.use('/api', barleyRoutes);
 const adminRoutes = require('./routes/admin');
 const authRoutes = require('./routes/auth');
 const marketRoutes = require('./routes/market');
+const productRouter = require("./routes/product");
+
+app.use("/api", productRouter);
 app.use('/api', adminRoutes);
 app.use('/api', authRoutes);
 app.use('/api', marketRoutes);
