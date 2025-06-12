@@ -51,9 +51,14 @@ app.post("/api/water-barley", async (req, res) => {
   const user = await Farm.findOne({ nickname });
   if (!user) return res.status(404).json({ error: "User not found" });
 
-  user.water = (user.water || 0) + 1;
+  if ((user.water || 0) <= 0) {
+    return res.status(400).json({ error: "물 부족" });
+  }
+
+  user.water -= 1;
+  user.waterGiven = (user.waterGiven || 0) + 1;
   await user.save();
-  res.status(204).send();
+  res.status(200).json({ success: true });
 });
 
 app.post("/api/fertilize-barley", async (req, res) => {
@@ -61,9 +66,14 @@ app.post("/api/fertilize-barley", async (req, res) => {
   const user = await Farm.findOne({ nickname });
   if (!user) return res.status(404).json({ error: "User not found" });
 
-  user.fertilizer = (user.fertilizer || 0) + 1;
+  if ((user.fertilizer || 0) <= 0) {
+    return res.status(400).json({ error: "거름 부족" });
+  }
+
+  user.fertilizer -= 1;
+  user.fertilizerGiven = (user.fertilizerGiven || 0) + 1;
   await user.save();
-  res.status(204).send();
+  res.status(200).json({ success: true });
 });
 
 // ✅ MongoDB 연결
