@@ -28,9 +28,9 @@ app.get('/', (req, res) => {
   res.send('✅ OrcaX 서버 정상 작동 중!');
 });
 
-/* 전기 공급 상태 확인 */
+/* ✅ 전기 공급 상태 확인 (수정됨) */
 app.get('/api/status', (req, res) => {
-  res.status(200).json({ status: 'ok' });
+  res.status(200).json({ message: '전기 공급 정상' });
 });
 
 /* 서버 실행 */
