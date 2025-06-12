@@ -49,31 +49,23 @@ app.post("/api/harvest-barley", async (req, res) => {
 app.post("/api/water-barley", async (req, res) => {
   const { nickname } = req.body;
   const user = await Farm.findOne({ nickname });
-  if (!user) return res.status(404).json({ error: "User not found" });
-
-  if ((user.water || 0) <= 0) {
-    return res.status(400).json({ error: "물 부족" });
-  }
+  if (!user || user.water <= 0) return res.status(400).send("No water");
 
   user.water -= 1;
-  user.waterGiven = (user.waterGiven || 0) + 1;
+  user.waterGiven = (user.waterGiven || 0) + 1; // 💧사용량 기록 증가
   await user.save();
-  res.status(200).json({ success: true });
+  res.status(200).send();
 });
 
 app.post("/api/fertilize-barley", async (req, res) => {
   const { nickname } = req.body;
   const user = await Farm.findOne({ nickname });
-  if (!user) return res.status(404).json({ error: "User not found" });
-
-  if ((user.fertilizer || 0) <= 0) {
-    return res.status(400).json({ error: "거름 부족" });
-  }
+  if (!user || user.fertilizer <= 0) return res.status(400).send("No fertilizer");
 
   user.fertilizer -= 1;
-  user.fertilizerGiven = (user.fertilizerGiven || 0) + 1;
+  user.fertilizerGiven = (user.fertilizerGiven || 0) + 1; // 🌿사용량 기록 증가
   await user.save();
-  res.status(200).json({ success: true });
+  res.status(200).send();
 });
 
 app.get("/api/userdata", async (req, res) => {
