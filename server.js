@@ -13,6 +13,7 @@ app.use('/api', barleyRoutes);
 app.use(cors());
 app.use(express.json());
 app.use('/api/farm', farmRoutes);
+app.use('/api', require('./routes/buy-seed'));  // 예시
 
 app.use(cors({
   origin: '*',
