@@ -10,6 +10,9 @@ const PORT = 3060;
 const barleyRoutes = require('./routes/barley');
 app.use('/api', barleyRoutes);
 
+const saveBarleyProduct = require('./routes/save-barley-product');
+app.use('/api', saveBarleyProduct);
+
 const harvestBarleyRoute = require('./routes/harvest-barley');
 app.use('/api/harvest-barley', harvestBarleyRoute);
 
