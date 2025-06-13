@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const Product = require("../models/product");
+const Product = require("../product");
 
 // 기존 POST 라우트 유지
 router.post("/", async (req, res) => {
