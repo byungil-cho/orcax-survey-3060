@@ -1,45 +1,35 @@
 const express = require('express');
 const router = express.Router();
-const Product = require('../models/Product'); // ✅ 제품 모델
-const Farm = require('../models/Farm');       // ✅ 유저(농장) 모델
+const Farm = require('../models/Farm'); // 반드시 있어야 합니다
 
-// ✅ 쿼리로 닉네임 받아서 유저 정보 반환
-router.get('/', async (req, res) => {
-  try {
-    const nickname = req.query.nickname;
-    const user = await Farm.findOne({ nickname });
-    if (!user) return res.status(404).json({ error: '유저 없음' });
-
-    res.json({
-      nickname: user.nickname,
-      potatoCount: user.potatoCount,
-      barleyCount: user.barleyCount,
-      seedPotato: user.seedPotato,
-      token: user.token,
-      water: user.water,
-      fertilizer: user.fertilizer
-    });
-  } catch (err) {
-    res.status(500).json({ error: '서버 오류' });
-  }
-});
-
-// ✅ 닉네임으로 제품 목록 조회
-router.get('/:nickname', async (req, res) => {
-  const nickname = req.params.nickname;
+// ✅ 닉네임 일치 확인 도구 (대소문자/공백 무시)
+router.get('/check-nickname/:nickname', async (req, res) => {
+  const rawNickname = req.params.nickname;
+  const regex = new RegExp(`^${rawNickname.trim()}$`, 'i'); // 공백 제거 + 대소문자 무시
 
   try {
-    const products = await Product.find({ nickname });
+    const user = await Farm.findOne({ nickname: regex });
 
-    if (!products || products.length === 0) {
-      return res.status(404).json({ message: '해당 유저의 제품이 없습니다.' });
+    if (user) {
+      res.json({
+        match: true,
+        originalNickname: user.nickname,
+        token: user.token,
+        water: user.water,
+        potatoCount: user.potatoCount,
+        barleyCount: user.barleyCount,
+        seedPotato: user.seedPotato,
+        message: `✅ 닉네임 "${user.nickname}" 존재합니다.`
+      });
+    } else {
+      res.json({
+        match: false,
+        message: `❌ 닉네임 "${rawNickname}" 은(는) 존재하지 않습니다.`
+      });
     }
-
-    res.json(products);
   } catch (err) {
-    res.status(500).json({ message: '서버 오류', error: err.message });
+    res.status(500).json({ error: '서버 오류', detail: err.message });
   }
 });
 
 module.exports = router;
-
