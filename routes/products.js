@@ -3,7 +3,7 @@
 // routes/products.js
 const express = require('express');
 const router = express.Router();
-const Product = require('../Product');
+const Product = require('../models/Product');
 
 // 제품 목록 불러오기
 router.get('/:nickname', async (req, res) => {
