@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const Farm = require('../models/Farm');
+const Product = require('../models/Product'); // ✅ 제품 모델
+const Farm = require('../models/Farm');       // ✅ 유저(농장) 모델
 
+// ✅ 쿼리로 닉네임 받아서 유저 정보 반환
 router.get('/', async (req, res) => {
   try {
     const nickname = req.query.nickname;
@@ -21,7 +23,8 @@ router.get('/', async (req, res) => {
     res.status(500).json({ error: '서버 오류' });
   }
 });
-// 닉네임으로 제품 목록 조회
+
+// ✅ 닉네임으로 제품 목록 조회
 router.get('/:nickname', async (req, res) => {
   const nickname = req.params.nickname;
 
@@ -39,3 +42,4 @@ router.get('/:nickname', async (req, res) => {
 });
 
 module.exports = router;
+
