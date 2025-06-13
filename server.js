@@ -66,6 +66,52 @@ app.post("/api/fertilize-barley", async (req, res) => {
   await user.save();
   res.status(200).send();
 });
+// 기존 import 및 설정 동일...
+
+app.post("/api/water-barley", async (req, res) => {
+  const { nickname } = req.body;
+  const user = await Farm.findOne({ nickname });
+  if (!user || user.water <= 0) return res.status(400).send("No water");
+
+  user.water -= 1;
+  user.waterGiven = Number(user.waterGiven || 0) + 1; // ✅ 수정: 숫자 보장
+  await user.save();
+  res.status(200).send();
+});
+
+app.post("/api/fertilize-barley", async (req, res) => {
+  const { nickname } = req.body;
+  const user = await Farm.findOne({ nickname });
+  if (!user || user.fertilizer <= 0) return res.status(400).send("No fertilizer");
+
+  user.fertilizer -= 1;
+  user.fertilizerGiven = Number(user.fertilizerGiven || 0) + 1; // ✅ 수정: 숫자 보장
+  await user.save();
+  res.status(200).send();
+});
+
+app.post('/api/buy-seed', async (req, res) => {
+  try {
+    const { nickname, amount } = req.body;
+    if (!nickname || !amount) return res.status(400).json({ success: false, message: '잘못된 요청' });
+
+    const user = await Farm.findOne({ nickname });
+    if (!user) return res.status(404).json({ success: false, message: '사용자 없음' });
+
+    const totalCost = Number(amount) * 2;
+    if (user.token < totalCost) return res.json({ success: false, message: '토큰 부족' });
+
+    user.token -= totalCost;
+    user.seedPotato = Number(user.seedPotato || 0) + Number(amount); // ✅ 수정: 숫자 보장
+    await user.save();
+
+    res.json({ success: true, message: '씨감자 구매 완료' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: '서버 오류 발생' });
+  }
+});
+
+// 나머지 server.js 전체 내용은 기존과 완전히 동일하게 유지 ✅
 
 app.get("/api/userdata", async (req, res) => {
   const { nickname } = req.query;
