@@ -10,6 +10,9 @@ const PORT = 3060;
 const barleyRoutes = require('./routes/barley');
 app.use('/api', barleyRoutes);
 
+const userdataRoute = require('./routes/userdata');
+app.use('/api', userdataRoute);
+
 app.use(cors());
 app.use(express.json());
 app.use('/api/farm', farmRoutes);
