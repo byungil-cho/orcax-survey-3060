@@ -136,6 +136,26 @@ const farmSchema = new mongoose.Schema({
   waterGiven: { type: Number, default: 0 },
   fertilizerGiven: { type: Number, default: 0 }
 });
+app.post('/api/products', (req, res) => {
+  const { nickname, productName, productType, quantity } = req.body;
+  if (!nickname || !productName || !productType) {
+    return res.status(400).json({ success: false, message: "입력값 부족" });
+  }
+
+  // 여기서 DB 또는 파일에 저장하는 코드 필요
+  // 예시: 사용자 데이터에 제품 push
+  const user = userData[nickname];
+  if (!user) return res.status(404).json({ success: false, message: "사용자 없음" });
+
+  const existing = user.products.find(p => p.productName === productName && p.productType === productType);
+  if (existing) {
+    existing.quantity += quantity;
+  } else {
+    user.products.push({ productName, productType, quantity });
+  }
+
+  return res.json({ success: true, message: "저장됨" });
+});
 
 app.post('/api/login', async (req, res) => {
   const { nickname } = req.body;
