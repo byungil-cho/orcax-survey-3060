@@ -70,6 +70,33 @@ app.post("/api/fertilize-barley", async (req, res) => {
   res.status(200).send();
 });
 
+app.post('/api/userdata', async (req, res) => {
+  try {
+    const {
+      nickname, token, water,
+      fertilizer, potatoCount, seedPotato,
+      inventory, barleyCount
+    } = req.body;
+
+    const updated = await Farm.findOneAndUpdate(
+      { nickname },
+      {
+        token,
+        water,
+        fertilizer,
+        potatoCount,
+        seedPotato,
+        inventory,     // ✅ inventory 저장 추가
+        barleyCount
+      },
+      { new: true }
+    );
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ message: "업데이트 실패" });
+  }
+});
+
 app.get("/api/userdata", async (req, res) => {
   const { nickname } = req.query;
   const user = await Farm.findOne({ nickname });
