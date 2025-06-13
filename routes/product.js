@@ -1,61 +1,36 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const Farm = require('../models/Farm');
+const ProductLog = require("../ProductLog");
 
-// 제품 가공
-router.post('/product/create', async (req, res) => {
-    const { nickname, type } = req.body;
-    if (!nickname || !type) return res.json({ success: false, message: "필수 데이터 누락" });
+// ✅ 제품 로그 저장 API
+router.post("/save-product-log", async (req, res) => {
+  const { nickname, productName, quantity } = req.body;
 
-    try {
-        const user = await Farm.findOne({ nickname });
-        if (!user) return res.json({ success: false, message: "유저 없음" });
+  if (!nickname || !productName || !quantity) {
+    return res.status(400).json({ success: false, message: "필수 항목 누락" });
+  }
 
-        if ((user.potatoCount || 0) <= 0) {
-            return res.json({ success: false, message: "감자 부족" });
-        }
-
-        user.potatoCount -= 1;
-
-        const existing = user.inventory.find(i => i.type === type);
-        if (existing) {
-            existing.count += 1;
-        } else {
-            user.inventory.push({ type, count: 1 });
-        }
-
-        await user.save();
-        res.json({ success: true, inventory: user.inventory });
-    } catch (err) {
-        res.status(500).json({ success: false, message: "가공 실패" });
-    }
+  try {
+    const newLog = new ProductLog({ nickname, productName, quantity });
+    await newLog.save();
+    res.json({ success: true, message: "제품 로그 저장 완료" });
+  } catch (err) {
+    console.error("로그 저장 실패:", err);
+    res.status(500).json({ success: false, message: "서버 오류" });
+  }
 });
 
-// 제품 폐기
-router.post('/product/delete', async (req, res) => {
-    const { nickname, index } = req.body;
-    if (!nickname || index === undefined) return res.json({ success: false, message: "필수 데이터 누락" });
+// ✅ 사용자별 저장된 제품 로그 조회
+router.get("/product-log/:nickname", async (req, res) => {
+  const { nickname } = req.params;
 
-    try {
-        const user = await Farm.findOne({ nickname });
-        if (!user) return res.json({ success: false, message: "유저 없음" });
-
-        if (!user.inventory || !user.inventory[index]) {
-            return res.json({ success: false, message: "유효하지 않은 인덱스" });
-        }
-
-        const item = user.inventory[index];
-        if (item.count > 1) {
-            item.count -= 1;
-        } else {
-            user.inventory.splice(index, 1);
-        }
-
-        await user.save();
-        res.json({ success: true, inventory: user.inventory });
-    } catch (err) {
-        res.status(500).json({ success: false, message: "삭제 실패" });
-    }
+  try {
+    const logs = await ProductLog.find({ nickname }).sort({ timestamp: -1 });
+    res.json({ success: true, logs });
+  } catch (err) {
+    console.error("로그 조회 실패:", err);
+    res.status(500).json({ success: false, message: "조회 실패" });
+  }
 });
 
 module.exports = router;
