@@ -10,12 +10,6 @@ const PORT = 3060;
 const barleyRoutes = require('./routes/barley');
 app.use('/api', barleyRoutes);
 
-const saveBarleyProduct = require('./routes/save-barley-product');
-app.use('/api', saveBarleyProduct);
-
-const harvestBarleyRoute = require('./routes/harvest-barley');
-app.use('/api/harvest-barley', harvestBarleyRoute);
-
 app.use(cors());
 app.use(express.json());
 app.use('/api/farm', farmRoutes);
@@ -289,5 +283,7 @@ app.get('/', (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 서버 실행 중: http://localhost:${PORT}`);
 });
+
+
 
 
