@@ -96,21 +96,29 @@ app.post("/api/fertilize-barley", async (req, res) => {
 app.post('/api/buy-seed', async (req, res) => {
   try {
     const { nickname, amount } = req.body;
-    if (!nickname || !amount) return res.status(400).json({ success: false, message: '잘못된 요청' });
+    console.log("✅ [buy-seed 요청] 닉네임:", nickname, "수량:", amount);
+
+    if (!nickname || !amount) {
+      return res.status(400).json({ success: false, message: '닉네임 또는 수량 누락' });
+    }
 
     const user = await Farm.findOne({ nickname });
     if (!user) return res.status(404).json({ success: false, message: '사용자 없음' });
 
     const totalCost = Number(amount) * 2;
-    if (user.token < totalCost) return res.json({ success: false, message: '토큰 부족' });
+    if (user.token < totalCost) {
+      return res.json({ success: false, message: '토큰 부족' });
+    }
 
     user.token -= totalCost;
-    user.seedPotato = Number(user.seedPotato || 0) + Number(amount); // ✅ 수정: 숫자 보장
+    user.seedPotato = Number(user.seedPotato || 0) + Number(amount);
     await user.save();
 
+    console.log(`[✅ 씨감자 지급완료] ${nickname} → 씨감자 ${user.seedPotato}개`);
     res.json({ success: true, message: '씨감자 구매 완료' });
   } catch (err) {
-    res.status(500).json({ success: false, message: '서버 오류 발생' });
+    console.error("❌ [씨감자 구매 오류]", err);
+    res.status(500).json({ success: false, message: '서버 내부 오류' });
   }
 });
 
