@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Farm = require('../Farm');
+const Farm = require('../models/Farm');
 
 // 제품 가공
 router.post('/product/create', async (req, res) => {
