@@ -9,13 +9,10 @@ const PORT = 3060;
 
 const barleyRoutes = require('./routes/barley');
 app.use('/api', barleyRoutes);
-const buySeedRoute = require('./routes/buy-seed');
-app.use('/api/buy-seed', buySeedRoute);
 
 app.use(cors());
 app.use(express.json());
 app.use('/api/farm', farmRoutes);
-app.use('/api', require('./routes/buy-seed'));  // 예시
 
 app.use(cors({
   origin: '*',
@@ -69,60 +66,6 @@ app.post("/api/fertilize-barley", async (req, res) => {
   await user.save();
   res.status(200).send();
 });
-// 기존 import 및 설정 동일...
-
-app.post("/api/water-barley", async (req, res) => {
-  const { nickname } = req.body;
-  const user = await Farm.findOne({ nickname });
-  if (!user || user.water <= 0) return res.status(400).send("No water");
-
-  user.water -= 1;
-  user.waterGiven = Number(user.waterGiven || 0) + 1; // ✅ 수정: 숫자 보장
-  await user.save();
-  res.status(200).send();
-});
-
-app.post("/api/fertilize-barley", async (req, res) => {
-  const { nickname } = req.body;
-  const user = await Farm.findOne({ nickname });
-  if (!user || user.fertilizer <= 0) return res.status(400).send("No fertilizer");
-
-  user.fertilizer -= 1;
-  user.fertilizerGiven = Number(user.fertilizerGiven || 0) + 1; // ✅ 수정: 숫자 보장
-  await user.save();
-  res.status(200).send();
-});
-
-app.post('/api/buy-seed', async (req, res) => {
-  try {
-    const { nickname, amount } = req.body;
-    console.log("✅ [buy-seed 요청] 닉네임:", nickname, "수량:", amount);
-
-    if (!nickname || !amount) {
-      return res.status(400).json({ success: false, message: '닉네임 또는 수량 누락' });
-    }
-
-    const user = await Farm.findOne({ nickname });
-    if (!user) return res.status(404).json({ success: false, message: '사용자 없음' });
-
-    const totalCost = Number(amount) * 2;
-    if (user.token < totalCost) {
-      return res.json({ success: false, message: '토큰 부족' });
-    }
-
-    user.token -= totalCost;
-    user.seedPotato = Number(user.seedPotato || 0) + Number(amount);
-    await user.save();
-
-    console.log(`[✅ 씨감자 지급완료] ${nickname} → 씨감자 ${user.seedPotato}개`);
-    res.json({ success: true, message: '씨감자 구매 완료' });
-  } catch (err) {
-    console.error("❌ [씨감자 구매 오류]", err);
-    res.status(500).json({ success: false, message: '서버 내부 오류' });
-  }
-});
-
-// 나머지 server.js 전체 내용은 기존과 완전히 동일하게 유지 ✅
 
 app.get("/api/userdata", async (req, res) => {
   const { nickname } = req.query;
