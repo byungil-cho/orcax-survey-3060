@@ -1,32 +1,24 @@
 const express = require('express');
 const router = express.Router();
-const Farm = require('../models/Farm'); // 사용자 정보가 저장된 모델
+const Farm = require('../models/Farm');
 
-// 유저 정보 불러오기
-router.get('/userdata', async (req, res) => {
-  const { nickname } = req.query;
-
+router.get('/', async (req, res) => {
   try {
+    const nickname = req.query.nickname;
     const user = await Farm.findOne({ nickname });
-
-    if (!user) {
-      return res.status(404).json({ success: false, message: '유저 없음' });
-    }
+    if (!user) return res.status(404).json({ error: '유저 없음' });
 
     res.json({
-      success: true,
       nickname: user.nickname,
+      potatoCount: user.potatoCount,
+      barleyCount: user.barleyCount,
+      seedPotato: user.seedPotato,
       token: user.token,
       water: user.water,
-      fertilizer: user.fertilizer,
-      potatoCount: user.potatoCount || 0,
-      barleyCount: user.barleyCount || 0,
-      seedPotato: user.seedPotato || 0 // ✅ 씨감자 필드 반드시 포함!
+      fertilizer: user.fertilizer
     });
-
   } catch (err) {
-    console.error("❌ 유저 데이터 조회 실패:", err);
-    res.status(500).json({ success: false, message: '서버 오류' });
+    res.status(500).json({ error: '서버 오류' });
   }
 });
 
