@@ -1,12 +1,14 @@
 // routes/buy-seed.js
 const express = require('express');
 const router = express.Router();
-const Farm = require('../models/Farm'); // 모델 경로 반드시 맞출 것
+const Farm = require('../models/Farm'); // ✅ 정확한 상대 경로 사용
 
 router.post('/', async (req, res) => {
   try {
     const { nickname, amount } = req.body;
-    if (!nickname || !amount) return res.status(400).json({ success: false, message: '잘못된 요청' });
+    if (!nickname || !amount) {
+      return res.status(400).json({ success: false, message: '잘못된 요청' });
+    }
 
     const user = await Farm.findOne({ nickname });
     if (!user) return res.status(404).json({ success: false, message: '사용자 없음' });
@@ -18,12 +20,12 @@ router.post('/', async (req, res) => {
     user.seedPotato = Number(user.seedPotato || 0) + Number(amount);
     await user.save();
 
-    console.log(`[✅ 씨감자 구매] ${nickname} → 씨감자 ${user.seedPotato}개 보유`);
+    console.log(`[✅ 씨감자 구매 성공] ${nickname}: 씨감자 ${user.seedPotato}개`);
     res.json({ success: true, message: '씨감자 구매 완료' });
   } catch (err) {
-    console.error("씨감자 구매 에러:", err);
-    res.status(500).json({ success: false, message: '서버 오류' });
+    console.error("❌ 씨감자 구매 실패:", err);
+    res.status(500).json({ success: false, message: '서버 오류 발생' });
   }
 });
 
-module.exports = router;
+module.exports = router; // ✅ 꼭 필요
