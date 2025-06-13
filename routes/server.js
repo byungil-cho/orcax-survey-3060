@@ -58,6 +58,7 @@ app.get('/api/userdata/:nickname', async (req, res) => {
 app.get('/api/status', (req, res) => {
   res.json({ status: "ok" });
 });
+module.exports = router; // ✅ 이게 있어야 서버에 등록됨
 
 // ✅ 서버 실행
 app.listen(PORT, () => {
