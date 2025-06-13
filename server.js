@@ -9,6 +9,8 @@ const PORT = 3060;
 
 const barleyRoutes = require('./routes/barley');
 app.use('/api', barleyRoutes);
+const buySeedRoute = require('./routes/buy-seed');
+app.use('/api/buy-seed', buySeedRoute);
 
 app.use(cors());
 app.use(express.json());
