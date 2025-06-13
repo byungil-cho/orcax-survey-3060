@@ -1,4 +1,3 @@
-
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -16,22 +15,22 @@ app.use(express.json());
 app.use('/api/farm', farmRoutes);
 
 app.use(cors({
-  origin: '*', // 또는 'https://byungil-cho.github.io' 로 명시
+  origin: '*',
 }));
+
 app.get('/api/status', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
+
 app.post("/api/harvest-barley", async (req, res) => {
   const { nickname } = req.body;
   const user = await Farm.findOne({ nickname });
   if (!user) return res.status(404).json({ error: "User not found" });
 
-  // 수확 조건: 물 3, 거름 2 이상
   if ((user.water || 0) < 3 || (user.fertilizer || 0) < 2) {
     return res.status(400).json({ error: "물 또는 거름이 부족하여 수확할 수 없습니다." });
   }
 
-  // 인벤토리에 보리 제품 추가
   const barleyItem = { type: "barley-알곡", count: 1 };
   user.inventory = user.inventory || [];
 
@@ -52,7 +51,7 @@ app.post("/api/water-barley", async (req, res) => {
   if (!user || user.water <= 0) return res.status(400).send("No water");
 
   user.water -= 1;
-  user.waterGiven = (user.waterGiven || 0) + 1; // 💧사용량 기록 증가
+  user.waterGiven = (user.waterGiven || 0) + 1;
   await user.save();
   res.status(200).send();
 });
@@ -63,7 +62,7 @@ app.post("/api/fertilize-barley", async (req, res) => {
   if (!user || user.fertilizer <= 0) return res.status(400).send("No fertilizer");
 
   user.fertilizer -= 1;
-  user.fertilizerGiven = (user.fertilizerGiven || 0) + 1; // 🌿사용량 기록 증가
+  user.fertilizerGiven = (user.fertilizerGiven || 0) + 1;
   await user.save();
   res.status(200).send();
 });
@@ -80,20 +79,19 @@ app.get("/api/userdata", async (req, res) => {
     water: user.water,
     fertilizer: user.fertilizer,
     token: user.token,
+    seedPotato: user.seedPotato, // ✅ 이 줄 추가됨!
     farmName: user.farmName,
     waterGiven: user.waterGiven,
     fertilizerGiven: user.fertilizerGiven
   });
 });
 
-// ✅ MongoDB 연결
 mongoose.connect('mongodb://localhost:27017/orcax', {
   useNewUrlParser: true,
   useUnifiedTopology: true
 }).then(() => console.log('✅ MongoDB 연결 완료'))
   .catch(err => console.error('❌ MongoDB 연결 실패:', err));
 
-// ✅ Farm 스키마 정의
 const farmSchema = new mongoose.Schema({
   nickname: String,
   token: Number,
@@ -106,7 +104,6 @@ const farmSchema = new mongoose.Schema({
   fertilizerGiven: { type: Number, default: 0 }
 });
 
-// ✅ 최초 입장
 app.post('/api/login', async (req, res) => {
   const { nickname } = req.body;
   if (!nickname) return res.status(400).json({ success: false, message: '닉네임 필요' });
@@ -127,19 +124,6 @@ app.post('/api/login', async (req, res) => {
   res.json({ success: true, user });
 });
 
-// ✅ 유저 단일 정보 조회
-app.get('/api/userdata', async (req, res) => {
-  try {
-    const { nickname } = req.query;
-    const user = await Farm.findOne({ nickname });
-    if (!user) return res.status(404).json({ message: "유저 없음" });
-    res.json(user);
-  } catch (err) {
-    res.status(500).json({ message: "서버 오류" });
-  }
-});
-
-// ✅ 유저 전체 정보 조회
 app.get('/api/users', async (req, res) => {
   try {
     const users = await Farm.find({}, 'nickname water fertilizer token potatoCount seedPotato');
@@ -149,7 +133,6 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-// ✅ 유저 정보 저장
 app.post('/api/userdata', async (req, res) => {
   try {
     const {
@@ -167,7 +150,6 @@ app.post('/api/userdata', async (req, res) => {
   }
 });
 
-// ✅ 마켓 시세 정보 (전광판)
 app.get('/api/market/prices', (req, res) => {
   res.json({
     notice: "📈 오늘도 감자 시세가 출렁입니다!",
@@ -179,7 +161,6 @@ app.get('/api/market/prices', (req, res) => {
   });
 });
 
-// ✅ 마켓 기본 목록 (사용 안 해도 됨)
 app.get('/api/market', (req, res) => {
   res.json([
     { name: "감자칩", price: 15 },
@@ -188,7 +169,6 @@ app.get('/api/market', (req, res) => {
   ]);
 });
 
-// ✅ 자원 사용 (물/거름)
 app.post('/api/use-resource', async (req, res) => {
   const { nickname, type } = req.body;
   const user = await Farm.findOne({ nickname });
@@ -202,7 +182,6 @@ app.post('/api/use-resource', async (req, res) => {
   res.json({ success: true });
 });
 
-// ✅ 감자 수확
 app.post('/api/harvest', async (req, res) => {
   const { nickname } = req.body;
   const user = await Farm.findOne({ nickname });
@@ -215,7 +194,6 @@ app.post('/api/harvest', async (req, res) => {
   res.json({ success: true, harvested });
 });
 
-// ✅ 씨감자 사용
 app.post('/api/use-seed', async (req, res) => {
   const { nickname } = req.body;
   const user = await Farm.findOne({ nickname });
@@ -229,7 +207,6 @@ app.post('/api/use-seed', async (req, res) => {
   res.json({ success: true, seedPotato: user.seedPotato });
 });
 
-// ✅ 씨감자 구매
 app.post('/api/buy-seed', async (req, res) => {
   try {
     const { nickname, amount } = req.body;
@@ -251,7 +228,6 @@ app.post('/api/buy-seed', async (req, res) => {
   }
 });
 
-// ✅ 개인 보관함 조회 (inventory 기준)
 app.get('/api/storage/:nickname', async (req, res) => {
   const nickname = req.params.nickname;
   try {
@@ -264,7 +240,6 @@ app.get('/api/storage/:nickname', async (req, res) => {
   }
 });
 
-// ✅ 토큰 잔액 조회
 app.get('/api/user/token/:nickname', async (req, res) => {
   const nickname = req.params.nickname;
   try {
@@ -277,7 +252,6 @@ app.get('/api/user/token/:nickname', async (req, res) => {
   }
 });
 
-// ✅ 제품 판매 처리
 app.post('/api/market/sell', async (req, res) => {
   const { kakaoId, type, count } = req.body;
   try {
@@ -302,12 +276,10 @@ app.post('/api/market/sell', async (req, res) => {
   }
 });
 
-// ✅ 서버 상태 확인
 app.get('/', (req, res) => {
   res.send('✅ OrcaX 감자 서버 정상 작동 중!');
 });
 
-// ✅ 서버 실행
 app.listen(PORT, () => {
   console.log(`🚀 서버 실행 중: http://localhost:${PORT}`);
 });
