@@ -1,13 +1,14 @@
-// routes/buy-seed.js
+// 📄 routes/buy-seed.js
 const express = require('express');
 const router = express.Router();
-const Farm = require('../models/Farm'); // ✅ 정확한 상대 경로 사용
+const Farm = require('../models/Farm'); // 경로 확인 필요
 
 router.post('/', async (req, res) => {
   try {
     const { nickname, amount } = req.body;
     if (!nickname || !amount) {
-      return res.status(400).json({ success: false, message: '잘못된 요청' });
+      console.error("❗ 요청 데이터 누락:", req.body);
+      return res.status(400).json({ success: false, message: '닉네임 또는 수량 없음' });
     }
 
     const user = await Farm.findOne({ nickname });
@@ -20,12 +21,12 @@ router.post('/', async (req, res) => {
     user.seedPotato = Number(user.seedPotato || 0) + Number(amount);
     await user.save();
 
-    console.log(`[✅ 씨감자 구매 성공] ${nickname}: 씨감자 ${user.seedPotato}개`);
+    console.log(`[✅ 씨감자 구매] ${nickname}: 씨감자 ${user.seedPotato}, 토큰 ${user.token}`);
     res.json({ success: true, message: '씨감자 구매 완료' });
   } catch (err) {
-    console.error("❌ 씨감자 구매 실패:", err);
+    console.error("❌ 씨감자 구매 중 서버 오류:", err);
     res.status(500).json({ success: false, message: '서버 오류 발생' });
   }
 });
 
-module.exports = router; // ✅ 꼭 필요
+module.exports = router; // ✅ 이 한 줄이 없으면 모든 게 무효
