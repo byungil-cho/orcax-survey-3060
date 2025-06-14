@@ -1,33 +1,34 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const farmRoutes = require('./routes/farm'); 
-const Farm = require('./models/Farm');
-
 const app = express();
 const PORT = 3060;
 
+// ✅ 라우터 연결
+const farmRoutes = require('./routes/farm');
 const barleyRoutes = require('./routes/barley');
-app.use('/api', barleyRoutes);
-
 const productRoutes = require('./routes/products');
-app.use('/api/products', productRoutes);
-
 const userdataRoute = require('./routes/userdata');
+
+// ✅ 모델
+const Farm = require('./models/Farm');
+
+// ✅ 기본 미들웨어
+app.use(cors({ origin: '*' }));
+app.use(express.json());
+
+// ✅ API 라우팅
+app.use('/api/farm', farmRoutes);
+app.use('/api', barleyRoutes);
+app.use('/api/products', productRoutes);
 app.use('/api', userdataRoute);
 
-app.use(cors());
-app.use(express.json());
-app.use('/api/farm', farmRoutes);
-
-app.use(cors({
-  origin: '*',
-}));
-
+// ✅ 상태 체크
 app.get('/api/status', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
+// ✅ 보리 수확/급수/비료
 app.post("/api/harvest-barley", async (req, res) => {
   const { nickname } = req.body;
   const user = await Farm.findOne({ nickname });
@@ -39,7 +40,6 @@ app.post("/api/harvest-barley", async (req, res) => {
 
   const barleyItem = { type: "barley-알곡", count: 1 };
   user.inventory = user.inventory || [];
-
   const existing = user.inventory.find(i => i.type === barleyItem.type);
   if (existing) existing.count += 1;
   else user.inventory.push(barleyItem);
@@ -73,25 +73,17 @@ app.post("/api/fertilize-barley", async (req, res) => {
   res.status(200).send();
 });
 
+// ✅ 사용자 정보 저장/조회
 app.post('/api/userdata', async (req, res) => {
   try {
     const {
-      nickname, token, water,
-      fertilizer, potatoCount, seedPotato,
-      inventory, barleyCount
+      nickname, token, water, fertilizer,
+      potatoCount, seedPotato, inventory, barleyCount
     } = req.body;
 
     const updated = await Farm.findOneAndUpdate(
       { nickname },
-      {
-        token,
-        water,
-        fertilizer,
-        potatoCount,
-        seedPotato,
-        inventory,     // ✅ inventory 저장 추가
-        barleyCount
-      },
+      { token, water, fertilizer, potatoCount, seedPotato, inventory, barleyCount },
       { new: true }
     );
     res.json(updated);
@@ -112,97 +104,14 @@ app.get("/api/userdata", async (req, res) => {
     water: user.water,
     fertilizer: user.fertilizer,
     token: user.token,
-    seedPotato: user.seedPotato, // ✅ 이 줄 추가됨!
+    seedPotato: user.seedPotato,
     farmName: user.farmName,
     waterGiven: user.waterGiven,
     fertilizerGiven: user.fertilizerGiven
   });
 });
 
-mongoose.connect('mongodb://localhost:27017/orcax', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-}).then(() => console.log('✅ MongoDB 연결 완료'))
-  .catch(err => console.error('❌ MongoDB 연결 실패:', err));
-
-const farmSchema = new mongoose.Schema({
-  nickname: String,
-  token: Number,
-  water: Number,
-  fertilizer: Number,
-  potatoCount: Number,
-  inventory: Array,
-  seedPotato: { type: Number, default: 0 },
-  waterGiven: { type: Number, default: 0 },
-  fertilizerGiven: { type: Number, default: 0 }
-});
-app.post('/api/products', (req, res) => {
-  const { nickname, productName, productType, quantity } = req.body;
-  if (!nickname || !productName || !productType) {
-    return res.status(400).json({ success: false, message: "입력값 부족" });
-  }
-
-  // 여기서 DB 또는 파일에 저장하는 코드 필요
-  // 예시: 사용자 데이터에 제품 push
-  const user = userData[nickname];
-  if (!user) return res.status(404).json({ success: false, message: "사용자 없음" });
-
-  const existing = user.products.find(p => p.productName === productName && p.productType === productType);
-  if (existing) {
-    existing.quantity += quantity;
-  } else {
-    user.products.push({ productName, productType, quantity });
-  }
-
-  return res.json({ success: true, message: "저장됨" });
-});
-
-app.post('/api/login', async (req, res) => {
-  const { nickname } = req.body;
-  if (!nickname) return res.status(400).json({ success: false, message: '닉네임 필요' });
-
-  let user = await Farm.findOne({ nickname });
-  if (!user) {
-    user = await Farm.create({
-      nickname,
-      token: 10,
-      water: 10,
-      fertilizer: 10,
-      potatoCount: 0,
-      seedPotato: 2,
-      inventory: []
-    });
-    console.log(`🆕 새 유저 생성됨: ${nickname}`);
-  }
-  res.json({ success: true, user });
-});
-
-app.get('/api/users', async (req, res) => {
-  try {
-    const users = await Farm.find({}, 'nickname water fertilizer token potatoCount seedPotato');
-    res.json({ success: true, users });
-  } catch (err) {
-    res.status(500).json({ success: false, message: '서버 오류' });
-  }
-});
-
-app.post('/api/userdata', async (req, res) => {
-  try {
-    const {
-      nickname, token, water,
-      fertilizer, inventory, potatoCount, seedPotato
-    } = req.body;
-    const updated = await Farm.findOneAndUpdate(
-      { nickname },
-      { token, water, fertilizer, inventory, potatoCount, seedPotato },
-      { new: true }
-    );
-    res.json(updated);
-  } catch (err) {
-    res.status(500).json({ message: "업데이트 실패" });
-  }
-});
-
+// ✅ 기타 기능 API들 (시세, 판매 등)
 app.get('/api/market/prices', (req, res) => {
   res.json({
     notice: "📈 오늘도 감자 시세가 출렁입니다!",
@@ -243,10 +152,10 @@ app.post('/api/harvest', async (req, res) => {
   const harvested = 5;
   user.potatoCount = (user.potatoCount || 0) + harvested;
   await user.save();
-
   res.json({ success: true, harvested });
 });
 
+// ✅ 씨감자 관련
 app.post('/api/use-seed', async (req, res) => {
   const { nickname } = req.body;
   const user = await Farm.findOne({ nickname });
@@ -281,6 +190,7 @@ app.post('/api/buy-seed', async (req, res) => {
   }
 });
 
+// ✅ 기타 유틸 API
 app.get('/api/storage/:nickname', async (req, res) => {
   const nickname = req.params.nickname;
   try {
@@ -288,7 +198,6 @@ app.get('/api/storage/:nickname', async (req, res) => {
     if (!user) return res.json([]);
     res.json(user.inventory || []);
   } catch (err) {
-    console.error("보관소 조회 오류:", err);
     res.status(500).json({ success: false, message: "서버 오류" });
   }
 });
@@ -300,43 +209,25 @@ app.get('/api/user/token/:nickname', async (req, res) => {
     if (!user) return res.json({ token: 0 });
     res.json({ token: user.token || 0 });
   } catch (err) {
-    console.error("토큰 조회 오류:", err);
     res.status(500).json({ success: false, message: "서버 오류" });
   }
 });
 
-app.post('/api/market/sell', async (req, res) => {
-  const { kakaoId, type, count } = req.body;
-  try {
-    const user = await Farm.findOne({ nickname: kakaoId });
-    if (!user) return res.status(404).json({ error: "유저 없음" });
-
-    const item = user.inventory.find(i => i.type === type);
-    if (!item || item.count < count) {
-      return res.status(400).json({ error: "수량 부족 또는 항목 없음" });
-    }
-
-    item.count -= count;
-    if (item.count === 0) {
-      user.inventory = user.inventory.filter(i => i.type !== type);
-    }
-
-    user.token += count * 10;
-    await user.save();
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: "판매 처리 실패" });
-  }
-});
-
+// ✅ 루트 진입
 app.get('/', (req, res) => {
   res.send('✅ OrcaX 감자 서버 정상 작동 중!');
 });
 
+// ✅ Mongo 연결 및 서버 시작
+mongoose.connect(process.env.MONGO_URL || 'mongodb://localhost:27017/orcax', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+}).then(() => console.log('MongoDB 연결됨'))
+  .catch(err => console.error('MongoDB 연결 실패:', err));
+
 app.listen(PORT, () => {
   console.log(`🚀 서버 실행 중: http://localhost:${PORT}`);
 });
-
 
 
 
