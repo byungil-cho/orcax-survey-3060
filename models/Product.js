@@ -7,4 +7,5 @@ const productSchema = new mongoose.Schema({
   count: Number         // 수량
 });
 
-module.exports = mongoose.model('Product', productSchema);
+module.exports = mongoose.models.Product || mongoose.model('Product', productSchema);
+
