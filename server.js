@@ -1,17 +1,37 @@
+
 // ✅ OrcaX Backend 통합 서버
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const app = express();
 const PORT = 3060;
+
 // ✅ 라우터 연결
 const farmRoutes = require('./routes/farm');
 const barleyRoutes = require('./routes/barley');
-const productRoutes = require('./routes/products');
+const productRoutes = require('./routes/products'); // 원래 있던 선언 유지
 const userdataRoute = require('./routes/userdata');
 const adminRoutes = require('./routes/admin');
 const userRoutes = require('./routes/api-userdata-auth-strict');
-const productRoutes = require('./routes/api-userdata-and-products'); // 이름 변경
+const combinedRoutes = require('./routes/api-userdata-and-products'); // 이름 바꿔서 중복 피함
+
+// ✅ 모델
+const Farm = require('./models/Farm');
+
+// ✅ 기본 미들웨어
+app.use(cors({ origin: '*' }));
+app.use(express.json());
+
+// ✅ API 라우팅
+app.use('/api/farm', farmRoutes);
+app.use('/api', barleyRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api', userdataRoute);
+app.use('/api', adminRoutes);
+app.use('/api', userRoutes);
+app.use('/api', combinedRoutes); // 중복 아닌 이름으로 처리
+
+// 나머지 코드 동일하게 유지 (기존 내용 손대지 않음)
 // ✅ 모델
 const Farm = require('./models/Farm');
 // ✅ 기본 미들웨어
