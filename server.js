@@ -4,7 +4,6 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const app = express();
 const PORT = 3060;
-
 // ✅ 라우터 연결
 const farmRoutes = require('./routes/farm');
 const barleyRoutes = require('./routes/barley');
@@ -13,11 +12,9 @@ const userdataRoute = require('./routes/userdata');
 const adminRoutes = require('./routes/admin');
 // ✅ 모델
 const Farm = require('./models/Farm');
-
 // ✅ 기본 미들웨어
 app.use(cors({ origin: '*' }));
 app.use(express.json());
-
 // ✅ API 라우팅
 app.use('/api/farm', farmRoutes);
 app.use('/api', barleyRoutes);
@@ -28,7 +25,6 @@ app.use('/api', adminRoutes);
 app.get('/api/status', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
-
 // ✅ 보리 수확/급수/비료
 app.post("/api/harvest-barley", async (req, res) => {
   const { nickname } = req.body;
@@ -62,7 +58,6 @@ app.post("/api/water-barley", async (req, res) => {
   await user.save();
   res.status(200).send();
 });
-
 app.post("/api/fertilize-barley", async (req, res) => {
   const { nickname } = req.body;
   const user = await Farm.findOne({ nickname });
@@ -73,7 +68,6 @@ app.post("/api/fertilize-barley", async (req, res) => {
   await user.save();
   res.status(200).send();
 });
-
 // ✅ 사용자 정보 저장/조회
 app.post('/api/userdata', async (req, res) => {
   try {
@@ -92,7 +86,6 @@ app.post('/api/userdata', async (req, res) => {
     res.status(500).json({ message: "업데이트 실패" });
   }
 });
-
 app.get("/api/userdata", async (req, res) => {
   const { nickname } = req.query;
   const user = await Farm.findOne({ nickname });
@@ -111,7 +104,6 @@ app.get("/api/userdata", async (req, res) => {
     fertilizerGiven: user.fertilizerGiven
   });
 });
-
 // ✅ 기타 기능 API들 (시세, 판매 등)
 app.get('/api/market/prices', (req, res) => {
   res.json({
@@ -123,7 +115,6 @@ app.get('/api/market/prices', (req, res) => {
     ]
   });
 });
-
 app.get('/api/market', (req, res) => {
   res.json([
     { name: "감자칩", price: 15 },
@@ -131,7 +122,6 @@ app.get('/api/market', (req, res) => {
     { name: "감자튀김", price: 30 }
   ]);
 });
-
 app.post('/api/use-resource', async (req, res) => {
   const { nickname, type } = req.body;
   const user = await Farm.findOne({ nickname });
@@ -144,7 +134,6 @@ app.post('/api/use-resource', async (req, res) => {
   await user.save();
   res.json({ success: true });
 });
-
 app.post('/api/harvest', async (req, res) => {
   const { nickname } = req.body;
   const user = await Farm.findOne({ nickname });
@@ -155,7 +144,6 @@ app.post('/api/harvest', async (req, res) => {
   await user.save();
   res.json({ success: true, harvested });
 });
-
 // ✅ 씨감자 관련
 app.post('/api/use-seed', async (req, res) => {
   const { nickname } = req.body;
@@ -169,7 +157,6 @@ app.post('/api/use-seed', async (req, res) => {
   await user.save();
   res.json({ success: true, seedPotato: user.seedPotato });
 });
-
 app.post('/api/buy-seed', async (req, res) => {
   try {
     const { nickname, amount } = req.body;
@@ -190,7 +177,6 @@ app.post('/api/buy-seed', async (req, res) => {
     res.status(500).json({ success: false, message: '서버 오류 발생' });
   }
 });
-
 // ✅ 기타 유틸 API
 app.get('/api/storage/:nickname', async (req, res) => {
   const nickname = req.params.nickname;
@@ -202,7 +188,6 @@ app.get('/api/storage/:nickname', async (req, res) => {
     res.status(500).json({ success: false, message: "서버 오류" });
   }
 });
-
 app.get('/api/user/token/:nickname', async (req, res) => {
   const nickname = req.params.nickname;
   try {
@@ -238,12 +223,10 @@ app.post('/api/products/:nickname', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
 // ✅ 루트 진입
 app.get('/', (req, res) => {
   res.send('✅ OrcaX 감자 서버 정상 작동 중!');
 });
-
 // ✅ Mongo 연결 및 서버 시작
 mongoose.connect(process.env.MONGO_URL || 'mongodb://localhost:27017/orcax', {
   useNewUrlParser: true,
