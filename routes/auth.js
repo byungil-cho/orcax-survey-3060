@@ -1,24 +1,19 @@
-const express = require('express');
-const router = express.Router();
-const Farm = require('../models/Farm');
+const { token } = req.body;
 
-router.post('/login', async (req, res) => {
-    const { nickname } = req.body;
-    let user = await Farm.findOne({ nickname });
-    if (!user) {
-        user = await Farm.create({
-            nickname,
-            water: 10,
-            fertilizer: 10,
-            token: 5,
-            potatoCount: 0,
-            inventory: [],
-            lastFreeTime: new Date(),
-            freeFarmCount: 2,
-            seedPotato: 0
-        });
-    }
-    res.json({ success: true, nickname });
+async function getKakaoUserData(token) {
+  const response = await fetch("https://kapi.kakao.com/v2/user/me", {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return await response.json();
+}
+
+app.post("/api/userdata", async (req, res) => {
+  try {
+    const kakaoUserData = await getKakaoUserData(token);
+    const nickname = kakaoUserData.kakao_account.profile.nickname;
+    // 기존 DB 처리 로직 이어서...
+    res.json({ nickname });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch nickname from Kakao" });
+  }
 });
-
-module.exports = router;
