@@ -15,9 +15,6 @@ const adminRoutes = require('./routes/admin');
 const userRoutes = require('./routes/api-userdata-auth-strict');
 const combinedRoutes = require('./routes/api-userdata-and-products'); // 이름 바꿔서 중복 피함
 
-// ✅ 모델
-const Farm = require('./models/Farm');
-
 // ✅ 기본 미들웨어
 app.use(cors({ origin: '*' }));
 app.use(express.json());
