@@ -239,7 +239,6 @@ app.post('/api/products/:nickname', async (req, res) => {
   }
 });
 
-
 // ✅ 루트 진입
 app.get('/', (req, res) => {
   res.send('✅ OrcaX 감자 서버 정상 작동 중!');
