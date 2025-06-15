@@ -38,7 +38,7 @@ app.post("/api/harvest-barley", async (req, res) => {
   if ((user.water || 0) < 3 || (user.fertilizer || 0) < 2) {
     return res.status(400).json({ error: "물 또는 거름이 부족하여 수확할 수 없습니다." });
   }
-
+ 
   const barleyItem = { type: "barley-알곡", count: 1 };
   user.inventory = user.inventory || [];
   const existing = user.inventory.find(i => i.type === barleyItem.type);
