@@ -10,8 +10,8 @@ const barleyRoutes = require('./routes/barley');
 const productRoutes = require('./routes/products');
 const userdataRoute = require('./routes/userdata');
 const adminRoutes = require('./routes/admin');
-const productRoutes = require('./routes/products'); // 유지
-const userDataRoutes = require('./routes/api-userdata-and-products'); // ✅ 이름 다르게 선언
+const productRoutes = require('./routes/products');
+const combinedRoutes = require('./routes/api-userdata-and-products'); // 다른 이름으로 선언
 
 // ✅ 모델
 const Farm = require('./models/Farm');
@@ -26,7 +26,7 @@ app.use('/api/products', productRoutes);
 app.use('/api', userdataRoute);
 app.use('/api', adminRoutes);
 app.use('/api/products', productRoutes);
-app.use('/api', userDataRoutes);
+app.use('/api', combinedRoutes);
 
 // ✅ 상태 체크
 app.get('/api/status', (req, res) => {
