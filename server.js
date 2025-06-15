@@ -10,7 +10,7 @@ const farmRoutes = require('./routes/farm');
 const barleyRoutes = require('./routes/barley');
 const productRoutes = require('./routes/products');
 const userdataRoute = require('./routes/userdata');
-
+const adminRoutes = require('./routes/admin');
 // ✅ 모델
 const Farm = require('./models/Farm');
 
@@ -23,7 +23,7 @@ app.use('/api/farm', farmRoutes);
 app.use('/api', barleyRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api', userdataRoute);
-
+app.use('/api', adminRoutes);
 // ✅ 상태 체크
 app.get('/api/status', (req, res) => {
   res.status(200).json({ status: 'ok' });
