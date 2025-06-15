@@ -10,7 +10,6 @@ const barleyRoutes = require('./routes/barley');
 const productRoutes = require('./routes/products');
 const userdataRoute = require('./routes/userdata');
 const adminRoutes = require('./routes/admin');
-const userRoutes = require('./routes/api-userdata-auth-strict');
 const productRoutes = require('./routes/api-userdata-and-products'); // 이름 변경
 // ✅ 모델
 const Farm = require('./models/Farm');
@@ -25,6 +24,7 @@ app.use('/api', userdataRoute);
 app.use('/api', adminRoutes);
 app.use('/api', userRoutes);
 app.use('/api', productRoutes); // 추가 라우터 연결
+app.use('/api', extendedRoutes);         // 추가 연동
 // ✅ 상태 체크
 app.get('/api/status', (req, res) => {
   res.status(200).json({ status: 'ok' });
