@@ -213,6 +213,28 @@ app.get('/api/user/token/:nickname', async (req, res) => {
     res.status(500).json({ success: false, message: "서버 오류" });
   }
 });
+app.post('/api/products/:nickname', (req, res) => {
+  const nickname = decodeURIComponent(req.params.nickname);
+  const inventory = req.body;
+
+  if (!Array.isArray(inventory)) {
+    return res.status(400).json({ error: '제품 목록은 배열이어야 합니다.' });
+  }
+
+  // MongoDB에 업데이트 예시
+  const bulkOps = inventory.map(item => ({
+    updateOne: {
+      filter: { nickname, type: item.type, category: item.category },
+      update: { $set: { count: item.count } },
+      upsert: true
+    }
+  }));
+
+  db.collection('products')
+    .bulkWrite(bulkOps)
+    .then(() => res.status(200).json({ success: true }))
+    .catch(err => res.status(500).json({ error: err.message }));
+});
 
 // ✅ 루트 진입
 app.get('/', (req, res) => {
