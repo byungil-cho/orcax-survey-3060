@@ -24,7 +24,7 @@ app.use('/api/products', productRoutes);
 app.use('/api', userdataRoute);
 app.use('/api', adminRoutes);
 app.use('/api', userRoutes);
-
+app.use('/api', extendedRoutes);
 // ✅ 상태 체크
 app.get('/api/status', (req, res) => {
   res.status(200).json({ status: 'ok' });
