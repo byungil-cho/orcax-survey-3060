@@ -213,28 +213,32 @@ app.get('/api/user/token/:nickname', async (req, res) => {
     res.status(500).json({ success: false, message: "서버 오류" });
   }
 });
-app.post('/api/products/:nickname', (req, res) => {
+app.post('/api/products/:nickname', async (req, res) => {
   const nickname = decodeURIComponent(req.params.nickname);
-  const inventory = req.body;
+  const products = req.body;
 
-  if (!Array.isArray(inventory)) {
-    return res.status(400).json({ error: '제품 목록은 배열이어야 합니다.' });
+  if (!Array.isArray(products)) {
+    return res.status(400).json({ error: '배열이 아님' });
   }
 
-  // MongoDB에 업데이트 예시
-  const bulkOps = inventory.map(item => ({
-    updateOne: {
-      filter: { nickname, type: item.type, category: item.category },
-      update: { $set: { count: item.count } },
-      upsert: true
-    }
-  }));
+  try {
+    await db.collection('products').deleteMany({ nickname });
 
-  db.collection('products')
-    .bulkWrite(bulkOps)
-    .then(() => res.status(200).json({ success: true }))
-    .catch(err => res.status(500).json({ error: err.message }));
+    const cleanProducts = products
+      .filter(p => typeof p.type === 'string' && typeof p.category === 'string')
+      .map(p => ({ nickname, type: p.type, category: p.category, count: p.count || 0 }));
+
+    if (cleanProducts.length > 0) {
+      await db.collection('products').insertMany(cleanProducts);
+    }
+
+    res.status(200).json({ message: '저장됨' });
+  } catch (err) {
+    console.error('저장 실패:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
+
 
 // ✅ 루트 진입
 app.get('/', (req, res) => {
