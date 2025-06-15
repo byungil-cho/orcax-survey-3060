@@ -10,21 +10,24 @@ const barleyRoutes = require('./routes/barley');
 const productRoutes = require('./routes/products');
 const userdataRoute = require('./routes/userdata');
 const adminRoutes = require('./routes/admin');
-const userRoutes = require('./routes/api-userdata-auth-strict');
-const productRoutes = require('./routes/api-userdata-and-products'); // 이름 변경
+const productRoutes = require('./routes/products'); // 유지
+const userDataRoutes = require('./routes/api-userdata-and-products'); // ✅ 이름 다르게 선언
+
 // ✅ 모델
 const Farm = require('./models/Farm');
 // ✅ 기본 미들웨어
 app.use(cors({ origin: '*' }));
 app.use(express.json());
+
 // ✅ API 라우팅
 app.use('/api/farm', farmRoutes);
 app.use('/api', barleyRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api', userdataRoute);
 app.use('/api', adminRoutes);
-app.use('/api', userRoutes);
-app.use('/api', productRoutes); // 추가 라우터 연결
+app.use('/api/products', productRoutes);
+app.use('/api', userDataRoutes);
+
 // ✅ 상태 체크
 app.get('/api/status', (req, res) => {
   res.status(200).json({ status: 'ok' });
