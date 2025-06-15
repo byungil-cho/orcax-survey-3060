@@ -91,6 +91,16 @@ app.post('/api/userdata', async (req, res) => {
     res.status(500).json({ message: "업데이트 실패" });
   }
 });
+app.get('/api/products/:nickname', async (req, res) => {
+  const nickname = decodeURIComponent(req.params.nickname);
+  try {
+    const products = await db.collection('products').find({ nickname }).toArray();
+    res.json(products || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get("/api/userdata", async (req, res) => {
   const { nickname } = req.query;
   const user = await Farm.findOne({ nickname });
