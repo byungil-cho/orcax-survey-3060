@@ -10,7 +10,6 @@ const barleyRoutes = require('./routes/barley');
 const productRoutes = require('./routes/products');
 const userdataRoute = require('./routes/userdata');
 const adminRoutes = require('./routes/admin');
-const productRoutes = require('./routes/products');
 const combinedRoutes = require('./routes/api-userdata-and-products'); // 다른 이름으로 선언
 // ✅ 모델
 const Farm = require('./models/Farm');
