@@ -10,6 +10,7 @@ const barleyRoutes = require('./routes/barley');
 const productRoutes = require('./routes/products');
 const userdataRoute = require('./routes/userdata');
 const adminRoutes = require('./routes/admin');
+const userRoutes = require('./routes/api-userdata-auth-strict');
 // ✅ 모델
 const Farm = require('./models/Farm');
 // ✅ 기본 미들웨어
@@ -21,6 +22,7 @@ app.use('/api', barleyRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api', userdataRoute);
 app.use('/api', adminRoutes);
+app.use('/api', userRoutes);
 // ✅ 상태 체크
 app.get('/api/status', (req, res) => {
   res.status(200).json({ status: 'ok' });
