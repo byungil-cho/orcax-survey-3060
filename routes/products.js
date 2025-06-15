@@ -1,34 +1,47 @@
 const express = require('express');
 const router = express.Router();
-const Product = require('../models/Product'); // ✅ mongoose 모델
+const Product = require('../models/Product');
 
-// ✅ 제품 저장 API (기존 제품 삭제 후 새로 등록)
+// 제품 저장 (nickname 기반 POST)
 router.post('/:nickname', async (req, res) => {
-  const nickname = req.params.nickname;
-  const inventory = req.body; // [{ name, type, count }, ...]
+  const { nickname } = req.params;
+  const { products } = req.body;
 
-  if (!Array.isArray(inventory)) {
-    return res.status(400).json({ success: false, message: "잘못된 데이터 형식입니다." });
+  if (!nickname || !products) {
+    return res.status(400).json({ success: false, message: '닉네임 또는 제품 정보가 없습니다.' });
   }
 
   try {
-    // 기존 해당 유저 제품 전체 삭제
-    await Product.deleteMany({ nickname });
+    let userProducts = await Product.findOne({ nickname });
 
-    // 새로운 목록 저장 (nickname 포함하여 삽입)
-    const saved = await Product.insertMany(
-      inventory.map(item => ({
-        nickname,
-        name: item.name,
-        type: item.type,
-        count: item.count
-      }))
-    );
+    if (userProducts) {
+      userProducts.products = products; // 기존 내용 덮어쓰기
+      await userProducts.save();
+    } else {
+      userProducts = await Product.create({ nickname, products });
+    }
 
-    res.json({ success: true, saved });
+    res.json({ success: true, message: '제품 정보가 저장되었습니다.', products });
   } catch (err) {
-    console.error("제품 저장 오류:", err);
-    res.status(500).json({ success: false, message: "서버 오류", error: err.message });
+    console.error('제품 저장 오류:', err);
+    res.status(500).json({ success: false, message: '서버 오류로 저장 실패' });
+  }
+});
+
+// 제품 조회 (nickname 기반 GET)
+router.get('/:nickname', async (req, res) => {
+  const { nickname } = req.params;
+
+  try {
+    const userProducts = await Product.findOne({ nickname });
+    if (!userProducts) {
+      return res.status(404).json({ success: false, message: '제품 정보가 없습니다.' });
+    }
+
+    res.json({ success: true, products: userProducts.products });
+  } catch (err) {
+    console.error('제품 조회 오류:', err);
+    res.status(500).json({ success: false, message: '서버 오류로 조회 실패' });
   }
 });
 
