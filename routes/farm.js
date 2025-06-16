@@ -40,7 +40,7 @@ router.post('/fertilize', async (req, res) => {
   }
 });
 
-// 🥔 씨감자 심기
+// 🥔 씨감자 심기 (수정됨)
 router.post('/plant', async (req, res) => {
   try {
     const { nickname } = req.body;
@@ -50,10 +50,10 @@ router.post('/plant', async (req, res) => {
     if (user.seedPotato < 1) return res.json({ success: false, message: '씨감자 부족' });
 
     user.seedPotato -= 1;
-    user.potatoCount = (user.potatoCount || 0) + 1;
+    user.growPoint = 0; // 초기화
     await user.save();
 
-    res.json({ success: true });
+    res.json({ success: true, message: '씨감자 심기 완료' });
   } catch (err) {
     res.status(500).json({ success: false, message: '서버 오류' });
   }
