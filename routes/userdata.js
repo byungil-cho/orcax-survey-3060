@@ -1,25 +1,20 @@
 const express = require('express');
 const router = express.Router();
-const Farm = require('../models/Farm'); // 모델 경로 맞게 조정하세요
+const Farm = require('../models/Farm');
 
-router.get('/:nickname', async (req, res) => {
-  const rawNickname = req.params.nickname;
-
-  if (!rawNickname || rawNickname.trim() === '') {
-    return res.status(400).json({ error: "잘못된 nickname 입력" });
-  }
-
+router.get('/userdata/:nickname', async (req, res) => {
   try {
-    const regex = new RegExp(`^${rawNickname.trim()}$`, 'i');
-    const user = await Farm.findOne({ nickname: regex });
+    const nickname = req.params.nickname;
+    const user = await Farm.findOne({ nickname });
 
     if (!user) {
-      return res.status(404).json({ error: "유저를 찾을 수 없습니다." });
+      return res.status(404).json({ success: false, message: '유저 없음' });
     }
 
     res.json({ success: true, user });
   } catch (err) {
-    res.status(500).json({ error: "서버 오류", detail: err.message });
+    console.error('서버 오류:', err);
+    res.status(500).json({ success: false, message: '서버 오류' });
   }
 });
 
