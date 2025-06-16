@@ -1,5 +1,5 @@
 // ✅ OrcaX Backend 통합 서버
-const express = require('express');
+const express = require('express'); 
 const mongoose = require('mongoose');
 const cors = require('cors');
 const loginRoute = require('./routes/login');
