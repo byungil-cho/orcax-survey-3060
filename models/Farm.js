@@ -15,5 +15,4 @@ const farmSchema = new mongoose.Schema({
   materialStorage: { type: Array, default: [] }   // 자재 교환된 물품
 });
 
-const Farm = mongoose.model('Farm', farmSchema);
-module.exports = Farm;
+module.exports = mongoose.models.Farm || mongoose.model('Farm', farmSchema);
