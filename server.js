@@ -19,6 +19,7 @@ app.use(cors({ origin: '*' }));
 app.use(express.json());
 // ✅ API 라우팅
 app.use('/api/farm', farmRoutes);
+app.use('/api', farmRoutes);
 app.use('/api', barleyRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api', loginRoute);
