@@ -9,7 +9,9 @@ const farmSchema = new mongoose.Schema({
   fertilizer: { type: Number, default: 10 },
   token: { type: Number, default: 10 },
   potatoCount: { type: Number, default: 0 },
-  barleyCount: { type: Number, default: 0 }
-}, { timestamps: true });
+  barleyCount: { type: Number, default: 0 },
+  potatoProduct: { type: Number, default: 0 },  // 감자칩
+  barleyProduct: { type: Number, default: 0 }   // 보리빵
+});
 
 module.exports = mongoose.model('Farm', farmSchema);
