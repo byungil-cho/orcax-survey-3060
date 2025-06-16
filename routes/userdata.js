@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Farm = require('../models/farm'); // 모델 경로 맞게 조정하세요
+const Farm = require('../models/Farm'); // 모델 경로 맞게 조정하세요
 
 router.get('/:nickname', async (req, res) => {
   const rawNickname = req.params.nickname;
