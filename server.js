@@ -3,7 +3,6 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const app = express();
-const farmRoutes = require('./routes/farm');
 const PORT = 3060;
 // ✅ 라우터 연결
 const farmRoutes = require('./routes/farm');
