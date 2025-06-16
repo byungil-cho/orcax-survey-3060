@@ -29,8 +29,8 @@ app.use('/api/products', productRoutes);
 app.use('/api', combinedRoutes);
 app.use('/api', require('./routes/processProduct'));
 // ✅ 상태 체크
-app.get('/api/status', (req, res) => {
-  res.status(200).json({ status: 'ok' });
+app.get("/api/status", (req, res) => {
+  res.json({ success: true });
 });
 // ✅ 보리 수확/급수/비료
 app.post("/api/harvest-barley", async (req, res) => {
