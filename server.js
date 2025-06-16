@@ -2,6 +2,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const loginRoute = require('./routes/login');
 const app = express();
 const PORT = 3060;
 // ✅ 라우터 연결
@@ -21,6 +22,7 @@ app.use(express.json());
 app.use('/api/farm', farmRoutes);
 app.use('/api', barleyRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api', loginRoute);
 app.use('/api', userdataRoute);
 app.use('/api', adminRoutes);
 app.use('/api/products', productRoutes);
