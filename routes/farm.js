@@ -1,17 +1,19 @@
-const mongoose = require("mongoose");
+const express = require('express');
+const router = express.Router();
+const Farm = require('../models/Farm');
 
-const farmSchema = new mongoose.Schema({
-  nickname: String,
-  water: Number,
-  fertilizer: Number,
-  token: Number,
-  potatoCount: Number,
-  barleyCount: Number,
-  potatoProduct: Object,
-  barleyProduct: Object,
-  farmName: String,
-  barleyName: String
+router.get('/userdata/:nickname', async (req, res) => {
+  try {
+    const nickname = req.params.nickname;
+    const user = await Farm.findOne({ nickname: nickname });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    res.json({ success: true, user });
+  } catch (err) {
+    console.error('Error fetching user:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
 });
 
-module.exports = mongoose.model("Farm", farmSchema);
-
+module.exports = router;
