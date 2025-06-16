@@ -17,7 +17,6 @@ const Farm = require('./models/Farm');
 // ✅ 기본 미들웨어
 app.use(cors({ origin: '*' }));
 app.use(express.json());
-
 // ✅ API 라우팅
 app.use('/api/farm', farmRoutes);
 app.use('/api', barleyRoutes);
