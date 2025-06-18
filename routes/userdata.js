@@ -2,8 +2,8 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 
-// test 데이터베이스의 users 컬렉션 접근
-const userSchema = new mongoose.Schema({
+// ✅ test.users 스키마 (nickname 등 포함된 구조)
+const User = mongoose.model('test_users', new mongoose.Schema({
   nickname: String,
   orcx: Number,
   farmingCount: Number,
@@ -14,15 +14,13 @@ const userSchema = new mongoose.Schema({
   inventory: Array,
   exchangeLogs: Array,
   lastRecharge: Number
-}, { collection: 'users' });
+}, { collection: 'users' }));
 
-const TestUser = mongoose.connection.useDb('test').model('User', userSchema);
-
-router.get('/userdata/:nickname', async (req, res) => {
-  const { nickname } = req.params;
-
+// 🔍 GET /api/userdata/:nickname → 닉네임으로 유저 정보 조회
+router.get('/:nickname', async (req, res) => {
   try {
-    const user = await TestUser.findOne({ nickname });
+    const rawNickname = decodeURIComponent(req.params.nickname);
+    const user = await User.findOne({ nickname: rawNickname });
 
     if (!user) {
       return res.status(404).json({ success: false, message: '사용자 없음' });
@@ -30,7 +28,7 @@ router.get('/userdata/:nickname', async (req, res) => {
 
     res.json({ success: true, user });
   } catch (err) {
-    console.error('[❌ 사용자 조회 오류]', err);
+    console.error('❌ userdata.js 오류:', err);
     res.status(500).json({ success: false, message: '서버 오류' });
   }
 });
