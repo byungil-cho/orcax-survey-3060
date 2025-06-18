@@ -1,33 +1,55 @@
+// userdata.js - 최종 패치본
 const express = require('express');
 const router = express.Router();
-const Farm = require('../models/Farm');
+const User = require('../models/User');
 
-router.get('/userdata/:nickname', async (req, res) => {
+// GET: nickname으로 사용자 데이터 조회
+router.get('/:nickname', async (req, res) => {
   try {
-    const nickname = req.params.nickname;
-    const user = await Farm.findOne({ nickname });
+    const nickname = req.params.nickname.trim(); // 공백 제거
+    const user = await User.findOne({ nickname });
 
     if (!user) {
-      return res.status(404).json({ success: false, message: '유저 없음' });
+      return res.status(404).json({ success: false, message: "사용자 없음" });
     }
-
-    // ✅ 캐시 무효화: 항상 최신 데이터를 클라이언트로 전송
-    res.setHeader('Cache-Control', 'no-store');
 
     res.json({
       success: true,
       nickname: user.nickname,
-      potatoSeed: user.potatoSeed || 0,
-      water: user.water || 0,
-      fertilizer: user.fertilizer || 0,
-      potato: user.potato || 0,
-      growPoint: user.growPoint || 0, // ✅ 중요!!
-      potatoProduct: user.potatoProduct || 0,
-      barleyProduct: user.barleyProduct || 0
+      farmName: user.farmName,
+      potatoCount: user.potatoCount,
+      barleyCount: user.barleyCount,
+      water: user.water,
+      fertilizer: user.fertilizer,
+      token: user.token,
+      growth: user.growth
     });
   } catch (err) {
-    console.error('서버 오류:', err);
-    res.status(500).json({ success: false, message: '서버 오류' });
+    console.error("조회 오류:", err);
+    res.status(500).json({ success: false, message: "서버 오류" });
+  }
+});
+
+// PATCH: 사용자 성장 포인트 반영 및 자산 갱신
+router.patch('/:nickname', async (req, res) => {
+  try {
+    const nickname = req.params.nickname.trim(); // 공백 제거
+    const updateData = req.body;
+
+    const user = await User.findOneAndUpdate(
+      { nickname },
+      { $set: updateData },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "업데이트 실패: 사용자 없음" });
+    }
+
+    res.json({ success: true, user });
+  } catch (err) {
+    console.error("업데이트 오류:", err);
+    res.status(500).json({ success: false, message: "서버 오류" });
   }
 });
 
