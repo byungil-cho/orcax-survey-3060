@@ -9,6 +9,10 @@ router.post('/water', async (req, res) => {
     const user = await Farm.findOne({ nickname });
     if (!user) return res.json({ success: false, message: '유저 없음' });
 
+    if ((user.growPoint || 0) === 0) {
+      return res.json({ success: false, message: '씨감자가 없습니다. 심기부터 하세요.' });
+    }
+
     if (user.water < 1) return res.json({ success: false, message: '물 부족' });
 
     user.water -= 1;
@@ -21,12 +25,16 @@ router.post('/water', async (req, res) => {
   }
 });
 
-// 🧪 거름 주기
+// 🌾 거름 주기
 router.post('/fertilize', async (req, res) => {
   try {
     const { nickname } = req.body;
     const user = await Farm.findOne({ nickname });
     if (!user) return res.json({ success: false, message: '유저 없음' });
+
+    if ((user.growPoint || 0) === 0) {
+      return res.json({ success: false, message: '씨감자가 없습니다. 심기부터 하세요.' });
+    }
 
     if (user.fertilizer < 1) return res.json({ success: false, message: '거름 부족' });
 
@@ -40,7 +48,7 @@ router.post('/fertilize', async (req, res) => {
   }
 });
 
-// 🥔 씨감자 심기 (수정됨)
+// 🥔 씨감자 심기
 router.post('/plant', async (req, res) => {
   try {
     const { nickname } = req.body;
