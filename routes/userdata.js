@@ -2,29 +2,26 @@ const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
 
-// ✅ test.users 컬렉션 연결
-const User = mongoose.model(
-  "User",
-  new mongoose.Schema({
-    nickname: String,
-    orcx: Number,
-    farmingCount: Number,
-    water: Number,
-    fertilizer: Number,
-    potatoCount: Number,
-    harvestCount: Number,
-    inventory: Array,
-    exchangeLogs: Array,
-    lastRecharge: Number,
-  }),
-  "users", // ✅ 반드시 'users'로 고정 (test.users 연결)
-);
+// ✅ 정확한 test.users 콜렉션 모델
+const userSchema = new mongoose.Schema({
+  nickname: String,
+  water: Number,
+  fertilizer: Number,
+  orcx: Number,
+  potatoCount: Number,
+  harvestCount: Number,
+  inventory: Array,
+  exchangeLogs: Array,
+  lastRecharge: Number
+});
 
-// ✅ URL 인코딩된 닉네임 받기 및 디코딩
+const User = mongoose.model("test.users", userSchema, "test.users");
+
+// ✅ 닉네임 기반으로 유저 데이터 조회
 router.get("/userdata/:nickname", async (req, res) => {
   try {
-    const nickname = decodeURIComponent(req.params.nickname); // ⭐ 이게 핵심
-    const user = await User.findOne({ nickname });
+    const nickname = decodeURIComponent(req.params.nickname); // 인코딩된 한글 닉네임 처리
+    const user = await User.findOne({ nickname: nickname });
 
     if (!user) {
       return res.status(404).json({ success: false, message: "사용자 없음" });
@@ -32,7 +29,7 @@ router.get("/userdata/:nickname", async (req, res) => {
 
     res.json({ success: true, user });
   } catch (error) {
-    console.error("❌ 유저 데이터 불러오기 오류:", error);
+    console.error("❌ 사용자 정보 불러오기 오류:", error);
     res.status(500).json({ success: false, message: "서버 오류" });
   }
 });
