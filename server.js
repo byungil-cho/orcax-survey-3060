@@ -5,7 +5,7 @@ const app = express();
 
 // 설정값
 const PORT = 3060;
-const MONGO_URI = "mongodb+srv://<username>:<password>@<cluster>.mongodb.net/orcax?retryWrites=true&w=majority"; // 데이터베이스 이름을 orcax로 고정
+const MONGO_URL = "mongodb+srv://<username>:<password>@<cluster>.mongodb.net/orcax?retryWrites=true&w=majority"; // 데이터베이스 이름을 orcax로 고정
 
 // 미들웨어
 app.use(cors());
