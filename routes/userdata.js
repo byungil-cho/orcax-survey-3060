@@ -2,31 +2,36 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 
-// 유저 스키마 정의 없이 불러오기 (strict: false)
-const userSchema = new mongoose.Schema({}, { strict: false });
-const User = mongoose.model('TestUser', userSchema, 'test.users');
+// test 데이터베이스의 users 컬렉션 접근
+const userSchema = new mongoose.Schema({
+  nickname: String,
+  orcx: Number,
+  farmingCount: Number,
+  water: Number,
+  fertilizer: Number,
+  potatoCount: Number,
+  harvestCount: Number,
+  inventory: Array,
+  exchangeLogs: Array,
+  lastRecharge: Number
+}, { collection: 'users' });
 
-// GET: 닉네임 기반 정보 요청
-router.get('/:nickname', async (req, res) => {
-  const nickname = req.params.nickname;
+const TestUser = mongoose.connection.useDb('test').model('User', userSchema);
+
+router.get('/userdata/:nickname', async (req, res) => {
+  const { nickname } = req.params;
+
   try {
-    const user = await User.findOne({ nickname: nickname });
+    const user = await TestUser.findOne({ nickname });
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "사용자 없음" });
+      return res.status(404).json({ success: false, message: '사용자 없음' });
     }
 
-    res.json({
-      success: true,
-      nickname: user.nickname,
-      potatoCount: user.potatoCount ?? 0,
-      water: user.water ?? 0,
-      fertilizer: user.fertilizer ?? 0,
-      token: user.orcx ?? 0 // 여기서 토큰 필드가 orcx로 되어 있음
-    });
+    res.json({ success: true, user });
   } catch (err) {
-    console.error("❌ 사용자 정보 불러오기 실패:", err);
-    res.status(500).json({ success: false, message: "서버 오류" });
+    console.error('[❌ 사용자 조회 오류]', err);
+    res.status(500).json({ success: false, message: '서버 오류' });
   }
 });
 
