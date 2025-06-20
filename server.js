@@ -1,6 +1,7 @@
 // server.js
 
-require("dotenv").config(); // ✅ .env 환경변수 로딩
+require('dotenv').config();
+mongoose.connect(process.env.MONGO_URI, { ... });
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
