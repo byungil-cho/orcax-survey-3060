@@ -2,6 +2,7 @@
 const express = require("express");
 const path = require("path");
 const cors = require("cors");
+const mongoose = require("mongoose"); // ✅ 이 줄 추가
 const app = express();
 const PORT = 3060;
 
