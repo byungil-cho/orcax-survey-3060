@@ -1,31 +1,32 @@
-// server.js
-const express = require("express");
-const path = require("path");
-const cors = require("cors");
-const mongoose = require("mongoose"); // ✅ 이 줄 추가
+// server.js - 메인 백엔드 서버
+
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+require('dotenv').config();
+
 const app = express();
 const PORT = 3060;
 
-mongoose.connect(process.env.MONGO_URL, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
-
-// Middleware
+// 미들웨어
 app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use('/api/user', require('./api/user'));
 
-// 정적 파일 제공
-app.use(express.static(path.join(__dirname, "orcax-club")));
+// 정적 파일 서빙
+app.use(express.static('public'));
 
-// API 라우트 연결
-app.use("/api/user", require("./orcax-club/api/user"));
-app.use("/api/admin", require("./orcax-club/api/admin"));
-app.use("/api/farm", require("./orcax-club/api/farm"));
-app.use("/api/auth", require("./orcax-club/api/auth"));
+// MongoDB 연결
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+}).then(() => {
+  console.log('✅ MongoDB 연결 성공');
+}).catch(err => {
+  console.error('❌ MongoDB 연결 실패:', err);
+});
 
-// 서버 실행
+// 서버 시작
 app.listen(PORT, () => {
-  console.log(`✅ OrcaX Server ON! → http://localhost:${PORT}`);
+  console.log(`🚀 서버가 http://localhost:${PORT} 에서 실행 중`);
 });
