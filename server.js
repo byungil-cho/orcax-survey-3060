@@ -31,6 +31,7 @@ app.use(express.json());
 // ✅ API 라우터 연결
 const userRoutes = require("./routes/userdata");
 app.use("/api/userdata", userRoutes);
+app.use("/api/user", userRoutes);  // ✅ 클라이언트 요청 대응용
 
 // ✅ 기본 루트 응답 — ngrok 정상 확인용
 app.get("/", (req, res) => {
