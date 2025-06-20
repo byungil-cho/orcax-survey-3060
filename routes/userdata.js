@@ -4,7 +4,7 @@ const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
 
-// ✅ MongoDB 스키마 정의
+// ✅ MongoDB 스키마 정의 (컬렉션 명시!)
 const userSchema = new mongoose.Schema({
   nickname: String,
   water: { type: Number, default: 10 },
@@ -20,7 +20,7 @@ const userSchema = new mongoose.Schema({
   lastRecharge: { type: String, default: Date.now },
 });
 
-const User = mongoose.model("User", userSchema);
+const User = mongoose.model("User", userSchema, "users");
 
 // ✅ [1] 쿼리 방식 지원 → /api/userdata?nickname=범고래X
 router.get("/", async (req, res) => {
@@ -42,8 +42,24 @@ router.get("/", async (req, res) => {
   }
 });
 
-// ✅ [2] 기존 방식 유지 → /api/userdata/범고래X
+// ✅ [2] REST 방식 → /api/userdata/userdata/범고래X
 router.get("/userdata/:nickname", async (req, res) => {
+  try {
+    const nickname = decodeURIComponent(req.params.nickname);
+    const user = await User.findOne({ nickname });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "사용자 없음" });
+    }
+
+    res.json({ success: true, users: [user] });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "서버 에러", error });
+  }
+});
+
+// ✅ [3] 새로운 경로 지원 → /api/user/범고래X 와도 연결되도록
+router.get("/:nickname", async (req, res) => {
   try {
     const nickname = decodeURIComponent(req.params.nickname);
     const user = await User.findOne({ nickname });
