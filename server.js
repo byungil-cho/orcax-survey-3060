@@ -1,34 +1,37 @@
-// server.js - 메인 백엔드 서버
+// 📂 server.js
 
-const express = require('express');
-const mongoose = require('mongoose');
-const userdataRoute = require("./routes/userdata");
-const cors = require('cors');
-require('dotenv').config();
-
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
 const app = express();
+
+// ✅ 포트 고정 (쿡 ngrok과 일치)
 const PORT = 3060;
 
-// 미들웨어
+// ✅ MongoDB 연결 (주인님 환경에 맞게 URI 교체)
+mongoose
+  .connect("mongodb+srv://<USERNAME>:<PASSWORD>@<CLUSTER>.mongodb.net/test?retryWrites=true&w=majority", {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => console.log("✅ MongoDB 연결 완료"))
+  .catch((err) => console.error("❌ MongoDB 연결 실패:", err));
+
+// ✅ 미들웨어 설정
 app.use(cors());
 app.use(express.json());
-app.use('/api/user', require('./api/user'));
-app.use("/api", userdataRoute);
 
-// 정적 파일 서빙
-app.use(express.static('public'));
+// ✅ 라우터 연결
+const userRoutes = require("./routes/userdata");
+app.use("/api/userdata", userRoutes);
 
-// MongoDB 연결
-mongoose.connect(process.env.MONGO_URL, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-}).then(() => {
-  console.log('✅ MongoDB 연결 성공');
-}).catch(err => {
-  console.error('❌ MongoDB 연결 실패:', err);
+// ✅ 기본 루트 확인용 응답
+app.get("/", (req, res) => {
+  res.send("✅ OrcaX 서버 정상 작동 중! 🐳");
 });
 
-// 서버 시작
+// ✅ 서버 실행
 app.listen(PORT, () => {
-  console.log(`🚀 서버가 http://localhost:${PORT} 에서 실행 중`);
+  console.log(`🚀 OrcaX 서버 시작됨! 포트: ${PORT}`);
 });
+
