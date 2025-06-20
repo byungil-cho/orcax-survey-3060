@@ -1,13 +1,9 @@
-require('dotenv').config();
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const app = express();
+require("dotenv").config();
 
+const app = express();
 const PORT = 3060; // ngrok과 연결할 포트
 
 // ✅ MongoDB 연결 (URI는 .env에서 가져옴)
@@ -18,7 +14,10 @@ if (!uri) {
 }
 
 mongoose
-  .connect(uri)
+  .connect(uri, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
   .then(() => console.log("✅ MongoDB 연결 완료"))
   .catch((err) => {
     console.error("❌ MongoDB 연결 실패:", err);
