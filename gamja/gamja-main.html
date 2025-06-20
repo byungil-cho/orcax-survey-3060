@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>OrcaX 농장 입장</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background: url('https://byungil-cho.github.io/OrcaX/farm-101.png') no-repeat center center fixed;
+      background-size: cover;
+      text-align: center;
+      padding: 2rem;
+      color: white;
+    }
+    #nicknameBox {
+      font-weight: bold;
+      margin-bottom: 1rem;
+    }
+    .confirm-btn {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      border-radius: 8px;
+    }
+    input[type="text"] {
+      padding: 12px;
+      font-size: 1.1rem;
+      width: 80%;
+      max-width: 400px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      box-shadow: 0 0 6px rgba(0,0,0,0.1);
+    }
+    .server-check {
+      margin-top: 1rem;
+      font-weight: bold;
+    }
+    .offline { color: red; }
+    .online { color: lime; }
+  </style>
+</head>
+<body>
+  <div id="nicknameBox" style="display:none;"></div>
+  <h1>🌱 나만의  농장을 시작해보세요!</h1>
+  <p>원하는 농장 이름을 입력하고 입장하세요.</p>
+  <input type="text" id="farmNameInput" placeholder="예: 돌고래 농장" />
+  <br /><br />
+  <button class="confirm-btn" onclick="startFarm()">농장 입장</button>
+  <div class="server-check offline" id="serverStatus">❌ 서버 전원 OFF: 감자밭 연결 실패</div>
+
+  <script>
+    const API_BASE = "https://climbing-wholly-grouper.jp.ngrok.io";
+
+    function checkServerStatus() {
+      fetch(`${API_BASE}/`)
+        .then(res => {
+          if (res.ok) {
+            document.getElementById("serverStatus").textContent = "✅ 서버 전원 ON: 감자밭 연결 완료";
+            document.getElementById("serverStatus").classList.remove("offline");
+            document.getElementById("serverStatus").classList.add("online");
+          } else {
+            throw new Error("서버 응답 오류");
+          }
+        })
+        .catch(() => {
+          document.getElementById("serverStatus").textContent = "❌ 서버 전원 OFF: 감자밭 연결 실패";
+          document.getElementById("serverStatus").classList.remove("online");
+          document.getElementById("serverStatus").classList.add("offline");
+        });
+    }
+
+    function startFarm() {
+      const farmName = document.getElementById("farmNameInput").value;
+      if (!farmName.trim()) {
+        alert("농장 이름을 입력해주세요!");
+        return;
+      }
+      localStorage.setItem("farmName", farmName);
+      location.href = "gamja-factory.html";
+    }
+
+    const nickname = localStorage.getItem("nickname");
+    if (!nickname) {
+      alert("로그인 정보가 없습니다. 로그인 페이지로 이동합니다.");
+      window.location.href = "orcax-farm_000.html";
+    } else {
+      document.getElementById("nicknameBox").textContent = `👤 ${nickname} 님`;
+      document.getElementById("nicknameBox").style.display = "block";
+    }
+
+    checkServerStatus();
+  </script>
+</body>
+</html>

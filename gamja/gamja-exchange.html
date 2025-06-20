@@ -1,1 +1,154 @@
-1
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>제품 교환소</title>
+  <style>
+    body {
+      background: url('https://byungil-cho.github.io/OrcaX/farm-101.png') no-repeat center center fixed;
+      background-size: cover;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 1rem;
+      color: white;
+      overflow-y: auto;
+    }
+    .floating-box {
+      background: rgba(255, 255, 255, 0.75);
+      border-radius: 12px;
+      padding: 1rem;
+      margin: 1rem auto;
+      max-width: 300px;
+      color: #3e2723;
+    }
+    h2 { text-align: center; color: #000; }
+    label, select, button {
+      display: block;
+      margin: 1rem auto;
+      font-size: 1rem;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      background-color: #2196f3;
+      border: none;
+      color: white;
+      cursor: pointer;
+    }
+    .status {
+      background: rgba(255,255,255,0.8);
+      color: black;
+      padding: 1rem;
+      border-radius: 8px;
+      margin: 1rem auto;
+      max-width: 300px;
+    }
+    .links {
+      text-align: center;
+      margin-top: 2rem;
+    }
+    .links a {
+      color: #003366;
+      margin: 0 0.5rem;
+      text-decoration: none;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h2 class="floating-box">🔄 제품 교환소</h2>
+  <div class="status">
+    <p>👤 닉네임: <span id="nickname">-</span></p>
+    <p>🏷️ 농장이름: <span id="farmName">-</span></p>
+    <p>⚡ 전원 상태: <span id="serverStatus">🔄 확인중...</span></p>
+    <p>🪙 토큰: <span id="tokens">0</span></p>
+    <p>💧 물: <span id="water">0</span> / 💩 거름: <span id="fertilizer">0</span></p>
+  </div>
+
+  <div class="floating-box">
+    <label for="product">🎁 가공제품 선택:</label>
+    <select id="product"></select>
+    <button onclick="exchangeProduct()">제품 교환하기</button>
+    <p id="message"></p>
+  </div>
+
+  <div class="links">
+    <a href="gamja-farm.html">🌱 감자농장으로</a>
+    <a href="gamja-shop.html">🛒 씨감자 씨보리 상점</a>
+    <a href="index9.html">🏠 메인페이지로</a>
+  </div>
+
+  <script>
+    const shelfLife = 7 * 24 * 60 * 60 * 1000;
+    const stored = JSON.parse(localStorage.getItem("products") || "{}");
+
+    function updateUserData() {
+      document.getElementById("nickname").textContent = localStorage.getItem("nickname") || "-";
+      document.getElementById("farmName").textContent = localStorage.getItem("farmName") || "-";
+      document.getElementById("tokens").textContent = localStorage.getItem("tokens") || 0;
+      document.getElementById("water").textContent = localStorage.getItem("물") || 0;
+      document.getElementById("fertilizer").textContent = localStorage.getItem("거름") || 0;
+    }
+
+    function checkServer() {
+      fetch("https://climbing-wholly-grouper.jp.ngrok.io/")
+        .then(() => {
+          document.getElementById("serverStatus").textContent = "🟢 연결됨";
+        })
+        .catch(() => {
+          document.getElementById("serverStatus").textContent = "🔴 꺼짐";
+        });
+    }
+
+    function populateSelect() {
+      const select = document.getElementById("product");
+      select.innerHTML = "";
+      for (const key in stored) {
+        const age = Date.now() - stored[key].timestamp;
+        const expired = age > shelfLife;
+        const status = expired ? " (묶임 - 해제 2토큰)" : "";
+        const opt = document.createElement("option");
+        opt.value = key;
+        opt.textContent = `${key} - ${stored[key].count}개${status}`;
+        select.appendChild(opt);
+      }
+    }
+
+    function exchangeProduct() {
+      const product = document.getElementById("product").value;
+      const data = stored[product];
+      const expired = Date.now() - data.timestamp > shelfLife;
+      let tokens = parseInt(localStorage.getItem("tokens") || 0);
+
+      if (data.count <= 0) return alert("제품 수량 없음");
+
+      if (expired && tokens < 2) {
+        return alert("해제에 필요한 토큰 부족");
+      }
+
+      if (expired) {
+        tokens -= 2;
+        localStorage.setItem("tokens", tokens);
+      }
+
+      const water = parseInt(localStorage.getItem("물") || 0);
+      const fert = parseInt(localStorage.getItem("거름") || 0);
+      localStorage.setItem("물", water + 3);
+      localStorage.setItem("거름", fert + 2);
+
+      data.count--;
+      stored[product] = data;
+      localStorage.setItem("products", JSON.stringify(stored));
+
+      document.getElementById("message").textContent = `${product} 1개 교환 완료 (💧물 3병, 💩거름 2봉지)` + (expired ? " (해제됨)" : "");
+      updateUserData();
+      populateSelect();
+    }
+
+    updateUserData();
+    checkServer();
+    populateSelect();
+  </script>
+</body>
+</html>
