@@ -2,6 +2,7 @@
 
 const express = require('express');
 const mongoose = require('mongoose');
+const userdataRoute = require("./routes/userdata");
 const cors = require('cors');
 require('dotenv').config();
 
@@ -12,6 +13,7 @@ const PORT = 3060;
 app.use(cors());
 app.use(express.json());
 app.use('/api/user', require('./api/user'));
+app.use("/api", userdataRoute);
 
 // 정적 파일 서빙
 app.use(express.static('public'));
