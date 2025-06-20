@@ -17,15 +17,15 @@ const userSchema = new mongoose.Schema({
   },
   token: {
     type: Number,
-    default: 0,
+    default: 10,
   },
   seed_potato: {
     type: Number,
-    default: 0,
+    default: 2,
   },
   seed_barley: {
     type: Number,
-    default: 0,
+    default: 2,
   },
   potatoCount: {
     type: Number,
