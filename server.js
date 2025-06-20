@@ -9,7 +9,7 @@ const app = express();
 const PORT = 3060; // ngrok과 연결할 포트
 
 // ✅ MongoDB 연결 (URI는 .env에서 가져옴)
-const uri = process.env.MONGODB_URI;
+const uri = process.env.MONGODB_URL;
 if (!uri) {
   console.error("❌ MONGODB_URI 환경변수 설정이 필요합니다.");
   process.exit(1);
