@@ -1,42 +1,34 @@
 // api/market.js
-
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const connectDB = require("./db");
+require('dotenv').config();
 
-// 제품 판매
-router.post("/sell", async (req, res) => {
-  const { nickname, product } = req.body;
-  const db = await connectDB();
-  const users = db.collection("users");
-  const board = db.collection("billboard");
+let marketBoard = [
+  { product: '감자칩', price: 20 },
+  { product: '감자튀김', price: 30 },
+  { product: '보리검빵', price: 40 },
+  { product: '보리국수', price: 50 },
+];
 
-  try {
-    const priceInfo = await board.findOne({ product });
-    if (!priceInfo) return res.status(400).json({ error: "전광판에 없는 제품" });
+// 전광판 제품 목록 조회
+router.get('/', (req, res) => {
+  res.json(marketBoard);
+});
 
-    const productField = `product_${product}`;
+// 관리자용 가격 변경 API (관리자 인증 필요)
+router.post('/update', (req, res) => {
+  const { product, price, adminKey } = req.body;
 
-    const user = await users.findOne({ nickname });
-    if (!user || !user[productField] || user[productField] <= 0) {
-      return res.status(400).json({ error: "제품 없음" });
-    }
-
-    await users.updateOne(
-      { nickname },
-      {
-        $inc: {
-          token: priceInfo.price,
-          [productField]: -1
-        }
-      }
-    );
-
-    res.json({ success: true, earned: priceInfo.price });
-  } catch (err) {
-    console.error("판매 실패:", err);
-    res.status(500).json({ error: "서버 오류" });
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(403).json({ error: '관리자 인증 실패' });
   }
+
+  const item = marketBoard.find(p => p.product === product);
+
+  if (item) item.price = price;
+  else marketBoard.push({ product, price });
+
+  res.json({ success: true, marketBoard });
 });
 
 module.exports = router;

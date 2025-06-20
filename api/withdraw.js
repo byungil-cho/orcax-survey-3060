@@ -1,39 +1,42 @@
 // api/withdraw.js
-
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const connectDB = require("./db");
+const User = require('../models/User');
 
-// 출금 신청 요청
-router.post("/request", async (req, res) => {
-  const { nickname, name, email, phone, phantom, solana, polygon } = req.body;
-  const db = await connectDB();
-  const users = db.collection("users");
-  const withdraws = db.collection("withdraws");
+// 출금 요청 저장
+router.post('/', async (req, res) => {
+  const { nickname, email, name, phone, phantom, solana, polygon } = req.body;
 
   try {
-    const user = await users.findOne({ nickname });
-    if (!user || user.token < 50000) {
-      return res.status(400).json({ error: "토큰 부족: 50000 이상 필요" });
-    }
+    const user = await User.findOne({ nickname });
+    if (!user) return res.status(404).json({ error: '사용자 없음' });
 
-    await withdraws.insertOne({
+    // 최소 출금 조건 확인
+    if (user.tokens < 50000) return res.status(400).json({ error: '출금 최소 토큰 미달' });
+
+    // 출금 요청 처리 (DB 또는 로그에 저장 필요)
+    const request = {
       nickname,
-      name,
       email,
+      name,
       phone,
       phantom,
       solana,
       polygon,
-      amount: user.token,
-      status: "요청됨",
-      requestedAt: new Date(),
-    });
+      tokens: user.tokens,
+      requestedAt: new Date()
+    };
 
-    res.json({ success: true, message: "출금 요청 완료" });
+    // 여기선 간단히 console에 저장
+    console.log('출금 요청:', request);
+
+    // 사용자 토큰 0으로 초기화
+    user.tokens = 0;
+    await user.save();
+
+    res.json({ success: true, message: '출금 요청 접수됨', data: request });
   } catch (err) {
-    console.error("출금 요청 실패:", err);
-    res.status(500).json({ error: "서버 오류" });
+    res.status(500).json({ error: '서버 오류', details: err });
   }
 });
 
