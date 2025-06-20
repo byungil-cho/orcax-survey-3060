@@ -5,7 +5,7 @@ const cors = require("cors");
 const app = express();
 const PORT = 3060;
 
-mongoose.connect(process.env.MONGO_URI, {
+mongoose.connect(process.env.MONGO_URL, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
