@@ -12,11 +12,11 @@ router.post('/login', async (req, res) => {
     if (!user) {
       user = new User({
         nickname,
-        tokens: 10,
-        씨감자: 2,
-        씨보리: 2,
-        물: 10,
-        거름: 10,
+        orcx: 10,
+        potatoCount: 2,
+        seed_barley: 2,
+        water: 10,
+        fertilizer: 10,
         createdAt: new Date()
       });
       await user.save();

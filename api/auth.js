@@ -1,4 +1,4 @@
-// api/auth.js
+// routes/auth.js
 
 const express = require("express");
 const router = express.Router();
@@ -14,16 +14,15 @@ router.post("/login", async (req, res) => {
     let user = await users.findOne({ nickname });
 
     if (!user) {
-      // 새 유저: 기본 자재 지급
       user = {
         nickname,
-        token: 10, // 🐳 ORCX
-        seedGamja: 2, // 🥔 씨감자
-        seedBori: 2, // 🌾 씨보리
-        water: 10, // 💧 물
-        dung: 10, // 💩 거름
-        farmLogs: [],
+        token: 10,
+        seed_potato: 2,
+        seed_barley: 2,
+        water: 10,
+        fertilizer: 10,
         level: 1,
+        farmLogs: [],
         createdAt: new Date(),
       };
       await users.insertOne(user);
