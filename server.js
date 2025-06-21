@@ -8,6 +8,9 @@ require("dotenv").config();
 const app = express();
 const PORT = 3060; // ngrok이 연결될 포트
 
+const harvestRoutes = require('./routes/harvest');
+app.use(harvestRoutes);
+
 // ✅ MongoDB 연결
 const uri = process.env.MONGODB_URI;
 if (!uri) {
