@@ -1,61 +1,70 @@
 
-require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
 const cors = require('cors');
+require('dotenv').config();
+
 const app = express();
-const port = 3060;
+const PORT = process.env.PORT || 3060;
+const MONGODB_URI = process.env.MONGODB_URI;
+
+const User = require('./models/User');
 
 app.use(cors());
-app.use(express.json());
+app.use(bodyParser.json());
 
-mongoose.connect(process.env.MONGODB_URI, {
+mongoose.connect(MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-}).then(() => {
-  console.log("✅ MongoDB 연결 성공");
-}).catch((err) => {
-  console.error("❌ MongoDB 연결 실패:", err);
+})
+.then(() => console.log('✅ MongoDB 연결 성공'))
+.catch(err => console.error('❌ MongoDB 연결 실패:', err));
+
+// 로그인 라우터 추가
+app.post('/api/user/login', async (req, res) => {
+  const { nickname } = req.body;
+  if (!nickname) {
+    return res.status(400).json({ success: false, message: '닉네임이 없습니다.' });
+  }
+
+  let user = await User.findOne({ nickname });
+  if (!user) {
+    user = new User({
+      nickname,
+      potatoCount: 0,
+      barleyCount: 0,
+      water: 10,
+      fertilizer: 10,
+      token: 10,
+      seedCount: 2,
+      barleySeedCount: 0,
+      potatoProductCount: 0,
+      barleyProductCount: 0,
+      harvestCount: 0
+    });
+    await user.save();
+    console.log(`✅ 신규 유저 생성: ${nickname}`);
+  }
+
+  res.json({ success: true, message: '로그인 완료', nickname: user.nickname });
 });
 
-const userSchema = new mongoose.Schema({
-  nickname: String,
-  potatoCount: Number,
-  barleyCount: Number,
-  water: Number,
-  fertilizer: Number,
-  token: Number,
-  seedCount: Number,
-  barleySeedCount: Number,
-  potatoProductCount: Number,
-  barleyProductCount: Number,
-  harvestCount: Number,
-});
-
-const User = mongoose.model('User', userSchema);
-
+// 유저 데이터 요청 라우터
 app.get('/api/userdata', async (req, res) => {
-  const nickname = req.query.nickname;
-  if (!nickname) return res.status(400).json({ success: false, message: '닉네임이 없습니다.' });
+  const { nickname } = req.query;
+  if (!nickname) {
+    return res.status(400).json({ success: false, message: '닉네임이 없습니다.' });
+  }
 
   const user = await User.findOne({ nickname });
-  if (!user) return res.status(404).json({ success: false, message: '유저 없음' });
+  if (!user) {
+    return res.status(404).json({ success: false, message: '유저 없음' });
+  }
 
-  res.json({
-    nickname: user.nickname,
-    potatoCount: user.potatoCount,
-    barleyCount: user.barleyCount,
-    water: user.water,
-    fertilizer: user.fertilizer,
-    token: user.token,
-    seedCount: user.seedCount,
-    barleySeedCount: user.barleySeedCount,
-    potatoProductCount: user.potatoProductCount,
-    barleyProductCount: user.barleyProductCount,
-    harvestCount: user.harvestCount
-  });
+  res.json(user);
 });
 
-app.listen(port, () => {
-  console.log(`🚀 서버 실행 중: http://localhost:${port}`);
+app.listen(PORT, () => {
+  console.log(`🚀 서버 실행 중: 포트 ${PORT}`);
 });
