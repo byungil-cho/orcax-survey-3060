@@ -4,9 +4,9 @@ const express = require("express");
 const router = express.Router();
 const connectDB = require("./db");
 
-// 감자/보리 성장 처리
+// 감자/보리 농사짓기 - 성장포인트 1 올림
 router.post("/grow", async (req, res) => {
-  const { nickname, cropType } = req.body;
+  const { nickname, cropType } = req.body; // cropType: "gamja" or "bori"
   const db = await connectDB();
   const users = db.collection("users");
 
@@ -14,25 +14,18 @@ router.post("/grow", async (req, res) => {
     const user = await users.findOne({ nickname });
     if (!user) return res.status(404).json({ error: "사용자 없음" });
 
-    const field = cropType === "gamja" ? "gamjaGrow" : "boriGrow";
-    const seedField = cropType === "gamja" ? "seedGamja" : "seedBori";
-
-    // 자원 부족 체크
-    if ((user.water || 0) < 1 || (user.dung || 0) < 1 || (user[seedField] || 0) < 1) {
-      return res.status(400).json({ error: "물/거름/씨앗 부족" });
+    if (user.water <= 0 || user.dung <= 0) {
+      return res.status(400).json({ error: "물 또는 거름 부족" });
     }
 
+    const field = cropType === "gamja" ? "gamjaGrow" : "boriGrow";
     const newGrow = (user[field] || 0) + 1;
 
     await users.updateOne(
       { nickname },
       {
         $set: { [field]: newGrow },
-        $inc: {
-          water: -1,
-          dung: -1,
-          [seedField]: -1
-        }
+        $inc: { water: -1, dung: -1 }
       }
     );
 
@@ -43,7 +36,7 @@ router.post("/grow", async (req, res) => {
   }
 });
 
-// 수확 처리
+// 수확 처리 (5 이상 시 작동)
 router.post("/harvest", async (req, res) => {
   const { nickname, cropType } = req.body;
   const db = await connectDB();
@@ -54,11 +47,14 @@ router.post("/harvest", async (req, res) => {
     if (!user) return res.status(404).json({ error: "사용자 없음" });
 
     const field = cropType === "gamja" ? "gamjaGrow" : "boriGrow";
+    const seedField = cropType === "gamja" ? "seedGamja" : "seedBori";
     const resultField = cropType === "gamja" ? "gamja" : "bori";
-    const grow = user[field] || 0;
 
-    if (grow < 5) {
-      return res.status(400).json({ error: "성장포인트 부족" });
+    const grow = user[field] || 0;
+    const seeds = user[seedField] || 0;
+
+    if (grow < 5 || seeds < 1) {
+      return res.status(400).json({ error: "성장포인트 부족 또는 씨앗 없음" });
     }
 
     const amount = [3, 5, 7][Math.floor(Math.random() * 3)];
@@ -66,7 +62,7 @@ router.post("/harvest", async (req, res) => {
     await users.updateOne(
       { nickname },
       {
-        $inc: { [resultField]: amount },
+        $inc: { [resultField]: amount, [seedField]: -1 },
         $set: { [field]: 0 }
       }
     );
