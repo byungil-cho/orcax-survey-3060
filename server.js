@@ -64,6 +64,24 @@ app.get('/api/userdata', async (req, res) => {
 
   res.json(user);
 });
+app.get("/api/user/:nickname", async (req, res) => {
+  const { nickname } = req.params;
+  try {
+    const user = await User.findOne({ nickname });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json({
+      nickname: user.nickname,
+      token: user.token,
+      seed_potato: user.seed_potato,
+      seed_barley: user.seed_barley,
+      water: user.water,
+      fertilizer: user.fertilizer,
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`🚀 서버 실행 중: 포트 ${PORT}`);
