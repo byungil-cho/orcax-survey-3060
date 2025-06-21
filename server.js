@@ -1,62 +1,61 @@
 
-// -------------- server.js --------------
-// server.js
-
-const express = require("express");
-const cors = require("cors");
-const mongoose = require("mongoose");
-require("dotenv").config();
-
+require('dotenv').config();
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
 const app = express();
-const PORT = 3060; // ngrok이 연결될 포트
+const port = 3060;
 
-// ✅ MongoDB 연결
-const uri = process.env.MONGODB_URI;
-if (!uri) {
-  console.error("❌ MONGODB_URI 환경변수가 없습니다.");
-  process.exit(1);
-}
-
-mongoose
-  .connect(uri, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => console.log("✅ MongoDB 연결 완료"))
-  .catch((err) => {
-    console.error("❌ MongoDB 연결 실패:", err);
-    process.exit(1);
-  });
-
-const harvestRoutes = require('./routes/harvest');
-app.use(harvestRoutes);
-
-// ✅ 미들웨어 설정
 app.use(cors());
 app.use(express.json());
 
-// ✅ 라우터 연결 (api 폴더 기준)
-const authRoutes = require("./api/auth");
-const userRoutes = require("./api/user");
-const farmRoutes = require("./api/farm");
-const tokenRoutes = require("./api/token");
-const exchangeRoutes = require("./api/exchange");
-const processingRoutes = require("./api/processing");
-const marketRoutes = require("./api/market");
-const withdrawRoutes = require("./api/withdraw");
-const adminRoutes = require("./api/admin");
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+}).then(() => {
+  console.log("✅ MongoDB 연결 성공");
+}).catch((err) => {
+  console.error("❌ MongoDB 연결 실패:", err);
+});
 
-app.use("/api/auth", authRoutes);
-app.use("/api/user", userRoutes);
-app.use("/api/farm", farmRoutes);
-app.use("/api/token", tokenRoutes);
-app.use("/api/exchange", exchangeRoutes);
-app.use("/api/processing", processingRoutes);
-app.use("/api/market", marketRoutes);
-app.use("/api/withdraw", withdrawRoutes);
-app.use("/api/admin", adminRoutes);
+const userSchema = new mongoose.Schema({
+  nickname: String,
+  potatoCount: Number,
+  barleyCount: Number,
+  water: Number,
+  fertilizer: Number,
+  token: Number,
+  seedCount: Number,
+  barleySeedCount: Number,
+  potatoProductCount: Number,
+  barleyProductCount: Number,
+  harvestCount: Number,
+});
 
-// ✅ 서버 상태 확인용 루트 엔드포인트
-app.get("/", (req, res) => {
-  res.send("✅ OrcaX 서버 정상 작동 중! 🐳");
+const User = mongoose.model('User', userSchema);
+
+app.get('/api/userdata', async (req, res) => {
+  const nickname = req.query.nickname;
+  if (!nickname) return res.status(400).json({ success: false, message: '닉네임이 없습니다.' });
+
+  const user = await User.findOne({ nickname });
+  if (!user) return res.status(404).json({ success: false, message: '유저 없음' });
+
+  res.json({
+    nickname: user.nickname,
+    potatoCount: user.potatoCount,
+    barleyCount: user.barleyCount,
+    water: user.water,
+    fertilizer: user.fertilizer,
+    token: user.token,
+    seedCount: user.seedCount,
+    barleySeedCount: user.barleySeedCount,
+    potatoProductCount: user.potatoProductCount,
+    barleyProductCount: user.barleyProductCount,
+    harvestCount: user.harvestCount
+  });
+});
+
+app.listen(port, () => {
+  console.log(`🚀 서버 실행 중: http://localhost:${port}`);
 });
