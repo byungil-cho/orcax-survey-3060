@@ -58,8 +58,3 @@ app.use("/api/admin", adminRoutes);
 app.get("/", (req, res) => {
   res.send("✅ OrcaX 서버 정상 작동 중! 🐳");
 });
-
-// ✅ 서버 시작
-app.listen(PORT, () => {
-  console.log(`🚀 서버 실행 중: http://localhost:${PORT}`);
-});
