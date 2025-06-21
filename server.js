@@ -23,6 +23,11 @@ app.get("/", (req, res) => {
   res.send("✅ 서버 정상 작동 중");
 });
 
+// 서버 정상 작동 확인용
+app.get("/", (req, res) => {
+  res.status(200).send("OrcaX 감자 서버가 작동 중입니다!");
+});
+
 // 모델 import
 const User = require("./models/User");
 
