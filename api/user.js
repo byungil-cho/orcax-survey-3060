@@ -1,4 +1,4 @@
-// user.js - 사용자 관련 API 처리
+// routes/user.js
 
 const express = require('express');
 const router = express.Router();
@@ -12,12 +12,12 @@ router.post('/login', async (req, res) => {
     if (!user) {
       user = new User({
         nickname,
-        orcx: 10,
-        potatoCount: 2,
+        token: 10,
+        seed_potato: 2,
         seed_barley: 2,
         water: 10,
         fertilizer: 10,
-        createdAt: new Date()
+        potatoCount: 0,
       });
       await user.save();
     }
