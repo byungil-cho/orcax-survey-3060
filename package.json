@@ -1,15 +1,22 @@
 {
-  "name": "orcax-farm-backend",
+  "name": "orcax-3060-server",
   "version": "1.0.0",
-  "description": "OrcaX 감자 농장 백엔드 서버",
+  "description": "OrcaX 감자농장 백엔드 서버",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
+    "express": "^4.18.4",
+    "mongoose": "^7.6.1",
     "cors": "^2.8.5",
-    "dotenv": "^16.0.3",
-    "express": "^4.18.2",
-    "mongoose": "^7.0.3"
-  }
+    "dotenv": "^16.3.1",
+    "body-parser": "^1.20.2",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "OrcaX",
+  "license": "MIT"
 }
