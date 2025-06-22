@@ -1,40 +1,26 @@
-// routes/user.js
-
-const express = require('express');
+const express = require("express");
+const User = require("../models/User"); // 유저 모델
+const authMiddleware = require("../middleware/authMiddleware");
 const router = express.Router();
-const User = require('../models/User');
 
-// 사용자 등록 또는 로그인 처리
-router.post('/login', async (req, res) => {
-  const { nickname } = req.body;
+router.get("/me", authMiddleware, async (req, res) => {
   try {
-    let user = await User.findOne({ nickname });
+    const user = await User.findOne({ userId: req.userId });
     if (!user) {
-      user = new User({
-        nickname,
-        token: 10,
-        seed_potato: 2,
-        seed_barley: 2,
-        water: 10,
-        fertilizer: 10,
-        potatoCount: 0,
-      });
-      await user.save();
+      return res.status(404).json({ success: false, message: "유저 없음" });
     }
-    res.status(200).json(user);
+    res.json({ success: true, user });
   } catch (err) {
-    res.status(500).json({ error: '서버 오류', details: err });
+    res.status(500).json({ success: false, message: "서버 에러" });
   }
 });
 
-// 사용자 정보 조회
-router.get('/:nickname', async (req, res) => {
+router.get("/inventory", authMiddleware, async (req, res) => {
   try {
-    const user = await User.findOne({ nickname: req.params.nickname });
-    if (!user) return res.status(404).json({ error: '사용자 없음' });
-    res.json(user);
+    const user = await User.findOne({ userId: req.userId });
+    res.json({ success: true, inventory: user.inventory || [] });
   } catch (err) {
-    res.status(500).json({ error: '서버 오류', details: err });
+    res.status(500).json({ success: false, message: "자재 조회 실패" });
   }
 });
 
