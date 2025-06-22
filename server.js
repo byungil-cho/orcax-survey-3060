@@ -2,21 +2,21 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
-require("dotenv").config();
+require('dotenv').config();
 
+const mongoose = require('mongoose');
 const app = express();
 const port = 3060;
 
 app.use(cors());
 app.use(express.json());
 
-// MongoDB 연결
-mongoose.connect(process.env.MONGODB_URI || "your-mongodb-uri", {
+mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
-.then(() => console.log("✅ MongoDB 연결 성공"))
-.catch(err => console.error("❌ MongoDB 연결 실패:", err));
+.then(() => console.log("✅ MongoDB 연결 성공!"))
+.catch((err) => console.error("❌ MongoDB 연결 실패:", err));
 
 // 유저 모델
 const userSchema = new mongoose.Schema({
