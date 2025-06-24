@@ -10,7 +10,7 @@ router.post('/login', async (req, res) => {
     let user = await User.findOne({ nickname });
 
     if (!user) {
-      // 신규 가입자 → 초기 자산 지급 (모델 필드 + inventory 동시 저장)
+      // 신규 가입자 → 핵심 자산은 필드로, 나머지는 인벤토리로 분리 저장
       user = new User({
         nickname,
         token: 0,
@@ -18,13 +18,12 @@ router.post('/login', async (req, res) => {
         barleyCount: 0,
         water: 10,
         fertilizer: 10,
-        seedPotato: 2,      // ✅ 추가
-        seedBarley: 2,      // ✅ 추가
+        seedPotato: 2,      // ✅ 핵심 자산은 모델 필드에 직접 저장
+        seedBarley: 2,
         inventory: [
-          { name: "씨감자", count: 2 },
-          { name: "씨보리", count: 2 },
-          { name: "물", count: 10 },
-          { name: "거름", count: 10 }
+          // 가공 제품만 inventory에 저장
+          { name: "감자깡", count: 0 },
+          { name: "감자국수", count: 0 }
         ]
       });
 
