@@ -10,7 +10,7 @@ router.post('/login', async (req, res) => {
     let user = await User.findOne({ nickname });
 
     if (!user) {
-      // 신규 가입자 → 초기 자산 지급
+      // 신규 가입자 → 초기 자산 지급 (모델 필드 + inventory 동시 저장)
       user = new User({
         nickname,
         token: 0,
@@ -18,6 +18,8 @@ router.post('/login', async (req, res) => {
         barleyCount: 0,
         water: 10,
         fertilizer: 10,
+        seedPotato: 2,      // ✅ 추가
+        seedBarley: 2,      // ✅ 추가
         inventory: [
           { name: "씨감자", count: 2 },
           { name: "씨보리", count: 2 },
