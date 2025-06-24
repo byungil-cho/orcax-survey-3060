@@ -1,39 +1,41 @@
+// /api/userdata.js
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 
-// GET /api/userdata?nickname=XXX
-router.get('/userdata', async (req, res) => {
-  const { nickname } = req.query;
-
+// 사용자 정보 가져오기
+router.get('/', async (req, res) => {
   try {
+    const { nickname } = req.query;
+
+    if (!nickname) {
+      return res.status(400).json({ success: false, message: '닉네임이 필요합니다.' });
+    }
+
     const user = await User.findOne({ nickname });
 
     if (!user) {
-      return res.json({ success: false, message: "유저 없음" });
+      return res.status(404).json({ success: false, message: '사용자를 찾을 수 없습니다.' });
     }
 
     res.json({
       success: true,
-      users: [{
-        nickname: user.nickname,
-        orcx: user.orcx || 0,
-        farmingCount: user.farmingCount || 0,
-        water: user.water || 0,
-        fertilizer: user.fertilizer || 0,
-        potatoCount: user.potatoCount || 0,
-        harvestCount: user.harvestCount || 0,
-        seedPotato: user.seedPotato || 0,     // ✅ 씨감자 포함
-        seedBarley: user.seedBarley || 0,     // ✅ 씨보리 포함
-        inventory: user.inventory || [],
-        exchangeLogs: user.exchangeLogs || [],
-        lastRecharge: user.lastRecharge || 0
-      }]
+      nickname: user.nickname,
+      orcx: user.orcx,
+      potatoCount: user.potatoCount,
+      barleyCount: user.barleyCount,
+      seedPotato: user.seedPotato,
+      seedBarley: user.seedBarley,
+      water: user.water,
+      fertilizer: user.fertilizer,
+      farmCount: user['농사 개수'], // 정확한 키 확인
+      harvestCount: user.harvestCount,
+      factoryLog: user.factoryLog,
+      lastCharged: user.lastCharged,
     });
-
-  } catch (err) {
-    console.error("❌ 유저 데이터 조회 실패:", err);
-    res.status(500).json({ success: false, message: "서버 오류" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: '서버 오류 발생' });
   }
 });
 
