@@ -10,15 +10,39 @@ router.post('/login', async (req, res) => {
   let user = await User.findOne({ kakaoId });
 
   if (!user) {
-    // 새 유저 생성
-    user = new User({ kakaoId, nickname });
+    user = new User({
+      kakaoId,
+      nickname,
+      token: 5,
+      water: 10,
+      fertilizer: 10,
+      seedPotato: 2,
+      seedBarley: 2
+    });
     await user.save();
+    console.log("🌱 신규 유저 자원 지급 완료");
+  } else {
+    let updated = false;
+
+    if (user.seedPotato === undefined) {
+      user.seedPotato = 2;
+      updated = true;
+    }
+    if (user.seedBarley === undefined) {
+      user.seedBarley = 2;
+      updated = true;
+    }
+
+    if (updated) {
+      await user.save();
+      console.log("🌾 기존 유저 씨앗 보충 지급 완료");
+    }
   }
 
   res.json(user);
 });
 
-// 👤 유저 정보 조회 (프론트 요구대로 users 배열로 래핑)
+// 👤 유저 정보 조회
 router.get('/userdata', async (req, res) => {
   const kakaoId = req.query.kakaoId;
   if (!kakaoId) return res.status(400).json({ error: 'kakaoId 필요' });
@@ -26,7 +50,6 @@ router.get('/userdata', async (req, res) => {
   const user = await User.findOne({ kakaoId });
   if (!user) return res.status(404).json({ error: '유저 없음' });
 
-  // 여기 구조가 핵심임 ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
   res.json({ users: [user] });
 });
 
