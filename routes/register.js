@@ -1,0 +1,46 @@
+
+const express = require('express');
+const router = express.Router();
+const User = require('../models/User');
+
+// 최초 로그인 시 자동 지급 로직
+router.post('/register', async (req, res) => {
+  const { nickname } = req.body;
+
+  try {
+    // 기존 유저 존재 여부 확인
+    const existingUser = await User.findOne({ nickname });
+
+    if (existingUser) {
+      return res.status(200).json({ message: '이미 등록된 유저입니다.', user: existingUser });
+    }
+
+    // 신규 유저라면 초기 자산 지급
+    const newUser = new User({
+      nickname,
+      자원: {
+        물: 10,
+        거름: 10
+      },
+      토큰: {
+        오크: 5
+      },
+      씨앗: [
+        '씨감자 2개',
+        '씨보리 2개'
+      ],
+      목록: [],
+      감자_개수: 0,
+      보리_개수: 0
+    });
+
+    await newUser.save();
+
+    res.status(201).json({ message: '신규 유저 등록 완료 및 자산 지급', user: newUser });
+  } catch (error) {
+    console.error('등록 오류:', error);
+    res.status(500).json({ error: '서버 오류 발생' });
+  }
+});
+
+module.exports = router;
