@@ -1,41 +1,34 @@
-require("dotenv").config();
-const express = require("express");
-const mongoose = require("mongoose");
-const cors = require("cors");
-const bodyParser = require("body-parser");
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+require('dotenv').config(); // 환경변수 읽기
 
 const app = express();
-const PORT = 3060;
+const port = process.env.PORT || 3060;
 
-// ✅ CORS 고정 도메인 설정
-const corsOptions = {
-  origin: "https://climbing-wholly-grouper.jp.ngrok.io",
-  credentials: true,
-};
-app.use(cors(corsOptions));
+// 미들웨어 설정
+app.use(cors());
 app.use(bodyParser.json());
 
-// ✅ MongoDB 연결
-mongoose
-  .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => console.log("✅ MongoDB connected"))
-  .catch((err) => console.error("❌ MongoDB connection error:", err));
-
-// ✅ API 라우팅
-const userdataRoutes = require("./routes/userdata");
-const loginRoutes = require("./routes/login");
-
-app.use("/api/userdata", userdataRoutes);
-app.use("/api/login", loginRoutes);
-
-// ✅ 서버 상태 확인용 라우트
-app.get("/", (req, res) => {
-  res.send("✅ OrcaX Potato Server Running!");
+// 서버 테스트용 라우트
+app.get('/', (req, res) => {
+  res.send('✅ 서버 실행 중!');
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
+// MongoDB 연결
+mongoose.connect(process.env.MONGO_URL, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => {
+  console.log('✅ MongoDB 연결 성공!');
+})
+.catch((err) => {
+  console.error('❌ MongoDB 연결 실패:', err);
+});
+
+// 서버 실행
+app.listen(port, () => {
+  console.log(`🚀 Server running at http://localhost:${port}`);
 });
