@@ -2,19 +2,24 @@
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
-  별명: String,
-  오크: Number,
-  씨감자: Number,
-  물: Number,
-  비료: Number,
-  '감자 개수': Number,
-  '수확 횟수': Number,
-  '농사 개수': Number,
-  목록: Object,
-  교환로그: Object,
-  '마지막 종전': Number,
-  __: Number,
-  다섯: String
+  nickname: String,  // 로그인 별명
+  자원: {
+    물: { type: Number, default: 0 },
+    거름: { type: Number, default: 0 }
+  },
+  토큰: {
+    오크: { type: Number, default: 0 }
+  },
+  씨앗: {
+    type: [String],
+    default: []
+  },
+  목록: {
+    type: [String],
+    default: []
+  },
+  감자_개수: { type: Number, default: 0 },
+  보리_개수: { type: Number, default: 0 }
 }, { collection: 'users' });
 
-module.exports = mongoose.model('User', userSchema);
+module.exports = mongoose.models.User || mongoose.model('User', userSchema);
