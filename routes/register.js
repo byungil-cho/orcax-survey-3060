@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 
-// 최초 로그인 시 자동 지급 로직
+// 최초 로그인 시 자동 지급 로직 (User.js 새 구조 기반)
 router.post('/register', async (req, res) => {
   const { nickname } = req.body;
 
