@@ -18,7 +18,7 @@ router.post('/login', async (req, res) => {
   res.json(user);
 });
 
-// 👤 유저 정보 조회
+// 👤 유저 정보 조회 (프론트 요구대로 users 배열로 래핑)
 router.get('/userdata', async (req, res) => {
   const kakaoId = req.query.kakaoId;
   if (!kakaoId) return res.status(400).json({ error: 'kakaoId 필요' });
@@ -26,7 +26,8 @@ router.get('/userdata', async (req, res) => {
   const user = await User.findOne({ kakaoId });
   if (!user) return res.status(404).json({ error: '유저 없음' });
 
-  res.json(user);
+  // 여기 구조가 핵심임 ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+  res.json({ users: [user] });
 });
 
 module.exports = router;
