@@ -32,7 +32,7 @@ const userSchema = new mongoose.Schema({
   fertilizer: Number,
   inventory: [{ name: String, count: Number }]
 });
-const User = mongoose.model("User", userSchema);
+const User = mongoose.models.User || mongoose.model("User", userSchema);
 
 // 미들웨어: JWT 인증
 function authMiddleware(req, res, next) {
