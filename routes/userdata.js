@@ -1,4 +1,5 @@
-// 📁 routes/userdata.js (최종 완성본)
+
+// 📁 routes/userdata.js (통합 완전체)
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
@@ -16,16 +17,16 @@ router.get('/', async (req, res) => {
       return res.status(404).json({ success: false, message: '유저를 찾을 수 없습니다.' });
     }
 
-    // 🎯 필요한 정보만 추려서 보냄
+    // ✅ 통합 구조에 맞춰 응답 구성
     res.json({
       success: true,
       nickname: user.nickname,
-      potatoSeed: user.potatoSeed || 0,
-      barleySeed: user.barleySeed || 0,
-      water: user.water || 0,
-      fertilizer: user.fertilizer || 0,
-      token: user.token || 0,
-      inventory: user.inventory || []  // ✅ 반드시 포함
+      자원: user.자원 || { 물: 0, 거름: 0 },
+      토큰: user.토큰 || { 오크: 0 },
+      씨앗: user.씨앗 || [],
+      목록: user.목록 || [],
+      감자_개수: user.감자_개수 || 0,
+      보리_개수: user.보리_개수 || 0
     });
   } catch (err) {
     console.error('🚨 유저 불러오기 오류:', err);
