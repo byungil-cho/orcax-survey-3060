@@ -1,5 +1,5 @@
 
-// 📁 routes/userdata.js (통합 완전체)
+// 📁 routes/userdata.js (최종 완성본)
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
@@ -17,7 +17,6 @@ router.get('/', async (req, res) => {
       return res.status(404).json({ success: false, message: '유저를 찾을 수 없습니다.' });
     }
 
-    // ✅ 통합 구조에 맞춰 응답 구성
     res.json({
       success: true,
       nickname: user.nickname,
