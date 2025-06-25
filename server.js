@@ -12,6 +12,7 @@ const registerRoute = require('./routes/register');
 const farmRoutes = require("./api/farm");
 app.use('/api', registerRoute);
 app.use("/api/farm", farmRoutes);
+app.use("/api/farm", require("./api/farm"));
 
 app.use(cors());
 app.use(express.json());
