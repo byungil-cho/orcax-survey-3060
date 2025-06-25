@@ -4,6 +4,9 @@ const cors = require("cors");
 const jwt = require("jsonwebtoken");
 require('dotenv').config();
 
+const registerRoute = require('./routes/register');
+app.use('/api', registerRoute);
+
 const app = express();
 const port = 3060;
 
