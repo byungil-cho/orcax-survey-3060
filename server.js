@@ -1,11 +1,10 @@
-
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 require('dotenv').config();
 
-const app = express();  // ✅ Move this up before app.use
+const app = express();
 const port = 3060;
 
 const registerRoute = require('./routes/register');
@@ -81,10 +80,26 @@ app.post("/api/login", async (req, res) => {
         ]
       });
       await user.save();
+    } else {
+      // ✅ 기존 유저지만 씨앗 지급 안 된 경우 한 번만 보충
+      const itemNames = user.inventory.map(item => item.name);
+      let changed = false;
+
+      if (!itemNames.includes("씨감자")) {
+        user.inventory.push({ name: "씨감자", count: 2 });
+        changed = true;
+      }
+      if (!itemNames.includes("씨보리")) {
+        user.inventory.push({ name: "씨보리", count: 2 });
+        changed = true;
+      }
+      if (changed) {
+        await user.save();
+        console.log("🌱 기존 유저 씨앗 보충 지급 완료");
+      }
     }
 
     const accessToken = jwt.sign({ userId }, "SECRET_KEY", { expiresIn: "1h" });
-
     return res.json({ success: true, accessToken });
   } catch (error) {
     console.error("❌ 로그인 에러:", error);
