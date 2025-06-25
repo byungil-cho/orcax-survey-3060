@@ -81,8 +81,8 @@ app.post("/api/login", async (req, res) => {
       });
       await user.save();
     } else {
-      // ✅ 기존 유저지만 씨앗 지급 안 된 경우 한 번만 보충
-      const itemNames = user.inventory.map(item => item.name);
+      // ✅ 기존 유저 씨앗 보충 (map 에러 방지 포함)
+      const itemNames = Array.isArray(user.inventory) ? user.inventory.map(item => item.name) : [];
       let changed = false;
 
       if (!itemNames.includes("씨감자")) {
@@ -93,6 +93,7 @@ app.post("/api/login", async (req, res) => {
         user.inventory.push({ name: "씨보리", count: 2 });
         changed = true;
       }
+
       if (changed) {
         await user.save();
         console.log("🌱 기존 유저 씨앗 보충 지급 완료");
