@@ -9,7 +9,9 @@ const app = express();  // ✅ Move this up before app.use
 const port = 3060;
 
 const registerRoute = require('./routes/register');
+const farmRoutes = require("./api/farm");
 app.use('/api', registerRoute);
+app.use("/api/farm", farmRoutes);
 
 app.use(cors());
 app.use(express.json());
