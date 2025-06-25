@@ -1,14 +1,15 @@
+
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 require('dotenv').config();
 
+const app = express();  // ✅ Move this up before app.use
+const port = 3060;
+
 const registerRoute = require('./routes/register');
 app.use('/api', registerRoute);
-
-const app = express();
-const port = 3060;
 
 app.use(cors());
 app.use(express.json());
@@ -22,7 +23,7 @@ mongoose.connect(process.env.MONGODB_URL, {
 
 // 유저 모델
 const userSchema = new mongoose.Schema({
-  userId: String, // 카카오 고유 ID
+  userId: String,
   nickname: String,
   token: Number,
   potatoCount: Number,
