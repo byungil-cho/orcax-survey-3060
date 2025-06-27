@@ -17,22 +17,22 @@ mongoose.connect(MONGODB_URI, {
   .catch(err => console.error('🚨 MongoDB 연결 오류:', err));
 
 // 3) 라우터 import
-const userRouter = require('./routes/user');
 const userdataRouter = require('./routes/userdata');
+const userRouter     = require('./routes/user');
 
 // 4) 미들웨어 설정
 app.use(cors());
 app.use(express.json());
 
 // 5) 라우팅 설정
+// 유저 데이터 조회 및 업데이트 (/api/userdata?nickname=...)
+app.use('/api/userdata', userdataRouter);
 // 사용자 인증/초기화 등 기존 엔드포인트
 app.use('/api', userRouter);
-// 유저 데이터 조회 및 업데이트
-app.use('/api/userdata', userdataRouter);
 
 // 6) 기본 헬스체크 엔드포인트
 app.get('/', (req, res) => {
-  res.status(200).send('🥔 감자 농장 서버가 실행 중입니다!');
+  res.status(200).send('🥔 감자 농장 서버 실행 중');
 });
 
 // 7) 서버 시작
