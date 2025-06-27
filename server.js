@@ -1,4 +1,3 @@
-
 // ✅ 완전 수정된 server.js - 감자밭 에러 제거 버전
 
 const express = require("express");
@@ -103,30 +102,6 @@ app.get("/api/user/me", authMiddleware, async (req, res) => {
     res.json({ success: true, user });
   } catch (err) {
     res.status(500).json({ success: false, message: "유저 조회 실패" });
-  }
-});
-
-app.post('/api/use-token', async (req, res) => {
-  const { nickname, amount, item } = req.body;
-
-  if (!nickname || !amount) {
-    return res.status(400).json({ success: false, message: "필수 정보 누락" });
-  }
-
-  try {
-    const user = await User.findOne({ nickname });
-
-    if (!user || user.orcx < amount) {
-      return res.status(400).json({ success: false, message: "토큰 부족" });
-    }
-
-    user.orcx -= amount;
-    await user.save();
-
-    return res.json({ success: true, message: "토큰 차감 완료" });
-  } catch (err) {
-    console.error("토큰 차감 오류", err);
-    return res.status(500).json({ success: false, message: "서버 에러" });
   }
 });
 
