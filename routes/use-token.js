@@ -22,10 +22,18 @@ router.post('/', async (req, res) => {
     }
 
     user.token -= amount;
-    user.seed += 1; // 씨감자 1개 증가
+
+    // 씨감자는 inventory 안에서 관리되니까 그걸로 바꿔야 맞아
+    const seedItem = user.inventory.find(item => item.name === '씨감자');
+    if (seedItem) {
+      seedItem.count += 1;
+    } else {
+      user.inventory.push({ name: '씨감자', count: 1 });
+    }
+
     await user.save();
 
-    return res.status(200).json({ success: true, token: user.token, seed: user.seed });
+    return res.status(200).json({ success: true, token: user.token, inventory: user.inventory });
   } catch (error) {
     console.error('토큰 사용 오류:', error);
     return res.status(500).json({ success: false, message: '서버 오류' });
