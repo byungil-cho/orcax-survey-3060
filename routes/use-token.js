@@ -1,44 +1,75 @@
-
-const express = require("express");
+const express = require('express');
+const fs = require('fs');
+const path = require('path');
 const router = express.Router();
-const fs = require("fs");
-const path = require("path");
+const User = require('../models/User');
 
-const TOKENS_FILE = path.join(__dirname, "../data/token.json");
+const LOCAL_DIR = path.join(__dirname, '../local-data');
+const LOCAL_DATA_FILE = path.join(LOCAL_DIR, 'token-items.json');
 
-function readTokenData() {
-  try {
-    const data = fs.readFileSync(TOKENS_FILE);
-    return JSON.parse(data);
-  } catch (err) {
-    return {};
+// 폴더 및 파일 존재 확인 및 생성
+function ensureLocalDataFile() {
+  if (!fs.existsSync(LOCAL_DIR)) {
+    fs.mkdirSync(LOCAL_DIR);
+  }
+  if (!fs.existsSync(LOCAL_DATA_FILE)) {
+    fs.writeFileSync(LOCAL_DATA_FILE, '{}');
   }
 }
 
-function writeTokenData(data) {
-  fs.writeFileSync(TOKENS_FILE, JSON.stringify(data, null, 2));
+// 로컬 데이터 불러오기
+function loadLocalData() {
+  ensureLocalDataFile();
+  const data = fs.readFileSync(LOCAL_DATA_FILE, 'utf-8');
+  return JSON.parse(data);
 }
 
-router.post("/", (req, res) => {
+// 로컬 데이터 저장
+function saveLocalData(data) {
+  fs.writeFileSync(LOCAL_DATA_FILE, JSON.stringify(data, null, 2));
+}
+
+// POST /api/use-token
+router.post('/api/use-token', async (req, res) => {
   const { nickname, amount } = req.body;
-  console.log("🐾 POST /api/use-token endpoint 호출됨 , body:", req.body);
+  console.log("🧩 POST /api/use-token endpoint 호출됨 , body:", req.body);
 
-  if (!nickname || typeof amount !== "number") {
-    return res.status(400).json({ success: false, message: "닉네임과 수량이 필요합니다." });
+  if (!nickname || !amount) {
+    return res.status(400).json({ success: false, message: "nickname 또는 amount 누락" });
   }
 
-  const tokenData = readTokenData();
+  try {
+    const user = await User.findOne({ nickname });
 
-  if (!tokenData[nickname] || tokenData[nickname].token < amount) {
-    return res.status(400).json({ success: false, message: "토큰이 부족합니다." });
+    if (!user || user.token < amount) {
+      return res.status(400).json({ success: false, message: "토큰 부족 또는 사용자 없음" });
+    }
+
+    // 토큰 차감
+    user.token -= amount;
+    await user.save();
+
+    // 로컬에 씨감자 저장
+    const localData = loadLocalData();
+    if (!localData[nickname]) {
+      localData[nickname] = { seedPotato: 0, seedBarley: 0 };
+    }
+
+    const gainedSeedPotato = Math.floor(amount / 2);
+    localData[nickname].seedPotato += gainedSeedPotato;
+    saveLocalData(localData);
+
+    return res.json({
+      success: true,
+      message: `씨감자 ${gainedSeedPotato}개 획득`,
+      currentSeedPotato: localData[nickname].seedPotato,
+      remainingToken: user.token
+    });
+
+  } catch (err) {
+    console.error('❌ 서버 오류:', err);
+    return res.status(500).json({ success: false, message: '서버 오류' });
   }
-
-  tokenData[nickname].token -= amount;
-  tokenData[nickname].seedPotato = (tokenData[nickname].seedPotato || 0) + 1;
-
-  writeTokenData(tokenData);
-
-  res.json({ success: true, message: "씨감자 구매 성공", data: tokenData[nickname] });
 });
 
 module.exports = router;
