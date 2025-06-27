@@ -2,54 +2,43 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 
-// 1) 신규 또는 기존 유저 초기화 & 조회
-router.post('/init', async (req, res) => {
+// 최초 로그인 & 초기 자산 지급
+router.post('/init-user', async (req, res) => {
+  const { nickname, kakaoId } = req.body;
   try {
-    const { nickname } = req.body;
-    if (!nickname) return res.status(400).json({ error: '닉네임이 필요합니다.' });
-
-    let user = await User.findOne({ nickname });
-    if (!user) {
-      user = new User({ nickname });
-      await user.save();
-      console.log(`✅ New user created: ${nickname}`);
+    let user = await User.findOne({ kakaoId });
+    if (user) {
+      return res.json({ message: "이미 존재하는 유저", user });
     }
-    return res.json({ success: true, user });
-  } catch (err) {
-    console.error('Init user error:', err);
-    return res.status(500).json({ success: false, error: '서버 오류' });
-  }
-});
-
-// 2) 유저 정보 조회
-router.get('/:nickname', async (req, res) => {
-  try {
-    const { nickname } = req.params;
-    const user = await User.findOne({ nickname });
-    if (!user) return res.status(404).json({ success: false, error: '사용자 없음' });
-    return res.json({ success: true, user });
-  } catch (err) {
-    console.error('Get user error:', err);
-    return res.status(500).json({ success: false, error: '서버 오류' });
-  }
-});
-
-// 3) 자산 업데이트 (토큰/물/거름)
-router.post('/update', async (req, res) => {
-  try {
-    const { nickname, orcx, water, fertilizer } = req.body;
-    const user = await User.findOne({ nickname });
-    if (!user) return res.status(404).json({ success: false, error: '사용자 없음' });
-
-    if (orcx !== undefined) user.orcx = orcx;
-    if (water !== undefined) user.water = water;
-    if (fertilizer !== undefined) user.fertilizer = fertilizer;
-
+    user = new User({
+      kakaoId,
+      nickname,
+      seedPotato: 2,
+      seedBarley: 2,
+      water: 10,
+      fertilizer: 10,
+      token: 10,
+      growthPoint: 0,
+      potatoCount: 0,
+      harvestCount: 0,
+      farmingCount: 0,
+      inventory: []
+    });
     await user.save();
-    return res.json({ success: true, user });
+    return res.json({ success: true, message: "신규 유저 등록 완료", user });
   } catch (err) {
-    console.error('Update user error:', err);
-    return res.status(500).json({ success: false, error: '서버 오류' });
+    console.error("init-user 오류:", err);
+    return res.status(500).json({ success: false, message: "서버 오류" });
+  }
+});
+
+// 전체 유저 리스트 (디버그)
+router.get('/userdata', async (req, res) => {
+  try {
+    const users = await User.find();
+    res.json({ success: true, users });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "서버 오류" });
   }
 });
 
