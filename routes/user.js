@@ -7,16 +7,18 @@ router.post("/init-user", async (req, res) => {
       return res.json({ message: "이미 존재하는 유저" });
     }
 
+    // ✅ 여기 위치에 newUser 생성자 코드를 넣으시면 됩니다!
     const newUser = new User({
       nickname,
-      orcx: 10,              // ✅ ORCX 지급
-      water: 10,             // ✅ 물 지급
-      fertilizer: 10,        // ✅ 거름 지급
-      seedPotato: 0,         // ❌ 씨감자 없음
-      seedBarley: 0,         // ❌ 씨보리 없음
-      inventory: [],
+      orcx: 10,
+      water: 10,
+      fertilizer: 10,
+      seedPotato: 0,
+      seedBarley: 0,       // ✅ 추가
       potatoCount: 0,
+      barleyCount: 0,      // ✅ 추가
       harvestCount: 0,
+      inventory: [],
     });
 
     await newUser.save();
