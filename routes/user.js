@@ -1,30 +1,40 @@
-// [POST] /api/init-user
-router.post("/init-user", async (req, res) => {
-  const { nickname } = req.body;
+// routes/user.js
+
+const express = require('express');
+const router = express.Router();
+const User = require('../models/User');
+
+// ✅ 최초 로그인 시 사용자 데이터 생성
+router.post('/init-user', async (req, res) => {
   try {
-    const existing = await User.findOne({ nickname });
-    if (existing) {
-      return res.json({ message: "이미 존재하는 유저" });
+    const { kakaoId, nickname } = req.body;
+
+    let existingUser = await User.findOne({ kakaoId });
+    if (existingUser) {
+      return res.status(200).json({ message: '이미 가입된 유저입니다.', user: existingUser });
     }
 
-    // ✅ 여기 위치에 newUser 생성자 코드를 넣으시면 됩니다!
     const newUser = new User({
+      kakaoId,
       nickname,
       orcx: 10,
       water: 10,
       fertilizer: 10,
       seedPotato: 0,
-      seedBarley: 0,       // ✅ 추가
+      seedBarley: 0,
       potatoCount: 0,
-      barleyCount: 0,      // ✅ 추가
+      barleyCount: 0,
       harvestCount: 0,
       inventory: [],
     });
 
     await newUser.save();
-    return res.json({ success: true, message: "신규 유저 등록 완료" });
+    res.status(201).json({ message: '신규 유저 생성 완료', user: newUser });
+
   } catch (err) {
-    console.error("init-user 오류:", err);
-    return res.status(500).json({ success: false, message: "서버 오류" });
+    console.error('초기화 에러:', err);
+    res.status(500).json({ error: '서버 오류' });
   }
 });
+
+module.exports = router;
