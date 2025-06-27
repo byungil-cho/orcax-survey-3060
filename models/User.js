@@ -1,4 +1,4 @@
-// models/User.js 수정본
+
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
@@ -10,7 +10,7 @@ const userSchema = new mongoose.Schema({
   water: { type: Number, default: 10 },
   fertilizer: { type: Number, default: 10 },
   token: { type: Number, default: 10 },
-  // ⬇️ 아래 필드 추가
+  orcx: { type: Number, default: 10 },  // ✅ 추가됨
   growthPoint: { type: Number, default: 0 },
   potatoCount: { type: Number, default: 0 },
   harvestCount: { type: Number, default: 0 },
