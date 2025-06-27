@@ -1,17 +1,12 @@
-
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 console.log("⚙️ use-token router loaded");
 
-router.post("/", async (req, res) => {
-  console.log("🐾 POST /api/use-token endpoint 호출됨, body:", req.body);
-  ...
-});
-
-
 // POST /api/use-token
 router.post('/', async (req, res) => {
+  console.log("🐾 POST /api/use-token endpoint 호출됨, body:", req.body);
+
   try {
     const { nickname, amount } = req.body;
 
@@ -19,7 +14,8 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, message: '필수 값 누락' });
     }
 
-    const user = await User.findOne({ kakaoId: nickname }); // nickname을 kakaoId로 사용
+    // nickname을 kakaoId로 간주하여 검색
+    const user = await User.findOne({ kakaoId: nickname });
 
     if (!user) {
       return res.status(404).json({ success: false, message: '유저 없음' });
