@@ -10,6 +10,8 @@ const port = 3060;
 
 const registerRoute = require('./routes/register');
 const farmRoutes = require("./api/farm");
+const useTokenRoute = require('./routes/use-token');
+app.use('/api/use-token', useTokenRoute);
 app.use('/api', registerRoute);
 app.use("/api/farm", farmRoutes);
 app.use("/api/farm", require("./api/farm"));
