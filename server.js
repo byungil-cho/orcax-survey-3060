@@ -1,31 +1,29 @@
-require('dotenv').config();
-const express = require("express");
-const mongoose = require("mongoose");
-const cors = require("cors");
-const jwt = require("jsonwebtoken");
-
+// server.js
+const express = require('express');
+const cors = require('cors');
 const app = express();
-const port = 3060;
+const port = process.env.PORT || 3000;
 
-const userRouter = require("./routes/user");
+// 라우터 import
+const userRouter = require('./routes/user');
+const userdataRouter = require('./routes/userdata');
 
+// 미들웨어 설정
 app.use(cors());
 app.use(express.json());
-app.use("/api", userRouter);
 
-mongoose
-  .connect(process.env.MONGODB_URL, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => console.log("✅ MongoDB 연결 성공!"))
-  .catch((err) => console.error("❌ MongoDB 연결 실패:", err));
+// 라우팅 설정
+// 기존 사용자 관련 라우터
+app.use('/api', userRouter);
+// 유저 데이터 조회/업데이트 라우터
+app.use('/api/userdata', userdataRouter);
 
-app.get("/", (req, res) => {
-  res.send("✅ OrcaX 감자 서버 작동 중!");
+// 기본 헬스체크
+app.get('/', (req, res) => {
+  res.send('🥔 감자 농장 서버가 실행 중입니다!');
 });
 
-// (기존 /api/init-user, /api/login, /api/userdata 모두 routes/user.js에 포함)
+// 서버 시작
 app.listen(port, () => {
-  console.log(`🚀 서버 실행 중: http://localhost:${port}`);
+  console.log(`Server listening on port ${port}`);
 });
