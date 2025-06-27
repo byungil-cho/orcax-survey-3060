@@ -8,9 +8,9 @@ const app = express();
 const PORT = process.env.PORT || 3060;
 
 // 2) MongoDB 연결 (환경변수로 URI 설정 권장)
-const MONGODB_URI = process.env.MONGODB_URL
+const MONGODB_URI = process.env.MONGODB_URI
   || 'mongodb://localhost:27017/your_database_name';
-mongoose.connect(MONGODB_URL, {
+mongoose.connect(MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
