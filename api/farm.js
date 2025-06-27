@@ -79,12 +79,6 @@ function updateSeedDisplay() {
   const el = document.getElementById("seedCountDisplay");
   if (el) el.textContent = `씨감자: ${count}개`;
 }
-
-// 페이지 떠날 때 씨감자 삭제
-window.addEventListener("beforeunload", function () {
-  localStorage.removeItem("seedCount");
-});
-
 // 로딩 시 표시
 document.addEventListener("DOMContentLoaded", () => {
   updateSeedDisplay();
