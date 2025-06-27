@@ -1,39 +1,36 @@
-// routes/user.js
 
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 
-// ✅ 최초 로그인 시 사용자 데이터 생성
-router.post('/init-user', async (req, res) => {
+// 유저 존재 확인 및 생성
+router.post('/register', async (req, res) => {
+  const { nickname } = req.body;
   try {
-    const { kakaoId, nickname } = req.body;
-
-    let existingUser = await User.findOne({ kakaoId });
-    if (existingUser) {
-      return res.status(200).json({ message: '이미 가입된 유저입니다.', user: existingUser });
+    let user = await User.findOne({ nickname });
+    if (!user) {
+      user = new User({ nickname });
+      await user.save();
+      return res.json({ success: true, message: 'User created', user });
     }
-
-    const newUser = new User({
-      kakaoId,
-      nickname,
-      orcx: 10,
-      water: 10,
-      fertilizer: 10,
-      seedPotato: 0,
-      seedBarley: 0,
-      potatoCount: 0,
-      barleyCount: 0,
-      harvestCount: 0,
-      inventory: [],
-    });
-
-    await newUser.save();
-    res.status(201).json({ message: '신규 유저 생성 완료', user: newUser });
-
+    res.json({ success: true, message: 'User exists', user });
   } catch (err) {
-    console.error('초기화 에러:', err);
-    res.status(500).json({ error: '서버 오류' });
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// 유저 정보 조회
+router.get('/info/:nickname', async (req, res) => {
+  try {
+    const user = await User.findOne({ nickname: req.params.nickname });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    res.json({ success: true, user });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
