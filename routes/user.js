@@ -1,36 +1,55 @@
-
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 
-// 유저 존재 확인 및 생성
-router.post('/register', async (req, res) => {
-  const { nickname } = req.body;
+// 1) 신규 또는 기존 유저 초기화 & 조회
+router.post('/init', async (req, res) => {
   try {
+    const { nickname } = req.body;
+    if (!nickname) return res.status(400).json({ error: '닉네임이 필요합니다.' });
+
     let user = await User.findOne({ nickname });
     if (!user) {
       user = new User({ nickname });
       await user.save();
-      return res.json({ success: true, message: 'User created', user });
+      console.log(`✅ New user created: ${nickname}`);
     }
-    res.json({ success: true, message: 'User exists', user });
+    return res.json({ success: true, user });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error('Init user error:', err);
+    return res.status(500).json({ success: false, error: '서버 오류' });
   }
 });
 
-// 유저 정보 조회
-router.get('/info/:nickname', async (req, res) => {
+// 2) 유저 정보 조회
+router.get('/:nickname', async (req, res) => {
   try {
-    const user = await User.findOne({ nickname: req.params.nickname });
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-    res.json({ success: true, user });
+    const { nickname } = req.params;
+    const user = await User.findOne({ nickname });
+    if (!user) return res.status(404).json({ success: false, error: '사용자 없음' });
+    return res.json({ success: true, user });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error('Get user error:', err);
+    return res.status(500).json({ success: false, error: '서버 오류' });
+  }
+});
+
+// 3) 자산 업데이트 (토큰/물/거름)
+router.post('/update', async (req, res) => {
+  try {
+    const { nickname, orcx, water, fertilizer } = req.body;
+    const user = await User.findOne({ nickname });
+    if (!user) return res.status(404).json({ success: false, error: '사용자 없음' });
+
+    if (orcx !== undefined) user.orcx = orcx;
+    if (water !== undefined) user.water = water;
+    if (fertilizer !== undefined) user.fertilizer = fertilizer;
+
+    await user.save();
+    return res.json({ success: true, user });
+  } catch (err) {
+    console.error('Update user error:', err);
+    return res.status(500).json({ success: false, error: '서버 오류' });
   }
 });
 
