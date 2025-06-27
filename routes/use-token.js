@@ -12,18 +12,21 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, message: '필수 값 누락' });
     }
 
-    const user = await User.findOne({ nickname });
+    const user = await User.findOne({ kakaoId: nickname }); // nickname을 kakaoId로 사용
 
     if (!user) {
       return res.status(404).json({ success: false, message: '유저 없음' });
     }
 
-    if ((user.orcx || 0) < amount) {
+    user.orcx = user.orcx || 0;
+    user.seedPotato = user.seedPotato || 0;
+
+    if (user.orcx < amount) {
       return res.status(400).json({ success: false, message: '토큰 부족' });
     }
 
     user.orcx -= amount;
-    user.seedPotato = (user.seedPotato || 0) + 1; // seedPotato가 없을 경우도 대비
+    user.seedPotato += 1;
 
     await user.save();
 
