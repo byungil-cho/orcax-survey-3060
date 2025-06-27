@@ -1,3 +1,4 @@
+
 // ✅ 완전 수정된 server.js - 감자밭 에러 제거 버전
 
 const express = require("express");
@@ -11,7 +12,7 @@ const port = 3060;
 
 // ✅ 라우터들 require (정상 라우터 객체들)
 const registerRoute = require("./routes/register");
-const farmRoutes = require("./api/farm");
+// const farmRoutes = require("./api/farm"); // ❌ 제거됨
 const useTokenRoute = require("./routes/use-token");
 
 // ✅ 모델 통일
@@ -24,7 +25,7 @@ app.use(express.json());
 // ✅ 라우터 연결
 app.use("/api/use-token", useTokenRoute);
 app.use("/api", registerRoute);
-app.use("/api/farm", farmRoutes);
+// app.use("/api/farm", farmRoutes); // ❌ 제거됨
 
 // ✅ MongoDB 연결
 mongoose
@@ -118,4 +119,3 @@ app.get("/api/userdata", async (req, res) => {
 app.listen(port, () => {
   console.log(`🚀 서버 실행 중: http://localhost:${port}`);
 });
-
