@@ -105,6 +105,34 @@ app.get("/api/user/me", authMiddleware, async (req, res) => {
     res.status(500).json({ success: false, message: "유저 조회 실패" });
   }
 });
+app.post("/api/use-token", async (req, res) => {
+  const { nickname, amount } = req.body;
+
+  if (!nickname || !amount) {
+    return res.status(400).json({ success: false, message: "필수 값 누락" });
+  }
+
+  try {
+    const user = await User.findOne({ nickname });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "사용자 없음" });
+    }
+
+    if (user.orcx < amount) {
+      return res.status(400).json({ success: false, message: "토큰 부족" });
+    }
+
+    // 토큰 차감
+    user.orcx -= amount;
+    await user.save();
+
+    return res.json({ success: true, message: "토큰 차감 성공", orcx: user.orcx });
+  } catch (error) {
+    console.error("서버 오류:", error);
+    return res.status(500).json({ success: false, message: "서버 오류" });
+  }
+});
 
 // ✅ 디버깅용 유저 리스트
 app.get("/api/userdata", async (req, res) => {
