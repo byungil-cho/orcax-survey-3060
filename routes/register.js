@@ -1,21 +1,23 @@
-
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 
-// 최초 로그인 시 자동 지급 로직 (User.js 새 구조 기반)
+// 루트 테스트용 기본 핸들러
+router.get('/', (req, res) => {
+  res.send('✅ register 라우터 정상 연결됨');
+});
+
+// 최초 로그인 시 자동 지급
 router.post('/register', async (req, res) => {
   const { nickname } = req.body;
 
   try {
-    // 기존 유저 존재 여부 확인
     const existingUser = await User.findOne({ nickname });
 
     if (existingUser) {
       return res.status(200).json({ message: '이미 등록된 유저입니다.', user: existingUser });
     }
 
-    // 신규 유저라면 초기 자산 지급
     const newUser = new User({
       nickname,
       자원: {
