@@ -9,7 +9,7 @@ require("dotenv").config();
 const app = express();
 const port = 3060;
 
-// ✅ 라우터들 require (모두 제대로 export되어야 함)
+// ✅ 라우터들 require (정상 라우터 객체들)
 const registerRoute = require("./routes/register");
 const farmRoutes = require("./api/farm");
 const useTokenRoute = require("./routes/use-token");
@@ -21,7 +21,7 @@ const User = require("./models/User");
 app.use(cors());
 app.use(express.json());
 
-// ✅ 라우터 연결 (중복 제거됨)
+// ✅ 라우터 연결
 app.use("/api/use-token", useTokenRoute);
 app.use("/api", registerRoute);
 app.use("/api/farm", farmRoutes);
@@ -118,3 +118,4 @@ app.get("/api/userdata", async (req, res) => {
 app.listen(port, () => {
   console.log(`🚀 서버 실행 중: http://localhost:${port}`);
 });
+
