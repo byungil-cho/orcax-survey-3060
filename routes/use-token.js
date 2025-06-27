@@ -2,6 +2,13 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
+console.log("⚙️ use-token router loaded");
+
+router.post("/", async (req, res) => {
+  console.log("🐾 POST /api/use-token endpoint 호출됨, body:", req.body);
+  ...
+});
+
 
 // POST /api/use-token
 router.post('/', async (req, res) => {
