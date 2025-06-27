@@ -79,7 +79,3 @@ function updateSeedDisplay() {
   const el = document.getElementById("seedCountDisplay");
   if (el) el.textContent = `씨감자: ${count}개`;
 }
-// 로딩 시 표시
-document.addEventListener("DOMContentLoaded", () => {
-  updateSeedDisplay();
-});
