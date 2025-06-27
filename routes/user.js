@@ -1,21 +1,28 @@
-const express = require('express');
-const router = express.Router();
-const User = require('../models/User');
-
-// ✅ 닉네임 기준 유저 데이터 조회
-router.get('/userdata', async (req, res) => {
-  const nickname = req.query.nickname;
-  if (!nickname) return res.status(400).json({ error: 'nickname 필요' });
-
+// [POST] /api/init-user
+router.post("/init-user", async (req, res) => {
+  const { nickname } = req.body;
   try {
-    const user = await User.findOne({ nickname });
-    if (!user) return res.status(404).json({ error: '유저 없음' });
+    const existing = await User.findOne({ nickname });
+    if (existing) {
+      return res.json({ message: "이미 존재하는 유저" });
+    }
 
-    res.json({ users: [user] });
-  } catch (error) {
-    console.error('유저 조회 오류:', error);
-    res.status(500).json({ error: '서버 오류' });
+    const newUser = new User({
+      nickname,
+      orcx: 10,              // ✅ ORCX 지급
+      water: 10,             // ✅ 물 지급
+      fertilizer: 10,        // ✅ 거름 지급
+      seedPotato: 0,         // ❌ 씨감자 없음
+      seedBarley: 0,         // ❌ 씨보리 없음
+      inventory: [],
+      potatoCount: 0,
+      harvestCount: 0,
+    });
+
+    await newUser.save();
+    return res.json({ success: true, message: "신규 유저 등록 완료" });
+  } catch (err) {
+    console.error("init-user 오류:", err);
+    return res.status(500).json({ success: false, message: "서버 오류" });
   }
 });
-
-module.exports = router;
