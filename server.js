@@ -1,32 +1,41 @@
+// ✅ 완전 수정된 server.js - 감자밭 에러 제거 버전
+
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
-require('dotenv').config();
+require("dotenv").config();
 
 const app = express();
 const port = 3060;
 
-const registerRoute = require('./routes/register');
+// ✅ 라우터들 require (모두 제대로 export되어야 함)
+const registerRoute = require("./routes/register");
 const farmRoutes = require("./api/farm");
-const useTokenRoute = require('./routes/use-token');
-const User = require('./models/User'); // ✅ 여기로 통일
+const useTokenRoute = require("./routes/use-token");
 
+// ✅ 모델 통일
+const User = require("./models/User");
+
+// ✅ 미들웨어
 app.use(cors());
 app.use(express.json());
 
-app.use('/api/use-token', useTokenRoute);
-app.use('/api', registerRoute);
+// ✅ 라우터 연결 (중복 제거됨)
+app.use("/api/use-token", useTokenRoute);
+app.use("/api", registerRoute);
 app.use("/api/farm", farmRoutes);
 
-mongoose.connect(process.env.MONGODB_URL, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => console.log("✅ MongoDB 연결 성공!"))
-.catch((err) => console.error("❌ MongoDB 연결 실패:", err));
+// ✅ MongoDB 연결
+mongoose
+  .connect(process.env.MONGODB_URL, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => console.log("✅ MongoDB 연결 성공!"))
+  .catch((err) => console.error("❌ MongoDB 연결 실패:", err));
 
-// JWT 인증 미들웨어
+// ✅ JWT 인증 미들웨어
 function authMiddleware(req, res, next) {
   const authHeader = req.headers["authorization"];
   const token = authHeader?.split(" ")[1];
@@ -44,12 +53,12 @@ function authMiddleware(req, res, next) {
   }
 }
 
-// 상태 확인
+// ✅ 상태 확인
 app.get("/", (req, res) => {
   res.send("✅ OrcaX 감자 서버 작동 중!");
 });
 
-// 로그인 및 초기화
+// ✅ 로그인 및 최초 자원 지급
 app.post("/api/login", async (req, res) => {
   const { nickname, kakaoId } = req.body;
 
@@ -68,32 +77,35 @@ app.post("/api/login", async (req, res) => {
         growthPoint: 0,
         potatoCount: 0,
         harvestCount: 0,
-        farmingCount: 0
+        farmingCount: 0,
       });
       await user.save();
     }
 
-    const accessToken = jwt.sign({ userId: kakaoId }, "SECRET_KEY", { expiresIn: "1h" });
+    const accessToken = jwt.sign({ userId: kakaoId }, "SECRET_KEY", {
+      expiresIn: "1h",
+    });
 
     return res.json({ success: true, accessToken });
   } catch (error) {
     console.error("❌ 로그인 에러:", error);
-    return res.status(500).json({ success: false, message: '서버 오류' });
+    return res.status(500).json({ success: false, message: "서버 오류" });
   }
 });
 
-// 로그인된 유저 정보
+// ✅ 유저 정보
 app.get("/api/user/me", authMiddleware, async (req, res) => {
   try {
     const user = await User.findOne({ kakaoId: req.userId });
-    if (!user) return res.status(404).json({ success: false, message: "유저 없음" });
+    if (!user)
+      return res.status(404).json({ success: false, message: "유저 없음" });
     res.json({ success: true, user });
   } catch (err) {
     res.status(500).json({ success: false, message: "유저 조회 실패" });
   }
 });
 
-// 전체 유저 리스트 (디버깅용)
+// ✅ 디버깅용 유저 리스트
 app.get("/api/userdata", async (req, res) => {
   try {
     const users = await User.find();
