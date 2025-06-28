@@ -1,3 +1,4 @@
+
 require('dotenv').config();
 const express    = require('express');
 const mongoose   = require('mongoose');
@@ -34,7 +35,8 @@ app.use('/api/use-token', require('./routes/use-token.js')); // ✅ 경로 정�
 
 // api 폴더 내 엔드포인트
 app.use('/api/purchase',  require('./api/purchase.js'));
-app.use('/api/farm',      require('./api/farm.js'));
+app.use('/api/auth', require('./api/auth.js'));
+// app.use('/api/farm',      require('./api/farm.js')); 제거됨
 app.use('/api/exchange',  require('./api/exchange.js'));
 
 // ─────────── MongoDB 연결 ───────────
