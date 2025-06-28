@@ -30,9 +30,7 @@ app.use(session({
 app.use('/api/login',     require('./routes/login.js'));
 app.use('/api/register',  require('./routes/register.js'));
 app.use('/api/userdata',  require('./routes/userdata.js'));
-
-// ❗ use-token 경로 수정됨
-app.use('/api/use-token', require('./api/use-token.js'));
+app.use('/api/use-token', require('./routes/use-token.js')); // ✅ 경로 정확히 맞춤
 
 // api 폴더 내 엔드포인트
 app.use('/api/purchase',  require('./api/purchase.js'));
