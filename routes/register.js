@@ -9,16 +9,17 @@ router.get('/', (req, res) => {
 
 // 최초 로그인 시 자동 지급
 router.post('/register', async (req, res) => {
-  const { nickname } = req.body;
+  const { kakaoId, nickname } = req.body;
 
   try {
-    const existingUser = await User.findOne({ nickname });
+    const existingUser = await User.findOne({ kakaoId });
 
     if (existingUser) {
       return res.status(200).json({ message: '이미 등록된 유저입니다.', user: existingUser });
     }
 
     const newUser = new User({
+      kakaoId,
       nickname,
       자원: {
         물: 10,
