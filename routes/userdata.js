@@ -3,11 +3,11 @@ const express = require('express');
 const router  = express.Router();
 const User    = require('../models/User');
 
-router.get('/userdata', async (req, res) => {
-  const { nickname } = req.query;
+router.get('/', async (req, res) => {
+  const { kakaoId } = req.query;
   if (!nickname) return res.status(400).json({ success:false });
 
-  const user = await User.findOne({ nickname })
+  const user = await User.findOne({ kakaoId })
     .select('orcx seedPotato seedBarley water fertilizer');
   if (!user) return res.status(404).json({ success:false });
 
