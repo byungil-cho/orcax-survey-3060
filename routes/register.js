@@ -1,3 +1,4 @@
+
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
@@ -18,23 +19,19 @@ router.post('/register', async (req, res) => {
       return res.status(200).json({ message: '이미 등록된 유저입니다.', user: existingUser });
     }
 
+    // 기본 지급 자원
     const newUser = new User({
       kakaoId,
       nickname,
-      자원: {
-        물: 10,
-        거름: 10
-      },
-      토큰: {
-        오크: 5
-      },
-      씨앗: [
-        '씨감자 2개',
-        '씨보리 2개'
-      ],
-      목록: [],
-      감자_개수: 0,
-      보리_개수: 0
+      orcx: 10,
+      water: 10,
+      fertilizer: 10,
+      seedPotato: 2,
+      seedBarley: 2,
+      potato: 0,
+      inventory: [],
+      plantedFields: [],
+      lastUpdated: null
     });
 
     await newUser.save();
