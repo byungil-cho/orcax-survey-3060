@@ -23,14 +23,21 @@ app.use(session({
 }));
 
 // ─────────── 라우터 등록 ───────────
-app.use('/api/login',    require('./routes/login'));      // POST /api/login
-app.use('/api/register', require('./routes/register'));   // POST /api/register
-app.use('/api/userdata', require('./routes/userdata'));   // GET  /api/userdata
-app.use('/api/use-token',require('./routes/use-token'));  // POST /api/use-token
-app.use('/api/purchase', require('./api/purchase'));       // POST /api/purchase (api 폴더)
-app.use('/api/farm',     require('./api/farm'));           // GET/POST farm 로직
-app.use('/api/exchange', require('./api/exchange'));       // POST exchange
-// 필요한 다른 api/*.js 파일도 이와 같이 등록
+// routes 폴더 내 파일
+app.use('/api/login',     require('./routes/login.js'));      // 파일 경로: <project-root>/routes/login.js
+app.use('/api/register',  require('./routes/register.js'));   // 파일 경로: <project-root>/routes/register.js
+app.use('/api/userdata',  require('./routes/userdata.js'));   // 파일 경로: <project-root>/routes/userdata.js
+app.use('/api/use-token', require('./routes/use-token.js'));  // 파일 경로: <project-root>/routes/use-token.js
+
+// api 폴더 내 파일
+app.use('/api/purchase',  require('./api/purchase.js'));      // 파일 경로: <project-root>/api/purchase.js
+app.use('/api/farm',      require('./api/farm.js'));          // 파일 경로: <project-root>/api/farm.js
+app.use('/api/exchange',  require('./api/exchange.js'));      // 파일 경로: <project-root>/api/exchange.js
+// 필요 시 다른 api/*.js 파일도 동일하게 등록
+app.use('/api/purchase',  require('./api/purchase'));
+app.use('/api/farm',      require('./api/farm'));
+app.use('/api/exchange',  require('./api/exchange'));
+// 필요 시 다른 api/*.js도 동일하게 등록
 
 // ─────────── MongoDB 연결 ───────────
 mongoose.connect(process.env.MONGODB_URL, {
