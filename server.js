@@ -14,7 +14,9 @@ app.use(cors({
   credentials: true
 }));
 
+// 요청 본문 JSON 파싱
 app.use(express.json());
+// 세션 설정
 app.use(session({
   secret: process.env.SESSION_SECRET || '비밀키',
   resave: false,
@@ -24,23 +26,23 @@ app.use(session({
 
 // ─────────── 라우터 등록 ───────────
 // routes 폴더 내 엔드포인트
-app.use('/api/login',     require('./routes/login.js'));
-app.use('/api/register',  require('./routes/register.js'));
-app.use('/api/userdata',  require('./routes/userdata.js'));
-app.use('/api/use-token', require('./routes/use-token.js'));
+app.use('/api/login',     require('./routes/login.js'));      // routes/login.js
+app.use('/api/register',  require('./routes/register.js'));   // routes/register.js
+app.use('/api/userdata',  require('./routes/userdata.js'));   // routes/userdata.js
+app.use('/api/use-token', require('./routes/use-token.js'));  // routes/use-token.js
 
 // api 폴더 내 엔드포인트
-app.use('/api/purchase',  require('./api/purchase.js'));      // <project-root>/api/purchase.js
-app.use('/api/farm',      require('./api/farm.js'));          // <project-root>/api/farm.js
-app.use('/api/exchange',  require('./api/exchange.js'));      // <project-root>/api/exchange.js
+app.use('/api/purchase',  require('./api/purchase.js'));      // api/purchase.js
+app.use('/api/farm',      require('./api/farm.js'));          // api/farm.js
+app.use('/api/exchange',  require('./api/exchange.js'));      // api/exchange.js
 
 // ─────────── MongoDB 연결 ───────────
 mongoose.connect(process.env.MONGODB_URL, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
-.then(() => console.log('✅ MongoDB 연결 성공!'))
-.catch(err => console.error('❌ MongoDB 연결 실패:', err));
+  .then(() => console.log('✅ MongoDB 연결 성공!'))
+  .catch(err => console.error('❌ MongoDB 연결 실패:', err));
 
 // ─────────── 정적 파일 서빙 ───────────
 app.use(express.static(path.join(__dirname, 'public')));
