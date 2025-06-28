@@ -1,19 +1,47 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema({
   kakaoId: {
     type: String,
     required: true,
-    unique: true         // ✅ 중복 불가
+    unique: true,
   },
-  nickname: String,       // 표시용, optional
-  orcx: { type: Number, default: 10 },
-  water: { type: Number, default: 10 },
-  fertilizer: { type: Number, default: 10 },
-  seedPotato: { type: Number, default: 2 },
-  seedBarley: { type: Number, default: 2 },
-  potato: { type: Number, default: 0 },
-  inventory: { type: Array, default: [] }
+  nickname: {
+    type: String,
+    required: true,
+  },
+  orcx: {
+    type: Number,
+    default: 0,
+  },
+  water: {
+    type: Number,
+    default: 0,
+  },
+  fertilizer: {
+    type: Number,
+    default: 0,
+  },
+  seedPotato: {
+    type: Number,
+    default: 0,
+  },
+  seedBarley: {
+    type: Number,
+    default: 0,
+  },
+  potato: {
+    type: Number,
+    default: 0,
+  },
+  plantedFields: {
+    type: [Object],
+    default: [],
+  },
+  lastUpdated: {
+    type: Date,
+    default: null,
+  }
 });
 
-module.exports = mongoose.model('User', userSchema);
+module.exports = mongoose.model("User", userSchema);
