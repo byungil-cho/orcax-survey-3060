@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User'); // 있던 코드 유지
+const User = require('../models/User');
 
 router.post('/', async (req, res) => {
   const { nickname, amount, item } = req.body;
