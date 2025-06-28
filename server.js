@@ -16,6 +16,7 @@ app.use(cors({
 
 // 요청 본문 JSON 파싱
 app.use(express.json());
+
 // 세션 설정
 app.use(session({
   secret: process.env.SESSION_SECRET || '비밀키',
@@ -26,18 +27,17 @@ app.use(session({
 
 // ─────────── 라우터 등록 ───────────
 // routes 폴더 내 엔드포인트
-app.use('/api/login',     require('./routes/login.js'));      // routes/login.js
-app.use('/api/register',  require('./routes/register.js'));   // routes/register.js
-app.use('/api/userdata',  require('./routes/userdata.js'));   // routes/userdata.js
-app.use('/api/use-token', require('./routes/use-token.js'));  // routes/use-token.js
+app.use('/api/login',     require('./routes/login.js'));
+app.use('/api/register',  require('./routes/register.js'));
+app.use('/api/userdata',  require('./routes/userdata.js'));
+
+// ❗ use-token 경로 수정됨
+app.use('/api/use-token', require('./api/use-token.js'));
 
 // api 폴더 내 엔드포인트
-app.use('/api/purchase',  require('./api/purchase.js'));      // api/purchase.js
-app.use('/api/farm',      require('./api/farm.js'));          // api/farm.js
-app.use('/api/exchange',  require('./api/exchange.js'));      // api/exchange.js
-app.use('/api/purchase',  require('./api/purchase.js'));      // api/purchase.js
-app.use('/api/farm',      require('./api/farm.js'));          // api/farm.js
-app.use('/api/exchange',  require('./api/exchange.js'));      // api/exchange.js
+app.use('/api/purchase',  require('./api/purchase.js'));
+app.use('/api/farm',      require('./api/farm.js'));
+app.use('/api/exchange',  require('./api/exchange.js'));
 
 // ─────────── MongoDB 연결 ───────────
 mongoose.connect(process.env.MONGODB_URL, {
