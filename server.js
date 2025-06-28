@@ -35,6 +35,9 @@ app.use('/api/use-token', require('./routes/use-token.js'));  // routes/use-toke
 app.use('/api/purchase',  require('./api/purchase.js'));      // api/purchase.js
 app.use('/api/farm',      require('./api/farm.js'));          // api/farm.js
 app.use('/api/exchange',  require('./api/exchange.js'));      // api/exchange.js
+app.use('/api/purchase',  require('./api/purchase.js'));      // api/purchase.js
+app.use('/api/farm',      require('./api/farm.js'));          // api/farm.js
+app.use('/api/exchange',  require('./api/exchange.js'));      // api/exchange.js
 
 // ─────────── MongoDB 연결 ───────────
 mongoose.connect(process.env.MONGODB_URL, {
