@@ -5,6 +5,7 @@ const User = require('../models/User');
 // 🔐 로그인 (카카오ID 기반)
 router.post('/login', async (req, res) => {
   const { kakaoId, nickname } = req.body;
+  // ✅ kakaoId는 필수 로그인 기준
   if (!kakaoId) return res.status(400).json({ error: '카카오 ID 없음' });
 
   let user = await User.findOne({ kakaoId });
@@ -14,6 +15,8 @@ router.post('/login', async (req, res) => {
       kakaoId,
       nickname,
       orcx: 10,
+      potato: 0,
+      inventory: [],
       water: 10,
       fertilizer: 10,
       seedPotato: 2,
