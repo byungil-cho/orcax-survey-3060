@@ -1,3 +1,7 @@
+const express = require('express');
+const router = express.Router();
+const User = require('../models/User'); // 있던 코드 유지
+
 router.post('/', async (req, res) => {
   const { nickname, amount, item } = req.body;
   if (!nickname || !amount || !item) {
@@ -17,3 +21,5 @@ router.post('/', async (req, res) => {
     return res.status(500).json({ success: false, message: '서버 에러' });
   }
 });
+
+module.exports = router;
