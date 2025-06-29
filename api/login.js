@@ -1,10 +1,13 @@
-app.post("/api/login", async (req, res) => {
+const express = require('express');
+const router  = express.Router();
+const User    = require('../models/User');
+const jwt     = require('jsonwebtoken');
+
+router.post('/', async (req, res) => {
   const { nickname, userId } = req.body;
-  
-  // 1. 기존 유저 있는지 확인
+
   let user = await User.findOne({ userId });
 
-  // 2. 없으면 새로 등록
   if (!user) {
     user = new User({
       userId,
@@ -21,8 +24,9 @@ app.post("/api/login", async (req, res) => {
     await user.save();
   }
 
-  // 3. JWT 발급
   const accessToken = jwt.sign({ userId }, "SECRET_KEY", { expiresIn: "1h" });
 
   res.json({ success: true, accessToken });
 });
+
+module.exports = router;
