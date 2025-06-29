@@ -31,7 +31,8 @@ app.use(session({
 }));
 
 // ─── 라우터 연결 ─────────────────────────
-app.use('/api/login',    require('./routes/login'));
+// 🔧 여기를 수정했다. routes → api로 바꿈
+app.use('/api/login',    require('./api/login'));
 app.use('/api/userdata', require('./routes/userdata'));
 // 필요 시 다른 API도 여기에 마운트
 
