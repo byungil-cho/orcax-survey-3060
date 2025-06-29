@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🥔 감자 농장 - Potato Farm</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Do Hyeon', sans-serif;
+      height: 100%;
+    }
+    body {
+      background: url('https://byungil-cho.github.io/OrcaX/farm-101.png') no-repeat center top fixed;
+      background-size: cover;
+      overflow: auto;
+    }
+    .scroll-area {
+      width: 100%;
+      max-width: 500px;
+      margin: 0 auto;
+      padding-bottom: 3rem;
+      box-sizing: border-box;
+    }
+    header {
+      padding: 1rem;
+      font-size: 2rem;
+      color: #ffffff;
+      text-shadow: 1px 1px 2px #000;
+      text-align: center;
+    }
+    .nickname, .info-bar {
+      margin-top: 0.5rem;
+      font-size: 1.1rem;
+      color: #ffffff;
+      text-shadow: 1px 1px 2px #000;
+      text-align: center;
+    }
+    .info-bar { font-size: 0.95rem; }
+    .potato-field, .storage-section, .product-section, .nav-buttons {
+      margin: 1rem;
+      padding: 1rem;
+      background: rgba(255,255,255,0.8);
+      border-radius: 1rem;
+    }
+    .potato-btns button {
+      margin: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 0.75rem;
+      background: #a5d6a7;
+      cursor: pointer;
+    }
+    .storage-section ul, .product-section ul {
+      list-style: none;
+      padding: 0;
+    }
+    .storage-section li, .product-section li {
+      margin-bottom: 0.5rem;
+      font-weight: bold;
+    }
+    .nav-buttons a {
+      display: inline-block;
+      margin: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      background: #4caf50;
+      color: white;
+      text-decoration: none;
+      border-radius: 0.5rem;
+    }
+    .server-status {
+      text-align: center;
+      margin-top: 1rem;
+      font-weight: bold;
+      color: #fff700;
+    }
+  </style>
+</head>
+<body>
+  <div class="scroll-area">
+    <header>감자 농장</header>
+    <div class="nickname">농장주: <span id="nickname">로딩 중...</span></div>
+    <div class="info-bar">농장이름: <span id="farmName">로딩 중...</span></div>
+    <div class="server-status" id="serverStatus">🔌 서버 상태 확인 중...</div>
+
+    <div class="potato-field">
+      <h2>🌾 농사 목록</h2>
+      <div class="potato-btns">
+        <button onclick="startFarming()">🥔 수확하기</button>
+        <button onclick="applyWater()">💧 물 주기</button>
+        <button onclick="applyFertilizer()">🌿 거름 주기</button>
+      </div>
+    </div>
+
+    <div class="storage-section">
+      <h2>📦 자재 보관함</h2>
+      <ul id="storage-list"></ul>
+    </div>
+
+    <div class="product-section">
+      <h2>🍟 농산물 보관함</h2>
+      <ul id="product-list"></ul>
+    </div>
+
+    <div class="nav-buttons">
+      <a href="gamja-result.html">감자 가공공장</a>
+      <a href="gamja-main.html">복귀</a>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = "https://climbing-wholly-grouper.jp.ngrok.io";
+
+    async function fetchUserData() {
+      try {
+        const nicknameRaw = localStorage.getItem("nickname") || " ";
+        const farmName = localStorage.getItem("farmName") || "농장주";
+        document.getElementById("nickname").textContent = nicknameRaw;
+        document.getElementById("farmName").textContent = farmName;
+
+        const encodedNickname = encodeURIComponent(nicknameRaw);
+        const res = await fetch(`${API_BASE}/api/userdata?nickname=${encodedNickname}`);
+        const data = await res.json();
+        const user = data.users[0];
+        const growthPoint = user.growthPoint || 0;
+        const growthInfo = document.createElement("div");
+        growthInfo.style.textAlign = "center";
+        growthInfo.style.marginTop = "0.5rem";
+        growthInfo.style.fontWeight = "bold";
+        growthInfo.innerText = `🌱 성장 포인트: ${growthPoint}`;
+        document.querySelector(".potato-field").appendChild(growthInfo);
+
+        const storageList = document.getElementById("storage-list");
+        storageList.innerHTML = "";
+        const 자재들 = [
+          { label: "씨감자", value: user.seedPotato },
+          { label: "씨보리", value: user.seedBarley },
+          { label: "물", value: user.water },
+          { label: "거름", value: user.fertilizer },
+          { label: "ORCX", value: user.orcx }
+        ];
+        자재들.forEach(item => {
+          const li = document.createElement("li");
+          li.textContent = `${item.label}: ${item.value}`;
+          storageList.appendChild(li);
+        });
+
+        const productList = document.getElementById("product-list");
+        productList.innerHTML = "";
+        user.inventory.forEach(item => {
+          const type = item.type || item.name || "정의되지 않음";
+          const li = document.createElement("li");
+          li.textContent = `${type}: ${item.count}`;
+          productList.appendChild(li);
+        });
+      } catch (err) {
+        console.error(err);
+        alert("❌ 유저 정보 로딩 실패");
+      }
+    }
+
+    async function startFarming() {
+      try {
+        const nickname = localStorage.getItem("nickname") || " ";
+        const encodedNickname = encodeURIComponent(nickname);
+        const resUser = await fetch(`${API_BASE}/api/userdata?nickname=${encodedNickname}`);
+        const userData = await resUser.json();
+        const user = userData.users[0];
+        const growthPoint = user.growthPoint || 0;
+        const seedPotato = user.seedPotato || 0;
+
+        if (growthPoint < 5) {
+          alert("❌ 성장 포인트가 5 이상이어야 수확할 수 있습니다.");
+          return;
+        }
+
+        if (seedPotato < 1) {
+          alert("❌ 씨감자가 부족하여 농사를 지을 수 없습니다.");
+          return;
+        }
+
+        const harvestCount = [3, 5, 7][Math.floor(Math.random() * 3)];
+        const res = await fetch(`${API_BASE}/api/farm/harvest`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nickname: encodedNickname, amount: harvestCount })
+        });
+        const result = await res.json();
+        alert(`🥔 감자 ${harvestCount}개 수확 완료!`);
+        fetchUserData();
+      } catch (err) {
+        console.error(err);
+        alert("❌ 수확 실패");
+      }
+    }
+
+    async function applyWater() {
+      try {
+        const nickname = localStorage.getItem("nickname") || " ";
+        const encodedNickname = encodeURIComponent(nickname);
+
+        const res = await fetch(`${API_BASE}/api/farm/grow`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nickname: encodedNickname, cropType: "gamja" })
+        });
+
+        const result = await res.json();
+        if (result.success) {
+          alert("💧 물과 거름을 주었습니다. 성장 포인트 +1!");
+          fetchUserData();
+        } else {
+          alert("❌ 물주기 실패: " + result.error);
+        }
+      } catch (err) {
+        console.error(err);
+        alert("❌ 물 주기 중 오류 발생");
+      }
+    }
+
+    async function applyFertilizer() {
+      try {
+        const nickname = localStorage.getItem("nickname") || " ";
+        const encodedNickname = encodeURIComponent(nickname);
+
+        const res = await fetch(`${API_BASE}/api/farm/grow`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nickname: encodedNickname, cropType: "gamja" })
+        });
+
+        const result = await res.json();
+        if (result.success) {
+          alert("🌿 거름과 물을 주었습니다. 성장 포인트 +1!");
+          fetchUserData();
+        } else {
+          alert("❌ 거름 주기 실패: " + result.error);
+        }
+      } catch (err) {
+        console.error(err);
+        alert("❌ 거름 주기 중 오류 발생");
+      }
+    }
+
+    async function checkServerStatus() {
+      try {
+        const res = await fetch(`${API_BASE}/`);
+        if (res.ok) {
+          document.getElementById("serverStatus").textContent = "✅ 서버 전원 ON";
+        } else {
+          throw new Error();
+        }
+      } catch {
+        document.getElementById("serverStatus").textContent = "❌ 서버 연결 실패";
+      }
+    }
+
+    checkServerStatus();
+    fetchUserData();
+  </script>
+</body>
+</html>

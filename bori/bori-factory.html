@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🌾 보리 농장</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Do Hyeon', sans-serif;
+      background: url('https://byungil-cho.github.io/OrcaX/farm-201.png') no-repeat center top fixed;
+      background-size: cover;
+      color: #3e2723;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    .scroll-area {
+      width: 100%;
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 1rem 0;
+    }
+    header {
+      padding: 1rem;
+      font-size: 2rem;
+      color: #ffffff;
+      text-shadow: 1px 1px 2px #000;
+      text-align: center;
+    }
+    .nickname, .info-bar {
+      margin-top: 0.5rem;
+      font-size: 1.1rem;
+      color: #ffffff;
+      text-shadow: 1px 1px 2px #000;
+      text-align: center;
+    }
+    .info-bar {
+      font-size: 0.95rem;
+    }
+    .barley-field, .storage-section, .nav-buttons {
+      margin-top: 2rem;
+      text-align: center;
+    }
+    .status {
+      font-size: 1.2rem;
+      margin-top: 1rem;
+      color: #fff;
+      text-shadow: 1px 1px 2px #000;
+    }
+    .grow-buttons {
+      margin-top: 1.5rem;
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .grow-buttons button, #harvest-btn {
+      padding: 0.75rem 1.25rem;
+      background-color: rgba(255,255,255,0.8);
+      color: #1b5e20;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 0 6px rgba(0,0,0,0.3);
+    }
+    .storage-section > div {
+      margin: 0.5rem auto;
+      padding: 0.75rem;
+      background-color: rgba(255, 255, 255, 0.85);
+      border-radius: 10px;
+      width: 80%;
+      color: #3e2723;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+    .nav-buttons {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .nav-buttons a {
+      background-color: rgba(255, 255, 255, 0.85);
+      padding: 0.5rem 1rem;
+      border-radius: 10px;
+      text-decoration: none;
+      color: #3e2723;
+      font-weight: bold;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+  </style>
+</head>
+<body>
+  <div class="scroll-area">
+    <header>🌾 보리 농장 - Barley Farm</header>
+
+    <div class="nickname">👤 농장주: <span id="nickname">-</span></div>
+    <div class="info-bar">
+      🌐 전원 상태: <span id="power-status">확인 중...</span> |
+      🌾 농장이름: <span id="farm-name">-</span> |
+      💰 토큰: <span id="token">-</span>
+    </div>
+
+    <div class="barley-field">
+      🌱 보리가 자라고 있습니다...
+      <div class="status">성장 포인트: <span id="growth">0</span></div>
+      <div class="grow-buttons">
+        <button onclick="applyWater()">💧 물 주기</button>
+        <button onclick="applyFertilizer()">💩 거름 주기</button>
+      </div>
+      <div id="harvest-container" style="margin-top: 1.5rem;"></div>
+    </div>
+
+    <div class="storage-section">
+      <div><strong>📦 자재 보관함</strong><br><div id="materials">-</div></div>
+      <div><strong>🛒 제품 보관함</strong><br><div id="products">-</div></div>
+    </div>
+
+    <div class="nav-buttons">
+      <a href="gamja-result.html">감자 보리 가공공장</a>
+      <a href="gamja-shop.html">씨감자 씨보리 구매</a>
+      <a href="orcax-farm_000.html">메인 페이지</a>
+    </div>
+  </div>
+
+  <script>
+    const nickname = localStorage.getItem("nickname") || "익명농부";
+    const farmName = localStorage.getItem("farmName") || "보리농장";
+    const token = localStorage.getItem("token") || 0;
+    const materials = localStorage.getItem("materials") || "자재 없음";
+    const products = localStorage.getItem("products") || "제품 없음";
+    let growth = parseInt(localStorage.getItem("growth") || 0);
+    let barley = parseInt(localStorage.getItem("보리") || 0);
+
+    document.getElementById("nickname").textContent = nickname;
+    document.getElementById("farm-name").textContent = farmName;
+    document.getElementById("token").textContent = token;
+    document.getElementById("growth").textContent = growth;
+    document.getElementById("power-status").textContent = "전기 공급중입니다.";
+    document.getElementById("materials").textContent = materials;
+    document.getElementById("products").textContent = products;
+
+    function applyWater() {
+      growth += 1;
+      updateGrowth();
+    }
+
+    function applyFertilizer() {
+      growth += 1;
+      updateGrowth();
+    }
+
+    function updateGrowth() {
+      localStorage.setItem("growth", growth);
+      document.getElementById("growth").textContent = growth;
+      if (growth >= 4 && !document.getElementById("harvest-btn")) {
+        const btn = document.createElement("button");
+        btn.textContent = "🌾 수확하기";
+        btn.id = "harvest-btn";
+        btn.onclick = function() {
+          const yieldAmount = [3, 5, 6][Math.floor(Math.random() * 3)];
+          barley += yieldAmount;
+          localStorage.setItem("보리", barley);
+          alert(`🎉 보리 ${yieldAmount}말을 수확했습니다!`);
+          growth = 0;
+          localStorage.setItem("growth", growth);
+          document.getElementById("growth").textContent = growth;
+          document.getElementById("harvest-container").innerHTML = "";
+        };
+        document.getElementById("harvest-container").appendChild(btn);
+      }
+    }
+  </script>
+</body>
+</html>

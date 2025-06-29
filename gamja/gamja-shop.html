@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ㅋㅁㅅ 삼점</title>
+  <style>
+    body {
+      background: url('https://byungil-cho.github.io/OrcaX/farm-101.png') no-repeat center center fixed;
+      background-size: cover;
+      color: white;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 1rem;
+    }
+    .box {
+      background: rgba(0,0,0,0.6);
+      padding: 1rem 2rem;
+      border-radius: 12px;
+      max-width: 800px;
+      margin: auto;
+    }
+    h2 { text-align: center; }
+    label, select, button {
+      display: block;
+      margin: 1rem auto;
+      font-size: 1rem;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      background-color: #4CAF50;
+      border: none;
+      color: white;
+      cursor: pointer;
+    }
+    .status {
+      background: rgba(255,255,255,0.8);
+      color: black;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+    }
+    .links {
+      text-align: center;
+      margin-top: 2rem;
+    }
+    .links a {
+      color: #00e6e6;
+      margin: 0 1rem;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>🌾 씨감자/씨보리 구매소</h2>
+    <div class="status">
+      <p>👤 닉네임: <span id="nickname">-</span></p>
+      <p>🏠 농장이름: <span id="farmName">-</span></p>
+      <p>⚡ 전원 상태: <span id="serverStatus">발견중...</span></p>
+      <p>💲 토큰: <span id="tokens">0</span></p>
+      <p>🌾 씨감자: <span id="potatoSeeds">0</span> / 씨보리: <span id="barleySeeds">0</span></p>
+    </div>
+
+    <label for="item">구매 항목 선택:</label>
+    <select id="item">
+      <option value="씨감자">🌾 씨감자 (5 ORCX)</option>
+      <option value="씨보리">🌾 씨보리 (5 ORCX)</option>
+    </select>
+    <button onclick="buySeed()">구매하기</button>
+    <p id="message"></p>
+
+    <div class="links">
+      <a href="gamja-farm.html">ㅋㅁㅅ농장으로</a>
+      <a href="gamja-exchange.html">자재 교환소</a>
+      <a href="index9.html">메인페이지로</a>
+    </div>
+  </div>
+
+  <script>
+    function updateUserData() {
+      document.getElementById("nickname").textContent = localStorage.getItem("nickname") || "-";
+      document.getElementById("farmName").textContent = localStorage.getItem("farmName") || "-";
+      document.getElementById("tokens").textContent = localStorage.getItem("tokens") || 0;
+      document.getElementById("potatoSeeds").textContent = localStorage.getItem("씨감자") || 0;
+      document.getElementById("barleySeeds").textContent = localStorage.getItem("씨보리") || 0;
+    }
+
+    function checkServer() {
+      fetch("https://climbing-wholly-grouper.jp.ngrok.io/")
+        .then(() => {
+          document.getElementById("serverStatus").textContent = "🟢 연결되었음";
+        })
+        .catch(() => {
+          document.getElementById("serverStatus").textContent = "🔴 거듭";
+        });
+    }
+
+    function buySeed() {
+      const item = document.getElementById("item").value;
+      let tokens = parseInt(localStorage.getItem("tokens") || 0);
+      if (tokens < 5) {
+        document.getElementById("message").textContent = "토큰이 다음";
+        return;
+      }
+      tokens -= 5;
+      localStorage.setItem("tokens", tokens);
+
+      let current = parseInt(localStorage.getItem(item) || 0);
+      localStorage.setItem(item, current + 1);
+      document.getElementById("message").textContent = `${item} 1개 구매 완료!`;
+      updateUserData();
+    }
+
+    updateUserData();
+    checkServer();
+  </script>
+</body>
+</html>

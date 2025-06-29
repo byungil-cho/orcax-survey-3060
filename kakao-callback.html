@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>카카오 로그인 콜백</title>
+</head>
+<body>
+  <script>
+    const code = new URL(window.location.href).searchParams.get("code");
+    if (!code) {
+      alert("인증 코드가 없습니다.");
+    } else {
+      fetch(`https://kauth.kakao.com/oauth/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          client_id: '284b798a9d9be8202f9c2e129fa6f329',
+          redirect_uri: 'https://byungil-cho.github.io/OrcaX/kakao-callback.html',
+          code: code
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        const accessToken = data.access_token;
+        return fetch("https://kapi.kakao.com/v2/user/me", {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        }).then(res => res.json())
+          .then(profile => {
+            const nickname = profile.properties?.nickname;
+            const userId = profile.id;
+            if (!nickname || nickname === "사용자") {
+              alert("닉네임을 불러오지 못했습니다. 다시 로그인 해주세요.");
+              return;
+            }
+            localStorage.setItem("nickname", nickname);
+            localStorage.setItem("userId", userId);
+            localStorage.setItem("accessToken", accessToken);
+            window.location.href = "https://byungil-cho.github.io/OrcaX/index.html";
+          });
+      })
+      .catch(err => {
+        console.error("로그인 오류", err);
+        alert("로그인 중 오류가 발생했습니다.");
+      });
+    }
+  </script>
+</body>
+</html>

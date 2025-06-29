@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>감자 농장 입장</title>
+  <style>
+    body {
+      font-family: "Pretendard", sans-serif;
+      margin: 0;
+      padding: 0;
+      background: url('https://byungil-cho.github.io/OrcaX/farm-101.png') no-repeat center center fixed;
+      background-size: cover;
+      color: white;
+      text-align: center;
+    }
+    .container {
+      background-color: rgba(0, 0, 0, 0.5);
+      margin-top: 5%;
+      padding: 20px;
+      display: inline-block;
+      border-radius: 12px;
+    }
+    .btn {
+      margin-top: 20px;
+      padding: 15px 30px;
+      background-color: #FFD700;
+      color: black;
+      font-size: 1.2rem;
+      font-weight: bold;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    .status {
+      margin-top: 20px;
+      color: #00FF00;
+      font-weight: bold;
+    }
+    .info-box {
+      background-color: #2166d1;
+      padding: 8px;
+      margin: 6px;
+      border-radius: 6px;
+      text-align: left;
+    }
+  </style>
+  <script>
+    'use strict';
+    const API_BASE = "https://climbing-wholly-grouper.jp.ngrok.io";
+  </script>
+</head>
+<body>
+  <div class="container" role="region" aria-label="감자 농장 대시보드">
+    <h1>🥔 감자 농장에 오신 걸 환영합니다!</h1>
+    <div class="info-box">👤 닉네임: <span id="nickname">-</span></div>
+    <div class="info-box">🥔 감자: <span id="potato">0</span> 개</div>
+    <div class="info-box">💧 물: <span id="water">0</span> 개</div>
+    <div class="info-box">🌱 거름: <span id="fertilizer">0</span> 개</div>
+    <div class="info-box">🪙 ORCX: <span id="token">0</span> 개</div>
+    <div class="info-box">🥔 씨감자: <span id="seedPotato">0</span> 개</div>
+    <div class="info-box">🌾 씨보리: <span id="seedBarley">0</span> 개</div>
+    <div class="info-box">🧺 인벤토리:</div>
+    <div id="inventoryBox" class="info-box"></div>
+    <div class="status" id="serverStatus" aria-live="polite">⏳ 서버 상태 확인 중...</div>
+    <button id="startBtn" class="btn" disabled>🌱 농장이름 짓기 이동</button>
+  </div>
+  <script type="module">
+    (async () => {
+      const nicknameValue = localStorage.getItem("nickname");
+      if (!nicknameValue) {
+        alert("로그인이 필요합니다.");
+        window.location.href = 'gamja-login.html';
+        return;
+      }
+      document.getElementById("nickname").textContent = nicknameValue;
+
+      const startBtn = document.getElementById("startBtn");
+      const serverStatus = document.getElementById("serverStatus");
+      const inventoryBox = document.getElementById("inventoryBox");
+      const potatoEl = document.getElementById("potato");
+      const waterEl = document.getElementById("water");
+      const fertilizerEl = document.getElementById("fertilizer");
+      const tokenEl = document.getElementById("token");
+      const seedPotatoEl = document.getElementById("seedPotato");
+      const seedBarleyEl = document.getElementById("seedBarley");
+
+      startBtn.addEventListener("click", () => {
+        window.location.href = "gamja-main.html";
+      });
+
+      async function initUser() {
+        serverStatus.textContent = "유저 초기화 중...";
+        try {
+          await fetch(`${API_BASE}/api/init-user`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            cache: 'no-store',
+            body: JSON.stringify({ nickname: nicknameValue })
+          });
+          await loadUserData();
+        } catch (err) {
+          console.error("Initialization error:", err);
+          serverStatus.textContent = "❌ 초기화 실패: 네트워크를 확인하세요.";
+        }
+      }
+
+      async function loadUserData() {
+        serverStatus.textContent = "데이터 로딩 중...";
+        try {
+          const res = await fetch(
+            `${API_BASE}/api/userdata`,
+            { cache: 'no-store' }
+          );
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+          const data = await res.json();
+          const user = data.user || (Array.isArray(data.users) ? data.users[0] : null);
+          if (!user) throw new Error('유저 데이터를 찾을 수 없습니다.');
+
+          // 기본 자원 및 통계 출력
+          potatoEl.textContent = user.potatoCount ?? user.potato ?? 0;
+          waterEl.textContent = user.water ?? 0;
+          fertilizerEl.textContent = user.fertilizer ?? 0;
+
+          // 최초 카카오 로그인 시 지급 누락 보완:
+          // 첫 로그인 때만 ORCX(토큰) 10개 지급, 이후 0이 되어도 재지급하지 않음
+          const initKey = 'initialTokensGiven';
+          let orcxVal = user.orcx ?? user.token ?? 0;
+          const hasInit = localStorage.getItem(initKey) === 'true';
+          if (orcxVal === 0 && !hasInit) {
+            orcxVal = 10;
+            localStorage.setItem(initKey, 'true');
+          }
+          tokenEl.textContent = orcxVal;
+
+          seedPotatoEl.textContent = user.seedPotato ?? 0;
+          seedBarleyEl.textContent = user.seedBarley ?? 0;
+
+          // 인벤토리 아이템 표시
+          inventoryBox.innerHTML = "";
+          (user.inventory || []).forEach(item => {
+            const count = item.count ?? 1;
+            const name = item.name || item.type || '알 수 없는 아이템';
+            const div = document.createElement("div");
+            div.textContent = `- ${name} (${count}개)`;
+            inventoryBox.appendChild(div);
+          });
+
+          serverStatus.textContent = "✅ 서버 연결 및 데이터 로드 완료";
+          startBtn.disabled = false;
+        } catch (err) {
+          console.error("Data fetch error:", err);
+          serverStatus.textContent = "❌ 서버 연결 실패";
+        }
+      }
+
+      initUser();
+    })();
+  </script>
+</body>
+</html>

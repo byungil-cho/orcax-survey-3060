@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>감자보리 가공공장</title>
+  <style>
+    body {
+      background: url('https://byungil-cho.github.io/OrcaX/farm-101.png') no-repeat center center fixed;
+      background-size: cover;
+      color: white;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 1rem;
+    }
+    .box {
+      background: rgba(0,0,0,0.6);
+      padding: 1rem 2rem;
+      border-radius: 12px;
+      max-width: 800px;
+      margin: auto;
+    }
+    h2 { text-align: center; }
+    label, select, button {
+      display: block;
+      margin: 1rem auto;
+      font-size: 1rem;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      background-color: #4CAF50;
+      border: none;
+      color: white;
+      cursor: pointer;
+    }
+    .status {
+      background: rgba(255,255,255,0.8);
+      color: black;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+    }
+    .links {
+      text-align: center;
+      margin-top: 2rem;
+    }
+    .links a {
+      color: #00e6e6;
+      margin: 0 1rem;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>🥔 감자/보리 가공공장</h2>
+    <div class="status">
+      <p>👤 닉네임: <span id="nickname">-</span></p>
+      <p>🏠 농장이름: <span id="farmName">-</span></p>
+      <p>⚡ 전원 상태: <span id="serverStatus">발견중...</span></p>
+      <p>💲 토큰: <span id="tokens">0</span></p>
+      <p>🌾 씨감자: <span id="potatoSeeds">0</span> / 씨보리: <span id="barleySeeds">0</span></p>
+    </div>
+
+    <label for="type">가공할 원재료를 선택하세요:</label>
+<select id="type">
+  <option value="감자">🥔 감자</option>
+  <option value="보리">🌾 보리</option>
+</select>
+
+<label for="product">가공할 품목을 입력하세요:</label>
+<input type="text" id="product" placeholder="예: 감자칩, 감자전, 보리케이크 등" />
+    <button onclick="processProduct()">가공하기</button>
+    <p id="message"></p>
+
+    <div class="links">
+      <a href="gamja-farm.html">🌱 감자농장으로</a>
+      <a href="gamja-shop.html">🛒 씨앗상점으로</a>
+      <a href="index9.html">🏠 메인페이지로</a>
+    </div>
+  </div>
+
+  <script>
+    function updateUserData() {
+      document.getElementById("nickname").textContent = localStorage.getItem("nickname") || "-";
+      document.getElementById("farmName").textContent = localStorage.getItem("farmName") || "-";
+      document.getElementById("tokens").textContent = localStorage.getItem("tokens") || 0;
+      document.getElementById("potatoSeeds").textContent = localStorage.getItem("씨감자") || 0;
+      document.getElementById("barleySeeds").textContent = localStorage.getItem("씨보리") || 0;
+    }
+
+    function checkServer() {
+      fetch("https://climbing-wholly-grouper.jp.ngrok.io/")
+        .then(() => {
+          document.getElementById("serverStatus").textContent = "🟢 연결되었음";
+        })
+        .catch(() => {
+          document.getElementById("serverStatus").textContent = "🔴 거듭";
+        });
+    }
+
+    function processProduct() {
+  const product = document.getElementById("product").value;
+  const type = document.getElementById("type").value;
+  const resourceKey = type === "감자" ? "감자" : "보리";
+  let quantity = parseInt(localStorage.getItem(resourceKey) || 0);
+  if (quantity <= 0) {
+    document.getElementById("message").textContent = `${type}가 부족하여 가공할 수 없습니다.`;
+    return;
+  }
+  quantity -= 1;
+  localStorage.setItem(resourceKey, quantity);
+
+  const now = new Date();
+  const expire = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+  let storage = JSON.parse(localStorage.getItem("processed") || '{}');
+  if (!storage[product]) {
+    storage[product] = [];
+  }
+  storage[product].push({ quantity: 1, expire: expire.toISOString() });
+  localStorage.setItem("processed", JSON.stringify(storage));
+
+  document.getElementById("message").textContent = `${product} 1개 가공 완료 (유통기한: ${expire.toLocaleDateString()})`;
+}');
+      if (!storage[product]) {
+        storage[product] = [];
+      }
+      storage[product].push({ quantity: 1, expire: expire.toISOString() });
+      localStorage.setItem("processed", JSON.stringify(storage));
+
+      document.getElementById("message").textContent = `${product} 1개 가공 완료 (유통기한: ${expire.toLocaleDateString()})`;
+    }
+
+    updateUserData();
+    checkServer();
+  </script>
+</body>
+</html>
