@@ -25,7 +25,7 @@ app.use(session({
   saveUninitialized: false,
   store: MongoStore.create({
     mongoUrl: process.env.MONGODB_URL,
-    ttl: 14 * 24 * 60 * 60 // optional: 14일 세션 유지
+    ttl: 14 * 24 * 60 * 60 // 14일 세션 유지
   }),
   cookie: { secure: false }
 }));
@@ -33,7 +33,7 @@ app.use(session({
 // ─────────── 라우터 등록 ───────────
 app.use('/api/login',     require('./routes/login.js'));
 app.use('/api/register',  require('./routes/register.js'));
-app.use('/api/userdata',  require('./routes/userdata.js'));  // ✅ 여기에 추가됨!
+app.use('/api/userdata',  require('./routes/userdata.js'));  // ✅ 사용자 데이터 라우터 연결됨
 app.use('/api/use-token', require('./routes/use-token.js'));
 app.use('/api/purchase',  require('./api/purchase.js'));
 app.use('/api/auth',      require('./api/auth.js'));
