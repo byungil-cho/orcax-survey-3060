@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
   kakaoId: {
@@ -34,14 +34,15 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
-  plantedFields: {
+  // login.js / userdata.js 에서 사용하던 inventory 필드
+  inventory: {
     type: [Object],
     default: [],
   },
   lastUpdated: {
     type: Date,
     default: null,
-  }
+  },
 });
 
-module.exports = mongoose.model("User", userSchema);
+module.exports = mongoose.model('User', userSchema);
