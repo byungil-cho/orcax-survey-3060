@@ -1,18 +1,23 @@
-
-// api/userdata.js
 const express = require('express');
 const router  = express.Router();
 const User    = require('../models/User');
 
+// GET /api/userdata?kakaoId=xxx
+// ── DB에서 해당 kakaoId 유저 정보만 골라 보냄
 router.get('/', async (req, res) => {
   const { kakaoId } = req.query;
-  if (!kakaoId) return res.status(400).json({ success:false });
+  if (!kakaoId) {
+    return res.status(400).json({ success: false, error: 'kakaoId가 필요합니다.' });
+  }
 
   const user = await User.findOne({ kakaoId })
     .select('orcx seedPotato seedBarley water fertilizer potato inventory');
-  if (!user) return res.status(404).json({ success:false });
 
-  res.json({ success:true, users:[user] });
+  if (!user) {
+    return res.status(404).json({ success: false, error: '유저를 찾을 수 없습니다.' });
+  }
+
+  res.json({ success: true, user });
 });
 
 module.exports = router;
