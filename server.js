@@ -33,7 +33,7 @@ app.use(session({
 // ─────────── 라우터 등록 ───────────
 app.use('/api/login',     require('./routes/login.js'));
 app.use('/api/register',  require('./routes/register.js'));
-app.use('/api/userdata',  require('./routes/userdata.js'));
+app.use('/api/userdata',  require('./routes/userdata.js'));  // ✅ 여기에 추가됨!
 app.use('/api/use-token', require('./routes/use-token.js'));
 app.use('/api/purchase',  require('./api/purchase.js'));
 app.use('/api/auth',      require('./api/auth.js'));
