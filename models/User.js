@@ -1,18 +1,14 @@
 const mongoose = require('mongoose');
 
-const UserSchema = new mongoose.Schema({
-  kakaoId:     { type: String, required: true, unique: true },
-  nickname:    String,
-  orcx:        Number,
-  water:       Number,
-  fertilizer:  Number,
-  seedPotato:  Number,
-  potatoCount: Number,
-  seedBarley:  Number,
-  barleyCount: Number,
-  harvestCount:Number,
-  inventory:   Array,
-  lastRecharge:Date
+const userSchema = new mongoose.Schema({
+  kakaoId: { type: String, required: true, unique: true },
+  nickname: String,
+  orcx: { type: Number, default: 10 },
+  water: { type: Number, default: 10 },
+  fertilizer: { type: Number, default: 10 },
+  seedPotato: { type: Number, default: 0 },
+  inventory: { type: Array, default: [] },
+  lastRecharge: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model('User', UserSchema);
+module.exports = mongoose.model('User', userSchema);
