@@ -4,27 +4,33 @@ const User    = require('../models/User');
 const jwt     = require('jsonwebtoken');
 
 router.post('/', async (req, res) => {
-  const { nickname, userId } = req.body;
+  const { nickname, kakaoId } = req.body;
 
-  let user = await User.findOne({ userId });
+  if (!kakaoId || !nickname) {
+    return res.status(400).json({ success: false, error: "kakaoId와 nickname이 필요합니다." });
+  }
+
+  let user = await User.findOne({ kakaoId });
 
   if (!user) {
     user = new User({
-      userId,
+      kakaoId,
       nickname,
-      potatoCount: 0,
+      orcx: 10,
       water: 10,
       fertilizer: 10,
-      token: 10,
-      inventory: [
-        { name: "씨감자", count: 2 },
-        { name: "씨보리", count: 2 }
-      ]
+      seedPotato: 0,
+      seedBarley: 0,
+      potatoCount: 0,
+      barleyCount: 0,
+      harvestCount: 0,
+      inventory: [],
+      lastRecharge: new Date()
     });
     await user.save();
   }
 
-  const accessToken = jwt.sign({ userId }, "SECRET_KEY", { expiresIn: "1h" });
+  const accessToken = jwt.sign({ kakaoId }, "SECRET_KEY", { expiresIn: "1h" });
 
   res.json({ success: true, accessToken });
 });
