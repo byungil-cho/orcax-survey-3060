@@ -2,11 +2,12 @@ const express  = require('express');
 const cors     = require('cors');
 const mongoose = require('mongoose');
 const path     = require('path');
+require('dotenv').config(); // .env 로딩
 
 const userdataRouter = require('./routes/userdata');
 const User = require('./models/User');
 const app = express();
-const port = 3060;
+const port = process.env.PORT || 3060;
 
 // 미들웨어
 app.use(cors());
@@ -30,7 +31,6 @@ app.post('/api/saveUser', async (req, res) => {
 });
 
 // 2) 로그인 API (index9.html용)
-//    단순히 성공 반환하여 404 방지
 app.post('/api/login', (req, res) => {
   return res.json({ success: true });
 });
@@ -41,8 +41,8 @@ app.use('/api/userdata', userdataRouter);
 // 4) 정적 파일 제공 (API 이후)
 app.use(express.static(path.join(__dirname)));
 
-// MongoDB 연결
-mongoose.connect('mongodb://localhost:27017/orcax', {
+// MongoDB 연결 (.env 사용)
+mongoose.connect(process.env.MONGODB_URL, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 });
