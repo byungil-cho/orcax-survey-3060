@@ -1,50 +1,37 @@
+// 브라우저에서만 실행됨
 Kakao.init('284b798a9d9be8202f9c2e129fa6f329');
 
-function loginWithKakao() {
+function kakaoLogin() {
   Kakao.Auth.login({
-    success: function (authObj) {
+    success: function(authObj) {
       Kakao.API.request({
         url: '/v2/user/me',
-        success: function (response) {
-          const kakaoId = response.id;
-          const nickname = response.properties.nickname;
+        success: function(res) {
+          // 로컬 저장
+          localStorage.setItem('kakaoId', res.id);
+          localStorage.setItem('nickname', res.kakao_account.profile.nickname);
+          localStorage.setItem('orcx', 10);
+          localStorage.setItem('water', 10);
+          localStorage.setItem('fertilizer', 10);
 
-          fetch('https://climbing-wholly-grouper.jp.ngrok.io/api/users', {
+          // 서버 저장
+          fetch('https://climbing-wholly-grouper.jp.ngrok.io/api/saveUser', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ kakaoId, nickname }),
-          })
-            .then((res) => res.json())
-            .then((data) => {
-              // ✅ 서버로부터 받은 초기 자산 정보
-              const { orcx, water, fertilizer } = data;
-
-              // ✅ 로컬스토리지에 저장
-              localStorage.setItem('kakaoId', kakaoId);
-              localStorage.setItem('nickname', nickname);
-              localStorage.setItem('orcx', orcx);
-              localStorage.setItem('water', water);
-              localStorage.setItem('fertilizer', fertilizer);
-
-              // ✅ 페이지 이동
-              window.location.href = 'gamja-farm.html';
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              kakaoId: res.id,
+              nickname: res.kakao_account.profile.nickname,
+              orcx: 10,
+              water: 10,
+              fertilizer: 10
             })
-            .catch((err) => {
-              console.error('서버 저장 실패:', err);
-              alert('로그인 후 서버 저장 중 오류가 발생했습니다.');
-            });
-        },
-        fail: function (error) {
-          console.error(error);
-          alert('카카오 사용자 정보 요청 실패');
-        },
+          })
+          .then(() => {
+            // 성공 시 농장 페이지로 이동
+            window.location.href = 'gamja-farm.html';
+          });
+        }
       });
-    },
-    fail: function (err) {
-      console.error(err);
-      alert('카카오 로그인 실패');
-    },
+    }
   });
 }
