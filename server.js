@@ -1,58 +1,57 @@
-require('dotenv').config();
-const express      = require('express');
-const mongoose     = require('mongoose');
-const cors         = require('cors');
-const session      = require('express-session');
-const MongoStore   = require('connect-mongo');
-const path         = require('path');
+const express = require('express');
+const cors    = require('cors');
+const mongoose = require('mongoose');
+const path     = require('path');
 
 const app = express();
-const port = process.env.PORT || 3060;
+const port = 3060;
 
-// ─── CORS 설정 ───────────────────────────
-app.use(cors({
-  origin: 'https://byungil-cho.github.io',
-  credentials: true,
-}));
-
-// ─── JSON 파싱 ────────────────────────────
+// 미들웨어
+app.use(cors());
 app.use(express.json());
+// 정적 파일 제공 (index9.html 등은 루트에 그대로 두고, 필요 시 경로 조정)
+app.use(express.static(path.join(__dirname)));
 
-// ─── 세션 설정 ───────────────────────────
-app.use(session({
-  secret: process.env.SESSION_SECRET || '비밀키',
-  resave: false,
-  saveUninitialized: false,
-  store: MongoStore.create({
-    mongoUrl: process.env.MONGODB_URL,
-    ttl: 14 * 24 * 60 * 60,  // 14일
-  }),
-  cookie: { secure: false },
-}));
-
-// ─── 라우터 연결 ─────────────────────────
-// 🔧 여기를 수정했다. routes → api로 바꿈
-app.use('/api/login',    require('./api/login'));
-app.use('/api/userdata', require('./routes/userdata'));
-// 필요 시 다른 API도 여기에 마운트
-
-// ─── 헬스체크 ────────────────────────────
-app.get('/api/health', (_, res) => {
-  res.json({ success: true, message: '서버 작동 중' });
+mongoose.connect('mongodb://localhost:27017/orcax', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
 });
 
-// ─── 정적 파일 서빙 ───────────────────────
-app.use(express.static(path.join(__dirname, 'public')));
+const User = require('./models/User');
 
-// ─── MongoDB 연결 ─────────────────────────
-mongoose.connect(process.env.MONGODB_URL, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => console.log('✅ MongoDB 연결 성공!'))
-.catch(err => console.error('❌ MongoDB 연결 실패:', err));
+// 유저 저장 API
+app.post('/api/saveUser', async (req, res) => {
+  const { kakaoId, nickname, orcx, water, fertilizer } = req.body;
+  try {
+    let user = await User.findOne({ kakaoId });
+    if (!user) {
+      user = new User({ kakaoId, nickname, orcx, water, fertilizer,
+        seedPotato:0, potatoCount:0,
+        seedBarley:0, barleyCount:0,
+        harvestCount:0, inventory:[], lastRecharge: new Date()
+      });
+      await user.save();
+    }
+    return res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false });
+  }
+});
 
-// ─── 서버 시작 ───────────────────────────
+// 유저 조회 API
+app.get('/api/userdata', async (req, res) => {
+  const { kakaoId } = req.query;
+  try {
+    const user = await User.findOne({ kakaoId });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json(user);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 app.listen(port, () => {
-  console.log(`🚀 서버 실행 중: http://localhost:${port}`);
+  console.log(`Server running on http://localhost:${port}`);
 });
