@@ -2,10 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const path = require('path');
+require('dotenv').config(); // .env 파일 로드
 
-// Express 앱 생성
 const app = express();
-// 배포용 PORT 설정
 const port = process.env.PORT || 3060;
 
 // 미들웨어 설정
@@ -15,6 +14,10 @@ app.use(express.json());
 // 사용자 저장 API
 app.post('/api/saveUser', async (req, res) => {
   const { kakaoId, nickname, orcx, water, fertilizer } = req.body;
+  if (!kakaoId) {
+    return res.status(400).json({ success: false, error: 'kakaoId is required' });
+  }
+
   try {
     const User = require('./models/User');
     let user = await User.findOne({ kakaoId });
@@ -43,7 +46,7 @@ app.use('/api/userdata', userdataRouter);
 app.use(express.static(__dirname));
 
 // MongoDB 연결
-mongoose.connect('mongodb://localhost:27017/orcax', {
+mongoose.connect(process.env.MONGODB_URL, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
