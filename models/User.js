@@ -11,8 +11,9 @@ const userSchema = new mongoose.Schema({
     required: true
   },
   email: {
-    type: String,
-    default: null  // ← null 허용, 중복 허용
+  type: String,
+  unique: true,
+  sparse: true // ← 이거 추가!!!
   },
   orcx: {
     type: Number,
