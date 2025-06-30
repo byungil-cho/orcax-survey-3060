@@ -1,37 +1,40 @@
-// 브라우저에서만 실행됨
-Kakao.init('284b798a9d9be8202f9c2e129fa6f329');
+const express  = require('express');
+const cors     = require('cors');
+const mongoose = require('mongoose');
+const path     = require('path');
 
-function kakaoLogin() {
-  Kakao.Auth.login({
-    success: function(authObj) {
-      Kakao.API.request({
-        url: '/v2/user/me',
-        success: function(res) {
-          // 로컬 저장
-          localStorage.setItem('kakaoId', res.id);
-          localStorage.setItem('nickname', res.kakao_account.profile.nickname);
-          localStorage.setItem('orcx', 10);
-          localStorage.setItem('water', 10);
-          localStorage.setItem('fertilizer', 10);
+const userdataRouter = require('./routes/userdata');
+const app = express();
+const port = 3060;
 
-          // 서버 저장
-          fetch('https://climbing-wholly-grouper.jp.ngrok.io/api/saveUser', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              kakaoId: res.id,
-              nickname: res.kakao_account.profile.nickname,
-              orcx: 10,
-              water: 10,
-              fertilizer: 10
-            })
-          })
-          .then(() => {
-            // 성공 시 농장 페이지로 이동
-            window.location.href = 'gamja-farm.html';
-          });
-        }
-      });
+// 미들웨어
+app.use(cors());
+app.use(express.json());
+
+// 1) 유저 저장 API
+app.post('/api/saveUser', async (req, res) => {
+  const { kakaoId, nickname, orcx, water, fertilizer } = req.body;
+  try {
+    let User = require('./models/User');
+    let user = await User.findOne({ kakaoId });
+    if (!user) {
+      user = new User({ kakaoId, nickname, orcx, water, fertilizer });
+      await user.save();
     }
-  });
-}
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('❌ saveUser 오류:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 2) 유저 조회 API
+app.use('/api/userdata', userdataRouter);
+
+// 3) 정적 파일 제공 (API 처리 후)
+app.use(express.static(path.join(__dirname)));
+
+// 서버 시작
+app.listen(port, () => {
+  console.log(`🚀 Server running on http://localhost:${port}`);
+});
