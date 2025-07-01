@@ -2,29 +2,28 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const app = express();
-const PORT = 3060;
+
+require('dotenv').config(); // .env 사용
+
+const port = process.env.PORT || 3060;
+const mongoURI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/orcax-club'; // 기본값도 설정
+
+mongoose.connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log('✅ MongoDB 연결 성공'))
+  .catch((err) => console.error('❌ MongoDB 연결 실패:', err.message));
 
 app.use(cors());
 app.use(express.json());
 
-const userRoute = require('./routes/userdata');
-const initUserRoute = require('./routes/init-user');
-
-app.use('/api/userdata', userRoute);
-app.use('/api/init-user', initUserRoute);
+// 라우터 연결 예시
+const userdataRoutes = require('./routes/userdata');
+app.use('/api/userdata', userdataRoutes);
 
 app.get('/', (req, res) => {
-  res.send("OrcaX 서버 작동 중 🐳");
+  res.send('OrcaX 서버 정상 작동 중입니다.');
 });
 
-mongoose.connect('mongodb+srv://<YOUR_MONGODB_URL>', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-}).then(() => {
-  console.log("✅ MongoDB 연결 성공");
-  app.listen(PORT, () => {
-    console.log(`🚀 서버 실행 중: http://localhost:${PORT}`);
-  });
-}).catch(err => {
-  console.error("❌ MongoDB 연결 실패:", err.message);
+app.listen(port, () => {
+  console.log(`🚀 서버 실행 중: http://localhost:${port}`);
 });
+
