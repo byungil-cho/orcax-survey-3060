@@ -17,7 +17,7 @@ app.get('/', (req, res) => {
   res.send("OrcaX 서버 작동 중 🐳");
 });
 
-mongoose.connect('mongodb+srv://<YOUR_MONGO_URI>', {
+mongoose.connect('mongodb+srv://<YOUR_MONGO_URL>', {
   useNewUrlParser: true,
   useUnifiedTopology: true
 }).then(() => {
