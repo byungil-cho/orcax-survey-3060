@@ -1,17 +1,21 @@
+// routes/init-user.js
+
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 
+// POST /api/init-user
 router.post('/', async (req, res) => {
-  const { nickname, kakaoId } = req.body;
-  if (!nickname || !kakaoId) {
-    return res.status(400).json({ success: false, message: '필수 정보 누락' });
-  }
-
   try {
-    let user = await User.findOne({ kakaoId });
-    if (!user) {
-      user = new User({
+    const { kakaoId, nickname } = req.body;
+
+    if (!kakaoId || !nickname) {
+      return res.status(400).json({ error: '카카오ID와 닉네임이 필요합니다.' });
+    }
+
+    const existingUser = await User.findOne({ kakaoId });
+    if (!existingUser) {
+      const newUser = new User({
         kakaoId,
         nickname,
         water: 10,
@@ -26,13 +30,16 @@ router.post('/', async (req, res) => {
         harvestCount: 0,
         inventory: [],
         lastLogin: new Date(),
-        lastRecharge: new Date()
+        lastRecharge: new Date(),
       });
-      await user.save();
+      await newUser.save();
+      return res.status(201).json({ success: true, message: '신규 유저 생성 완료' });
+    } else {
+      return res.status(200).json({ success: true, message: '이미 존재하는 유저' });
     }
-    res.json({ success: true, user });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    console.error(err);
+    res.status(500).json({ error: '서버 오류 발생' });
   }
 });
 
