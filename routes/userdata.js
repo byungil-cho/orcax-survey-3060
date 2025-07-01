@@ -1,18 +1,41 @@
+
+const express = require('express');
+const router = express.Router();
+const User = require('../models/User');
+
+// GET or INIT user data
 router.get('/', async (req, res) => {
   try {
-    const kakaoId = req.query.kakaoId; // ✅ 정확한 키로 수정
-    if (!kakaoId) {
-      return res.status(400).json({ success: false, message: 'kakaoId 없음' });
-    }
+    const kakaoId = req.query.kakaoId;
+    if (!kakaoId) return res.status(400).json({ success: false, message: 'kakaoId required' });
 
-    const user = await User.findOne({ kakaoId: kakaoId });
+    let user = await User.findOne({ kakaoId });
+
     if (!user) {
-      return res.status(404).json({ success: false, message: '사용자를 찾을 수 없습니다' });
+      // 새 유저 생성 시 kakaoId 포함하여 저장
+      user = new User({
+        kakaoId: kakaoId,
+        nickname: "새 유저",
+        orcx: 10,
+        water: 10,
+        fertilizer: 10,
+        seedPotato: 0,
+        seedBarley: 0,
+        potatoCount: 0,
+        barleyCount: 0,
+        harvestCount: 0,
+        inventory: [],
+        lastLogin: new Date(),
+        lastRecharge: new Date()
+      });
+      await user.save();
     }
 
-    res.status(200).json({ success: true, user });
+    res.json({ success: true, user });
   } catch (error) {
-    console.error('데이터 불러오기 오류:', error);
+    console.error(error);
     res.status(500).json({ success: false, message: '서버 오류' });
   }
 });
+
+module.exports = router;
