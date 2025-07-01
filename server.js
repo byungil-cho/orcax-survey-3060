@@ -7,6 +7,9 @@ require('dotenv').config(); // .env 파일 로드
 const app = express();
 const port = process.env.PORT || 3060;
 
+const initUserRoute = require('./routes/init-user');
+app.use('/api/init-user', initUserRoute);
+
 // 미들웨어 설정
 app.use(cors());
 app.use(express.json());
