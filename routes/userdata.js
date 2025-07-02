@@ -1,3 +1,4 @@
+// routes/userdata.js
 
 const express = require('express');
 const router = express.Router();
@@ -23,6 +24,10 @@ router.get('/', async (req, res) => {
         seedBarley: 0,
         potatoCount: 0,
         barleyCount: 0,
+        plantedPotato: 0,
+        harvestablePotato: 0,
+        plantedBarley: 0,           // ✅ 추가
+        harvestableBarley: 0,       // ✅ 추가
         harvestCount: 0,
         inventory: [],
         lastLogin: new Date(),
