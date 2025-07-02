@@ -2,8 +2,8 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 
-// 로그인 처리
-router.post('/login', async (req, res) => {
+// POST /api/init-user
+router.post('/init-user', async (req, res) => {
   const { kakaoId, nickname } = req.body;
 
   if (!kakaoId || !nickname) {
@@ -14,7 +14,6 @@ router.post('/login', async (req, res) => {
     let user = await User.findOne({ kakaoId });
 
     if (!user) {
-      // 새 유저 생성
       user = new User({
         kakaoId,
         nickname,
@@ -34,14 +33,13 @@ router.post('/login', async (req, res) => {
       });
       await user.save();
     } else {
-      // 기존 유저 로그인 시 접속 시간만 업데이트
       user.lastLogin = new Date();
       await user.save();
     }
 
     res.json({ success: true, user });
   } catch (error) {
-    console.error('로그인 처리 중 오류:', error);
+    console.error('유저 초기화 중 오류:', error);
     res.status(500).json({ success: false, message: '서버 오류 발생' });
   }
 });
