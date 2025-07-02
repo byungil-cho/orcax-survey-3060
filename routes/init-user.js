@@ -27,6 +27,8 @@ router.post('/', async (req, res) => {
         barleyCount: 0,
         plantedPotato: 0,
         harvestablePotato: 0,
+        plantedBarley: 0,           // ✅ 보리 심은 상태 추가
+        harvestableBarley: 0,       // ✅ 수확 가능한 보리 추가
         harvestCount: 0,
         inventory: [],
         lastLogin: new Date(),
