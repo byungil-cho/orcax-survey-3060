@@ -15,6 +15,8 @@ mongoose.connect(mongoURI, {
 
 app.use(cors());
 app.use(express.json());
+app.use('/api/auth', require('./routes/auth'));
+
 
 // ✅ 사용자 라우트 등록
 const userdataRoutes = require('./routes/userdata');
