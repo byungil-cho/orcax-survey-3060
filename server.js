@@ -1,13 +1,13 @@
+require('dotenv').config(); // ✅ 가장 위에 위치해야 함
+
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const app = express();
-require('dotenv').config();
 
 const port = process.env.PORT || 3060;
-const mongoURI = process.env.MONGO_URI; // 🔥 반드시 환경변수에서만 받아야 함
+const mongoURI = process.env.MONGO_URI;
 
-// ✅ MongoDB 연결
 mongoose.connect(mongoURI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -17,16 +17,15 @@ mongoose.connect(mongoURI, {
 app.use(cors());
 app.use(express.json());
 
-// ✅ 서버 상태 확인용 루트 응답
+// ✅ 서버 상태 체크용 루트 경로
 app.get("/", (req, res) => {
   res.send("🟢 OrcaX Farm Backend is running");
 });
 
-// ✅ 사용자 라우트 등록
+// ✅ 감자밭/보리밭 공통 경로 유지
 const userdataRoutes = require('./routes/userdata');
 app.use('/api/userdata', userdataRoutes);
 
-// ✅ init-user 라우트 등록
 const initUserRoutes = require('./routes/init-user');
 app.use('/api/init-user', initUserRoutes);
 
