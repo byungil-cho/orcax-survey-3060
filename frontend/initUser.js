@@ -1,5 +1,6 @@
+// 📂 frontend/initUser.js
 
-const accessToken = 'YOUR_ACCESS_TOKEN_HERE'; // access token을 여기에 넣어!
+const accessToken = 'YOUR_ACCESS_TOKEN_HERE';
 
 const getUserInfoFromKakao = async (accessToken) => {
   try {
@@ -18,9 +19,9 @@ const getUserInfoFromKakao = async (accessToken) => {
     const kakaoId = data.id;
     const nickname = data.properties?.nickname || '감자유저';
 
-    // 🔐 로컬스토리지에 저장
-    localStorage.setItem('nickname', nickname);
+    // 📝 로컬스토리지에 저장해서 다른 페이지에서도 사용 가능하게 함
     localStorage.setItem('userId', kakaoId);
+    localStorage.setItem('nickname', nickname);
 
     return { kakaoId, nickname };
   } catch (err) {
@@ -42,10 +43,12 @@ const initUser = async () => {
       body: JSON.stringify(user),
     });
 
+    console.log("📦 응답 상태코드:", response.status);
+
     const result = await response.json();
     console.log("✅ 서버 응답:", result);
   } catch (err) {
-    console.error("❌ init-user 에러:", err);
+    console.error("❌ 에러 발생:", err);
   }
 };
 
