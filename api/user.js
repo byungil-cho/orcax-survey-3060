@@ -1,40 +1,36 @@
-// routes/user.js
-
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User');
+const users = require('../models/users');
 
-// 사용자 등록 또는 로그인 처리
-router.post('/login', async (req, res) => {
-  const { nickname } = req.body;
+// 사용자 정보 불러오기
+router.get('/userdata', async (req, res) => {
+  const { kakaoId, nickname } = req.query;
   try {
-    let user = await User.findOne({ nickname });
-    if (!user) {
-      user = new User({
-        nickname,
-        token: 10,
-        seed_potato: 2,
-        seed_barley: 2,
-        water: 10,
-        fertilizer: 10,
-        potatoCount: 0,
-      });
-      await user.save();
-    }
-    res.status(200).json(user);
+    if (!kakaoId && !nickname) return res.status(400).json({ error: 'kakaoId 또는 nickname이 필요합니다.' });
+    const query = kakaoId ? { kakaoId } : { nickname };
+    const user = await users.findOne(query);
+    if (!user) return res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
+    res.json({ user });
   } catch (err) {
-    res.status(500).json({ error: '서버 오류', details: err });
+    console.error('GET /userdata 오류:', err);
+    res.status(500).json({ error: '서버 오류' });
   }
 });
 
-// 사용자 정보 조회
-router.get('/:nickname', async (req, res) => {
+// 사용자 정보 업데이트
+router.post('/update-user', async (req, res) => {
+  const { kakaoId, nickname, ...changes } = req.body;
+  if (!kakaoId || !nickname) return res.status(400).json({ error: 'kakaoId와 nickname이 필요합니다.' });
   try {
-    const user = await User.findOne({ nickname: req.params.nickname });
-    if (!user) return res.status(404).json({ error: '사용자 없음' });
-    res.json(user);
+    const updated = await users.findOneAndUpdate(
+      { kakaoId, nickname },
+      { $set: changes },
+      { new: true, upsert: true }
+    );
+    res.json({ user: updated });
   } catch (err) {
-    res.status(500).json({ error: '서버 오류', details: err });
+    console.error('POST /update-user 오류:', err);
+    res.status(500).json({ error: '업데이트 실패' });
   }
 });
 
