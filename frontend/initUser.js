@@ -1,6 +1,5 @@
 // 📂 frontend/initUser.js
 
-// 예시: 카카오 로그인 후 accessToken이 이미 확보된 상태
 const accessToken = 'YOUR_ACCESS_TOKEN_HERE';
 
 const getUserInfoFromKakao = async (accessToken) => {
@@ -18,7 +17,7 @@ const getUserInfoFromKakao = async (accessToken) => {
 
     const data = await response.json();
     const kakaoId = data.id;
-    const nickname = data.properties?.nickname || '익명의 감자';
+    const nickname = data.properties?.nickname || '감자유저';
 
     return { kakaoId, nickname };
   } catch (err) {
@@ -27,24 +26,26 @@ const getUserInfoFromKakao = async (accessToken) => {
   }
 };
 
-const initUser = async (accessToken) => {
+const initUser = async () => {
   const user = await getUserInfoFromKakao(accessToken);
   if (!user) return;
 
-  fetch('/api/init-user', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      kakaoId: user.kakaoId,
-      nickname: user.nickname,
-    }),
-  })
-    .then(res => res.json())
-    .then(data => console.log('Init User Response:', data))
-    .catch(err => console.error('Error initializing user:', err));
+  console.log("🚀 보내는 데이터:", user);
+
+  try {
+    const response = await fetch('https://climbing-wholly-grouper.jp.ngrok.io/api/init-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(user),
+    });
+
+    console.log("📦 응답 상태코드:", response.status);
+
+    const result = await response.json();
+    console.log("✅ 서버 응답:", result);
+  } catch (err) {
+    console.error("❌ 에러 발생:", err);
+  }
 };
 
-// 호출 예시
-initUser(accessToken);
+initUser();
