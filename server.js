@@ -20,11 +20,7 @@ app.use(express.json());
 const userdataRoutes = require('./routes/userdata');
 app.use('/api/userdata', userdataRoutes);
 
-// ✅ init-user 라우트 복구
-const initUserRoutes = require('./routes/init-user');
-app.use('/api/init-user', initUserRoutes);
-
-// 🧹 login 라우트 삭제했으므로 여기 없음
+// ❌ init-user 라우트는 삭제 (해당 파일은 서버 전체였음)
 
 app.listen(port, () => {
   console.log(`🚀 서버 실행 중: http://localhost:${port}`);
