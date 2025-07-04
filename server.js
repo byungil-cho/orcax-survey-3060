@@ -17,7 +17,7 @@ app.use(cors());
 app.use(express.json());
 
 // ✅ 사용자 라우트 등록
-const userdataRoutes = require('./routes/userdata');
+const userdataRoutes = require('./routes/userdata-route');
 app.use('/api/userdata', userdataRoutes);
 
 // ✅ init-user 라우트 등록
