@@ -17,7 +17,6 @@ app.use(cors());
 app.use(express.json());
 app.use('/api/auth', require('./routes/auth'));
 
-
 // ✅ 사용자 라우트 등록
 const userdataRoutes = require('./routes/userdata');
 app.use('/api/userdata', userdataRoutes);
@@ -26,10 +25,9 @@ app.use('/api/userdata', userdataRoutes);
 const initUserRoutes = require('./routes/init-user');
 app.use('/api/init-user', initUserRoutes);
 
-// ✅ [추가] login 라우트 등록 (기존 코드 하단에 깔끔하게 추가)
-const loginRoutes = require('./routes/login');
-app.use('/api/login', loginRoutes);
-
+// ❌ login 라우트 제거
+// const loginRoutes = require('./routes/login');
+// app.use('/api/login', loginRoutes);
 
 app.listen(port, () => {
   console.log(`🚀 서버 실행 중: http://localhost:${port}`);
