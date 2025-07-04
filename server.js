@@ -15,19 +15,16 @@ mongoose.connect(mongoURI, {
 
 app.use(cors());
 app.use(express.json());
-app.use('/api/auth', require('./routes/auth'));
 
 // ✅ 사용자 라우트 등록
 const userdataRoutes = require('./routes/userdata');
 app.use('/api/userdata', userdataRoutes);
 
-// ✅ init-user 라우트 등록
+// ✅ init-user 라우트 복구
 const initUserRoutes = require('./routes/init-user');
 app.use('/api/init-user', initUserRoutes);
 
-// ❌ login 라우트 제거
-// const loginRoutes = require('./routes/login');
-// app.use('/api/login', loginRoutes);
+// 🧹 login 라우트 삭제했으므로 여기 없음
 
 app.listen(port, () => {
   console.log(`🚀 서버 실행 중: http://localhost:${port}`);
