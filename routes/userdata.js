@@ -4,32 +4,16 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 
-// GET user data
+// ✅ GET: 유저 조회만, 자동 생성 제거
 router.get('/', async (req, res) => {
   try {
     const kakaoId = req.query.kakaoId;
     if (!kakaoId) return res.status(400).json({ success: false, message: 'kakaoId required' });
 
-    let user = await User.findOne({ kakaoId });
+    const user = await User.findOne({ kakaoId });
 
     if (!user) {
-      // 새 유저 생성 시 kakaoId 포함하여 저장
-      user = new User({
-        kakaoId: kakaoId,
-        nickname: "새 유저",
-        orcx: 10,
-        water: 10,
-        fertilizer: 10,
-        seedPotato: 0,
-        seedBarley: 0,
-        potatoCount: 0,
-        barleyCount: 0,
-        harvestCount: 0,
-        inventory: [],
-        lastLogin: new Date(),
-        lastRecharge: new Date()
-      });
-      await user.save();
+      return res.status(404).json({ success: false, message: "유저를 찾을 수 없습니다" });
     }
 
     res.json({ success: true, user });
@@ -39,31 +23,16 @@ router.get('/', async (req, res) => {
   }
 });
 
-// 추가: POST 요청도 처리하도록 확장
+// ✅ POST: 유저 생성이 필요하면 별도 라우터를 만들 것. 여기선 조회만 유지
 router.post('/', async (req, res) => {
   try {
     const { kakaoId } = req.body;
     if (!kakaoId) return res.status(400).json({ success: false, message: 'kakaoId required' });
 
-    let user = await User.findOne({ kakaoId });
+    const user = await User.findOne({ kakaoId });
 
     if (!user) {
-      user = new User({
-        kakaoId: kakaoId,
-        nickname: "새 유저",
-        orcx: 10,
-        water: 10,
-        fertilizer: 10,
-        seedPotato: 0,
-        seedBarley: 0,
-        potatoCount: 0,
-        barleyCount: 0,
-        harvestCount: 0,
-        inventory: [],
-        lastLogin: new Date(),
-        lastRecharge: new Date()
-      });
-      await user.save();
+      return res.status(404).json({ success: false, message: "유저를 찾을 수 없습니다" });
     }
 
     res.json({ success: true, user });
