@@ -31,9 +31,20 @@ app.post('/api/saveUser', async (req, res) => {
   }
 });
 
-// ✅ 로그인 API
-app.post('/api/login', (req, res) => {
-  return res.json({ success: true });
+// ✅ 로그인 API - 기존 유저 확인
+app.post('/api/login', async (req, res) => {
+  const { kakaoId } = req.body;
+  try {
+    const user = await User.findOne({ kakaoId });
+    if (user) {
+      return res.json({ success: true, user });
+    } else {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+  } catch (err) {
+    console.error('❌ login 오류:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // ✅ 유저 조회 API
