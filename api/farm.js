@@ -1,81 +1,52 @@
+// api/farm.js
 
-// 씨감자 수 관리 함수
-function getSeedCount() {
-  return parseInt(localStorage.getItem("seedCount") || "0");
-}
+const express = require('express');
+const router = express.Router();
+const User = require('../models/User');
 
-function setSeedCount(count) {
-  localStorage.setItem("seedCount", count);
-}
+// 농사 성장 처리 API
+router.post('/grow', async (req, res) => {
+  const { kakaoId, cropType, type } = req.body;
 
-// 구매 함수 예시
-function buySeed() {
-  const current = getSeedCount();
-  if (current >= 2) {
-    alert("씨감자는 최대 2개까지만 보유할 수 있습니다.");
-    return;
-  }
-  setSeedCount(current + 1);
-  alert("씨감자 1개를 구매했습니다.");
-}
-
-// 물 주기
-function applyWater() {
-  const seeds = getSeedCount();
-  if (seeds <= 0) {
-    alert("씨감자가 없습니다. 물 주기를 할 수 없습니다.");
-    return;
+  if (!kakaoId || !cropType || !type) {
+    return res.status(400).json({ success: false, message: "필수 정보 누락" });
   }
 
-  setSeedCount(seeds - 1);
-  updateSeedDisplay();
-
-  // 성장포인트 1 증가 로직 (예시)
-  fetch("/api/grow", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ type: "water" }),
-  }).then(res => {
-    if (res.ok) {
-      alert("물 주기로 성장포인트가 증가했습니다!");
+  try {
+    const user = await User.findOne({ kakaoId });
+    if (!user) {
+      return res.status(404).json({ success: false, message: "유저를 찾을 수 없습니다" });
     }
-  });
-}
 
-// 거름 주기
-function applyFertilizer() {
-  const seeds = getSeedCount();
-  if (seeds <= 0) {
-    alert("씨감자가 없습니다. 거름 주기를 할 수 없습니다.");
-    return;
-  }
-
-  setSeedCount(seeds - 1);
-  updateSeedDisplay();
-
-  fetch("/api/grow", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ type: "fertilizer" }),
-  }).then(res => {
-    if (res.ok) {
-      alert("거름 주기로 성장포인트가 증가했습니다!");
+    // 자원 확인
+    if (user.gamja <= 0 || user.sibori <= 0) {
+      return res.status(400).json({ success: false, message: "물 또는 거름이 부족합니다" });
     }
-  });
-}
 
-// 수확하기 (예시)
-function startFarming() {
-  alert("감자를 수확했습니다!");
-}
+    // 자원 차감
+    user.gamja -= 1;
+    user.sibori -= 1;
 
-// 씨감자 보유 수 업데이트
-function updateSeedDisplay() {
-  const count = getSeedCount();
-  const el = document.getElementById("seedCountDisplay");
-  if (el) el.textContent = `씨감자: ${count}개`;
-}
+    // 작물에 따른 성장 포인트 처리
+    if (cropType === "potato") {
+      user.growthPotato = (user.growthPotato || 0) + 2;
+    } else if (cropType === "barley") {
+      user.growthBarley = (user.growthBarley || 0) + 3;
+    } else {
+      return res.status(400).json({ success: false, message: "알 수 없는 작물 종류" });
+    }
+
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: `${cropType}에 ${type} 사용으로 성장 완료`,
+      user,
+    });
+  } catch (err) {
+    console.error("❌ 성장 처리 오류:", err);
+    return res.status(500).json({ success: false, message: "서버 오류" });
+  }
+});
+
+module.exports = router;
