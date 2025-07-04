@@ -16,12 +16,12 @@ mongoose.connect(mongoURI, {
 app.use(cors());
 app.use(express.json());
 
-// ✅ 사용자 라우트 등록
-const userdataRoutes = require('./routes/userdata');
+// ✅ 사용자 라우트 등록 (수정됨)
+const userdataRoutes = require('./userdata');
 app.use('/api/userdata', userdataRoutes);
 
 // ✅ init-user 라우트 등록
-const initUserRoutes = require('./routes/init-user');
+const initUserRoutes = require('./init-user');
 app.use('/api/init-user', initUserRoutes);
 
 // ✅ login 라우트 등록 (실전 대응)
