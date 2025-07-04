@@ -1,31 +1,11 @@
+// routes/init-user.js
+
 const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const app = express();
-require('dotenv').config();
+const router = express.Router();
+const User = require('../models/User');
 
-const port = process.env.PORT || 3060;
-const mongoURI = process.env.MONGODB_URL || 'mongodb://127.0.0.1:27017/orcax-club';
-
-mongoose.connect(mongoURI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-}).then(() => console.log('✅ MongoDB 연결 성공'))
-  .catch(err => console.error('❌ MongoDB 연결 실패:', err.message));
-
-app.use(cors());
-app.use(express.json());
-
-// ✅ 사용자 라우트 등록 (수정됨)
-const userdataRoutes = require('./userdata');
-app.use('/api/userdata', userdataRoutes);
-
-// ✅ init-user 라우트 등록
-const initUserRoutes = require('./init-user');
-app.use('/api/init-user', initUserRoutes);
-
-// ✅ login 라우트 등록 (실전 대응)
-app.post('/api/login', async (req, res) => {
+// 사용자의 초기 자산 지급 API
+router.post('/', async (req, res) => {
   const { kakaoId } = req.body;
 
   if (!kakaoId) {
@@ -33,13 +13,12 @@ app.post('/api/login', async (req, res) => {
   }
 
   try {
-    const User = require('./models/User');
     let user = await User.findOne({ kakaoId });
 
     if (!user) {
       user = new User({
         kakaoId,
-        nickname: "실전 유저",
+        nickname: '신규 유저',
         orcx: 10,
         water: 10,
         fertilizer: 10,
@@ -55,13 +34,11 @@ app.post('/api/login', async (req, res) => {
       await user.save();
     }
 
-    return res.json({ success: true, user });
+    res.json({ success: true, user });
   } catch (err) {
-    console.error('❌ login API 오류:', err);
-    return res.status(500).json({ success: false, message: '서버 오류' });
+    console.error('❌ init-user 오류:', err);
+    res.status(500).json({ success: false, message: '서버 오류' });
   }
 });
 
-app.listen(port, () => {
-  console.log(`🚀 서버 실행 중: http://localhost:${port}`);
-});
+module.exports = router;
