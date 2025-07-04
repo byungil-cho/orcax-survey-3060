@@ -4,8 +4,8 @@ const mongoose = require('mongoose');
 const path     = require('path');
 require('dotenv').config(); // .env 로딩
 
-const userdataRouter = require('./routes/userdata');
-const initUserRouter = require('./routes/init-user'); // ✅ 추가된 init-user 라우터
+const userdataRouter = require('./userdata'); // ✅ 수정된 경로
+const initUserRouter = require('../routes/init-user'); // ✅ 수정된 경로
 const User = require('./models/User');
 const app = express();
 const port = process.env.PORT || 3060;
