@@ -18,21 +18,8 @@ mongoose
   .then(() => console.log('✅ MongoDB 연결 성공'))
   .catch((err) => console.error('❌ MongoDB 연결 실패:', err));
 
-// 사용자 스키마
-const userSchema = new mongoose.Schema({
-  kakaoId: String,
-  nickname: String,
-  orcx: Number,
-  water: Number,
-  fertilizer: Number,
-  potato: { type: Number, default: 0 },
-  seedPotato: { type: Number, default: 0 },
-  barleySeed: { type: Number, default: 0 },
-  barn: { type: String, default: '비어 있음' },
-  lastHarvestDate: { type: Date, default: new Date('2025-06-30T15:00:00.000Z') },
-  inventory: { type: Array, default: [] }
-});
-const User = mongoose.model('User', userSchema);
+// 사용자 모델 불러오기
+const User = require('./models/User');
 
 // 라우터: 사용자 초기화 (회원가입 시 최초 호출)
 const initUserRouter = require('./routes/init-user');
