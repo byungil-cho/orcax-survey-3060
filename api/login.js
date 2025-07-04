@@ -4,8 +4,8 @@ const mongoose = require('mongoose');
 const path     = require('path');
 require('dotenv').config(); // .env 로딩
 
-const userdataRouter = require('./userdata'); // ✅ 수정된 경로
-const initUserRouter = require('../routes/init-user'); // ✅ 수정된 경로
+const userdataRouter = require('./userdata');
+const initUserRouter = require('../routes/init-user');
 const User = require('./models/User');
 const app = express();
 const port = process.env.PORT || 3060;
@@ -17,12 +17,19 @@ app.use(express.json());
 // ✅ 사용자 저장 API
 app.post('/api/saveUser', async (req, res) => {
   const { kakaoId, nickname, orcx, water, fertilizer } = req.body;
+
+  // 닉네임이나 아이디 누락 시 저장 중단
+  if (!kakaoId || !nickname) {
+    console.warn("❗ 누락된 정보로 인해 유저 저장 실패:", req.body);
+    return res.status(400).json({ success: false, message: "닉네임 또는 카카오 ID 누락" });
+  }
+
   try {
     let user = await User.findOne({ kakaoId });
     if (!user) {
       user = new User({ kakaoId, nickname, orcx, water, fertilizer });
       await user.save();
-      console.log('✅ 신규 유저 저장:', kakaoId);
+      console.log('✅ 신규 유저 저장:', kakaoId, nickname);
     }
     return res.json({ success: true });
   } catch (err) {
@@ -31,14 +38,17 @@ app.post('/api/saveUser', async (req, res) => {
   }
 });
 
-// ✅ 로그인 API - 기존 유저 확인
+// ✅ 로그인 API
 app.post('/api/login', async (req, res) => {
   const { kakaoId } = req.body;
   try {
+    console.log("🔍 로그인 시도:", kakaoId);
     const user = await User.findOne({ kakaoId });
     if (user) {
+      console.log("✅ 로그인 성공:", user.nickname);
       return res.json({ success: true, user });
     } else {
+      console.log("❌ 유저 없음:", kakaoId);
       return res.status(404).json({ success: false, message: 'User not found' });
     }
   } catch (err) {
