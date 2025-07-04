@@ -22,7 +22,7 @@ mongoose
 const User = require('./models/User');
 
 // 라우터: 사용자 초기화 (회원가입 시 최초 호출)
-const initUserRouter = require('./routes/init-user');
+const initUserRouter = require('./api/init-user');
 app.use('/api/init-user', initUserRouter);
 
 // 라우터: 로그인
@@ -30,7 +30,7 @@ const loginRouter = require('./api/login');
 app.use('/api/login', loginRouter);
 
 // 라우터: 유저 데이터 조회
-const userdataRouter = require('./api/userdata'); // 경로 수정됨
+const userdataRouter = require('./api/userdata');
 app.use('/api/userdata', userdataRouter);
 
 // 서버 실행
