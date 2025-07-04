@@ -4,33 +4,29 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 
-// 사용자의 초기 자산 지급 API
 router.post('/', async (req, res) => {
-  const { kakaoId } = req.body;
+  const { kakaoId, nickname } = req.body;
 
   if (!kakaoId) {
-    return res.status(400).json({ success: false, message: 'kakaoId is required' });
+    return res.status(400).json({
+      success: false,
+      message: 'kakaoId is required'
+    });
   }
 
   try {
-    let user = await User.findOne({ kakaoId });
+    const user = await User.findOne({ kakaoId });
 
     if (!user) {
-      user = new User({
-        kakaoId,
-        nickname: '신규 유저',
-        orcx: 10,
-        water: 10,
-        fertilizer: 10,
-        seedPotato: 0,
-        seedBarley: 0,
-        potatoCount: 0,
-        barleyCount: 0,
-        harvestCount: 0,
-        inventory: [],
-        lastLogin: new Date(),
-        lastRecharge: new Date()
+      return res.status(404).json({
+        success: false,
+        message: '사용자를 찾을 수 없습니다. 먼저 회원가입하세요.'
       });
+    }
+
+    // 닉네임 변경 감지 시 서버에서도 갱신
+    if (nickname && user.nickname !== nickname) {
+      user.nickname = nickname;
       await user.save();
     }
 
