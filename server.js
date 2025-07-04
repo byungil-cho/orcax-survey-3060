@@ -7,6 +7,7 @@ require('dotenv').config();
 const port = process.env.PORT || 3060;
 const mongoURI = process.env.MONGODB_URL || 'mongodb://127.0.0.1:27017/orcax-club';
 
+// ✅ MongoDB 연결
 mongoose.connect(mongoURI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -16,14 +17,17 @@ mongoose.connect(mongoURI, {
 app.use(cors());
 app.use(express.json());
 
-// ✅ 필요한 라우터 등록
-app.use('/api/userdata', require('./routes/userdata'));
-// app.use('/api/init-user', require('./routes/init-user')); ← 제거해도 됨
+// ✅ /api/userdata 라우트 연결
+const userdataRoutes = require('./routes/userdata');
+app.use('/api/userdata', userdataRoutes);
 
-// ✅ 여기에 통합된 login 라우트 삽입
+// ✅ /api/init-user 라우트 연결
+const initUserRoutes = require('./routes/init-user');
+app.use('/api/init-user', initUserRoutes);
+
+// ✅ /api/login 라우트 직접 정의
 app.post('/api/login', async (req, res) => {
   const { kakaoId } = req.body;
-
   if (!kakaoId) return res.status(400).json({ success: false, message: 'kakaoId is required' });
 
   try {
@@ -33,7 +37,7 @@ app.post('/api/login', async (req, res) => {
     if (!user) {
       user = new User({
         kakaoId,
-        nickname: "신규 유저",
+        nickname: '신규 유저',
         orcx: 10,
         water: 10,
         fertilizer: 10,
@@ -56,6 +60,7 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// ✅ 서버 실행
 app.listen(port, () => {
   console.log(`🚀 서버 실행 중: http://localhost:${port}`);
 });
