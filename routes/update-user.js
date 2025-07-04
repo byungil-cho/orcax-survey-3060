@@ -1,31 +1,24 @@
-// routes/update-user.js
 const express = require('express');
 const router = express.Router();
-const users = require('../models/User');
+const User = require('../models/User');
 
-router.post('/update-user', async (req, res) => {
-  const { kakaoId, nickname, email, ...changes } = req.body;
-  if (!kakaoId || !nickname) return res.status(400).json({ error: 'kakaoId와 nickname이 필요합니다.' });
+// ✅ 사용자 정보 조회 (카카오 ID 기준)
+router.get('/', async (req, res) => {
+  const kakaoId = req.query.kakaoId;
+
+  if (!kakaoId) {
+    return res.status(400).json({ success: false, message: 'kakaoId is required' });
+  }
 
   try {
-    const updateFields = { ...changes };
-    if (email !== undefined && email !== null && email !== '') {
-      updateFields.email = email;
+    const user = await User.findOne({ kakaoId });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
-
-    const updated = await users.findOneAndUpdate(
-      { kakaoId, nickname },
-      { $set: updateFields },
-      { new: true, upsert: true }
-    );
-    res.json({ user: updated });
+    res.json({ success: true, user });
   } catch (err) {
-    console.error('POST /update-user 오류:', err);
-    if (err.code === 11000) {
-      res.status(409).json({ error: '중복된 필드 값이 존재합니다.', details: err.keyValue });
-    } else {
-      res.status(500).json({ error: '업데이트 실패' });
-    }
+    console.error('❌ userdata API 오류:', err);
+    res.status(500).json({ success: false, message: '서버 오류' });
   }
 });
 
