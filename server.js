@@ -20,47 +20,11 @@ app.use(express.json());
 const userdataRoutes = require('./routes/userdata');
 app.use('/api/userdata', userdataRoutes);
 
-// ✅ init-user 라우트 등록
+// ✅ init-user 라우트 복구
 const initUserRoutes = require('./routes/init-user');
 app.use('/api/init-user', initUserRoutes);
 
-// ✅ login 라우트 등록 (실전 대응)
-app.post('/api/login', async (req, res) => {
-  const { kakaoId } = req.body;
-
-  if (!kakaoId) {
-    return res.status(400).json({ success: false, message: 'kakaoId is required' });
-  }
-
-  try {
-    const User = require('./models/User');
-    let user = await User.findOne({ kakaoId });
-
-    if (!user) {
-      user = new User({
-        kakaoId,
-        nickname: "실전 유저",
-        orcx: 10,
-        water: 10,
-        fertilizer: 10,
-        seedPotato: 0,
-        seedBarley: 0,
-        potatoCount: 0,
-        barleyCount: 0,
-        harvestCount: 0,
-        inventory: [],
-        lastLogin: new Date(),
-        lastRecharge: new Date()
-      });
-      await user.save();
-    }
-
-    return res.json({ success: true, user });
-  } catch (err) {
-    console.error('❌ login API 오류:', err);
-    return res.status(500).json({ success: false, message: '서버 오류' });
-  }
-});
+// 🧹 login 라우트 삭제했으므로 여기 없음
 
 app.listen(port, () => {
   console.log(`🚀 서버 실행 중: http://localhost:${port}`);
