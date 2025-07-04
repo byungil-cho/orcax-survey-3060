@@ -25,12 +25,12 @@ const User = require('./models/User');
 const initUserRouter = require('./routes/init-user');
 app.use('/api/init-user', initUserRouter);
 
-// 라우터: 로그인 (이제 api 폴더 기준으로 수정)
+// 라우터: 로그인
 const loginRouter = require('./api/login');
 app.use('/api/login', loginRouter);
 
 // 라우터: 유저 데이터 조회
-const userdataRouter = require('./routes/userdata');
+const userdataRouter = require('./api/userdata'); // 경로 수정됨
 app.use('/api/userdata', userdataRouter);
 
 // 서버 실행
