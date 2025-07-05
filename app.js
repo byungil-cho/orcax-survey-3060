@@ -5,6 +5,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use('/api/users', require('./routes/user'));
 
 // MongoDB 연결
 mongoose.connect("mongodb://localhost:27017/farmDB", {
@@ -31,6 +32,7 @@ app.post("/api/seed/init", async (req, res) => {
     { type: "seedBarley", quantity: 100 },
   ]);
   res.send({ success: true, message: "초기 재고 설정 완료" });
+
 });
 
 // 재고 상태 확인
