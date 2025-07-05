@@ -49,6 +49,24 @@ router.get('/prices', async (req, res) => {
   }
 });
 
+// ✅ 씨앗 재고 상태 API (status)
+router.get('/status', async (req, res) => {
+  try {
+    const seeds = await SeedInventory.find();
+    const status = {};
+    seeds.forEach(seed => {
+      status[seed.type] = {
+        quantity: seed.quantity,
+        price: seed.price,
+      };
+    });
+    res.json(status);
+  } catch (error) {
+    console.error('상태 조회 오류:', error);
+    res.status(500).json({ success: false, message: '상태 조회 실패' });
+  }
+});
+
 // ✅ 씨앗 구매 API (카카오ID 기반 토큰 확인 + 보유 수 제한 + 차감)
 router.post('/purchase', async (req, res) => {
   const { type, kakaoId, inventory = {} } = req.body;
