@@ -1,8 +1,10 @@
 // 📁 파일: routes/user.js
+
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 
+// ✅ 로그인 유저 정보 조회 (kakaoId 기반)
 router.get('/me', async (req, res) => {
   const kakaoId = req.query.kakaoId;
 
@@ -15,10 +17,10 @@ router.get('/me', async (req, res) => {
     res.json({
       success: true,
       nickname: user.nickname,
-      token: user.token,
+      token: user.token
     });
   } catch (error) {
-    console.error('유저 정보 조회 오류:', error);
+    console.error('유저 조회 오류:', error);
     res.status(500).json({ success: false, message: '서버 오류' });
   }
 });
