@@ -1,13 +1,14 @@
-// models/User.js
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema({
-  nickname: { type: String, required: true },
-  kakaoId: { type: String, required: true },
-  email: { type: String, required: true, unique: true }, // ✅ 고유하고 필수인 이메일
-  token: { type: Number, default: 0 },
-  gamja: { type: Number, default: 0 },
-  sibori: { type: Number, default: 0 },
+  kakaoId: { type: String, required: true, unique: true },
+  nickname: { type: String, default: "Unknown" },
+  orcx: { type: Number, default: 0 },
+  water: { type: Number, default: 0 },
+  fertilizer: { type: Number, default: 0 }
+  // email 제거됨
 });
 
-module.exports = mongoose.model('User', userSchema);
+const User = mongoose.model("User", userSchema);
+
+module.exports = User;
