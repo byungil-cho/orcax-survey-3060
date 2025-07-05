@@ -1,133 +1,139 @@
-// 📁 파일: routes/seed.js
-
+// routes/seed.js
 const express = require('express');
 const router = express.Router();
-const SeedInventory = require('../models/SeedInventory'); // 모델 경로 확인 필요
-const User = require('../models/User'); // 유저 모델 (kakaoId, nickname 포함)
 
-// ✅ 관리자 초기 재고/가격 설정 API
-router.post('/admin/init', async (req, res) => {
-  const { seedPotato, seedBarley } = req.body;
+const SeedInventory = require('../models/SeedInventory');
+const User = require('../models/User');
+const UserInventory = require('../models/UserInventory');
 
-  if (!seedPotato || !seedBarley) {
-    return res.status(400).json({ success: false, message: '초기값 누락' });
-  }
-
-  try {
-    await SeedInventory.deleteMany({});
-    await SeedInventory.create([
-      {
-        type: 'seedPotato',
-        quantity: seedPotato.quantity,
-        price: seedPotato.price,
-      },
-      {
-        type: 'seedBarley',
-        quantity: seedBarley.quantity,
-        price: seedBarley.price,
-      },
-    ]);
-    res.json({ success: true, message: '초기화 완료' });
-  } catch (error) {
-    console.error('초기화 오류:', error);
-    res.status(500).json({ success: false, message: '초기화 실패' });
-  }
-});
-
-// ✅ 씨앗 가격만 조회 API
-router.get('/prices', async (req, res) => {
-  try {
-    const seeds = await SeedInventory.find();
-    const prices = {};
-    seeds.forEach(seed => {
-      prices[seed.type] = seed.price;
-    });
-    res.json(prices);
-  } catch (error) {
-    console.error('가격 조회 오류:', error);
-    res.status(500).json({ success: false, message: '가격 조회 실패' });
-  }
-});
-
-// ✅ 씨앗 재고 상태 API (status)
-router.get('/status', async (req, res) => {
-  try {
-    const seeds = await SeedInventory.find();
-    const status = {};
-    seeds.forEach(seed => {
-      status[seed.type] = {
-        quantity: seed.quantity,
-        price: seed.price,
-      };
-    });
-    res.json(status);
-  } catch (error) {
-    console.error('상태 조회 오류:', error);
-    res.status(500).json({ success: false, message: '상태 조회 실패' });
-  }
-});
-
-// ✅ 씨앗 구매 API (카카오ID 기반 토큰 확인 + 보유 수 제한 + 차감)
 router.post('/purchase', async (req, res) => {
-  const { type, kakaoId, inventory = {} } = req.body;
-
-  if (!['seedPotato', 'seedBarley'].includes(type)) {
-    return res.status(400).json({ success: false, message: '잘못된 씨앗 타입' });
-  }
-
-  const totalOwned = (inventory.seedPotato || 0) + (inventory.seedBarley || 0);
-  if (totalOwned >= 2) {
-    return res.status(400).json({ success: false, message: '씨앗은 최대 2개까지만 보유 가능' });
-  }
+  const { kakaoId, type } = req.body;
+  const seedType = type === 'seedPotato' ? 'seedPotato' : 'seedBarley';
 
   try {
     const user = await User.findOne({ kakaoId });
-    if (!user) return res.status(404).json({ success: false, message: '유저 없음' });
+    if (!user) return res.status(404).json({ message: '유저 없음' });
 
-    const seed = await SeedInventory.findOne({ type });
-    if (!seed || seed.quantity <= 0) {
-      return res.status(400).json({ success: false, message: '재고 부족' });
-    }
-    if (user.token < seed.price) {
-      return res.status(400).json({ success: false, message: '토큰 부족' });
+    const seedEntry = await SeedInventory.findOne({ type: seedType });
+    if (!seedEntry || seedEntry.quantity <= 0) {
+      return res.status(400).json({ message: '씨앗 품절' });
     }
 
-    seed.quantity -= 1;
-    user.token -= seed.price;
-    await seed.save();
-    await user.save();
+    if (user.orcx < seedEntry.price) {
+      return res.status(400).json({ message: '토큰 부족' });
+    }
+
+    let inventory = await UserInventory.findOne({ kakaoId });
+    if (!inventory) {
+      inventory = new UserInventory({ kakaoId });
+    }
+
+    const totalSeeds = inventory.seedPotato + inventory.seedBarley;
+    if (totalSeeds >= 4) {
+      return res.status(400).json({ message: '씨앗 보유 한도 초과' });
+    }
+
+    // 구매 처리
+    seedEntry.quantity -= 1;
+    user.orcx -= seedEntry.price;
+    inventory[seedType] += 1;
+
+    await Promise.all([seedEntry.save(), user.save(), inventory.save()]);
 
     res.json({
-      success: true,
-      message: `${type} 구매 완료`,
-      price: seed.price,
-      remainingToken: user.token,
-      nickname: user.nickname // 카카오 닉네임 반환
+      message: '씨앗 구매 완료',
+      remainingToken: user.orcx,
+      inventory: {
+        seedPotato: inventory.seedPotato,
+        seedBarley: inventory.seedBarley
+      }
     });
   } catch (error) {
-    console.error('구매 오류:', error);
-    res.status(500).json({ success: false, message: '구매 실패' });
+    console.error(error);
+    res.status(500).json({ message: '서버 오류' });
   }
 });
 
-// ✅ 씨앗 가격 수정 API (관리자용)
-router.post('/admin/set-price', async (req, res) => {
-  const { type, price } = req.body;
-
-  if (!['seedPotato', 'seedBarley'].includes(type) || typeof price !== 'number') {
-    return res.status(400).json({ success: false, message: '잘못된 요청' });
-  }
+router.post('/use', async (req, res) => {
+  const { kakaoId, type, quantity } = req.body;
+  const seedType = type === 'seedPotato' ? 'seedPotato' : 'seedBarley';
 
   try {
-    const seed = await SeedInventory.findOne({ type });
-    if (!seed) return res.status(404).json({ success: false, message: '씨앗 없음' });
+    const inventory = await UserInventory.findOne({ kakaoId });
+    if (!inventory || inventory[seedType] < quantity) {
+      return res.status(400).json({ message: '보유 씨앗 부족' });
+    }
 
-    seed.price = price;
-    await seed.save();
-    res.json({ success: true, newPrice: price });
+    const seedEntry = await SeedInventory.findOne({ type: seedType });
+    if (!seedEntry) return res.status(404).json({ message: '씨앗 항목 없음' });
+
+    // 사용 처리
+    inventory[seedType] -= quantity;
+    seedEntry.quantity += quantity;
+
+    // 농작물 생산 (랜덤 3, 5, 7)
+    const yieldOptions = [3, 5, 7];
+    const randomYield = yieldOptions[Math.floor(Math.random() * yieldOptions.length)];
+    inventory[`${seedType}Crop`] = (inventory[`${seedType}Crop`] || 0) + randomYield * quantity;
+
+    // 가공식품 생산용 감자/보리 작물도 업데이트 필요시 별도 라우터에서 처리 가능
+
+    await Promise.all([inventory.save(), seedEntry.save()]);
+
+    res.json({
+      message: `${seedType} ${quantity}개 사용 완료`,
+      cropYield: randomYield * quantity,
+      inventory: {
+        seedPotato: inventory.seedPotato,
+        seedBarley: inventory.seedBarley,
+        seedPotatoCrop: inventory.seedPotatoCrop || 0,
+        seedBarleyCrop: inventory.seedBarleyCrop || 0
+      }
+    });
   } catch (error) {
-    console.error('가격 수정 오류:', error);
-    res.status(500).json({ success: false, message: '가격 수정 실패' });
+    console.error(error);
+    res.status(500).json({ message: '서버 오류' });
+  }
+});
+
+router.post('/returnAll', async (req, res) => {
+  const { kakaoId } = req.body;
+
+  try {
+    const inventory = await UserInventory.findOne({ kakaoId });
+    if (!inventory) return res.status(404).json({ message: '유저 인벤토리 없음' });
+
+    const potatoEntry = await SeedInventory.findOne({ type: 'seedPotato' });
+    const barleyEntry = await SeedInventory.findOne({ type: 'seedBarley' });
+    if (!potatoEntry || !barleyEntry) {
+      return res.status(404).json({ message: '씨앗 항목 없음' });
+    }
+
+    const returnedPotato = inventory.seedPotato;
+    const returnedBarley = inventory.seedBarley;
+
+    potatoEntry.quantity += returnedPotato;
+    barleyEntry.quantity += returnedBarley;
+
+    inventory.seedPotato = 0;
+    inventory.seedBarley = 0;
+
+    await Promise.all([
+      potatoEntry.save(),
+      barleyEntry.save(),
+      inventory.save()
+    ]);
+
+    res.json({
+      message: '모든 씨앗 반환 완료',
+      returned: {
+        seedPotato: returnedPotato,
+        seedBarley: returnedBarley
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: '서버 오류' });
   }
 });
 
