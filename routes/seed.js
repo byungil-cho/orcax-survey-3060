@@ -6,6 +6,32 @@ const SeedInventory = require('../models/SeedInventory');
 const User = require('../models/User');
 const UserInventory = require('../models/UserInventory');
 
+// ✅ 씨앗 상태 반환
+router.get('/status', async (req, res) => {
+  try {
+    const potato = await SeedInventory.findOne({ type: 'seedPotato' });
+    const barley = await SeedInventory.findOne({ type: 'seedBarley' });
+
+    if (!potato || !barley) {
+      return res.status(404).json({ message: '씨앗 항목 없음' });
+    }
+
+    res.json({
+      seedPotato: {
+        price: potato.price,
+        quantity: potato.quantity
+      },
+      seedBarley: {
+        price: barley.price,
+        quantity: barley.quantity
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: '서버 오류' });
+  }
+});
+
 router.post('/purchase', async (req, res) => {
   const { kakaoId, type } = req.body;
   const seedType = type === 'seedPotato' ? 'seedPotato' : 'seedBarley';
@@ -75,8 +101,6 @@ router.post('/use', async (req, res) => {
     const yieldOptions = [3, 5, 7];
     const randomYield = yieldOptions[Math.floor(Math.random() * yieldOptions.length)];
     inventory[`${seedType}Crop`] = (inventory[`${seedType}Crop`] || 0) + randomYield * quantity;
-
-    // 가공식품 생산용 감자/보리 작물도 업데이트 필요시 별도 라우터에서 처리 가능
 
     await Promise.all([inventory.save(), seedEntry.save()]);
 
