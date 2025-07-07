@@ -1,7 +1,7 @@
-// user.js 수정된 전체 코드
+// routes/user.js
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const db = require('../api/db'); // ← 이 부분 고침
 
 router.get('/me', async (req, res) => {
   try {
