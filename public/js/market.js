@@ -1,26 +1,18 @@
-// public/js/market.js
+// login.js
+const express = require('express');
+const router = express.Router();
 
-document.querySelectorAll(".purchase-button").forEach((button) => {
-  button.addEventListener("click", async (e) => {
-    const itemId = e.target.dataset.itemId;
-    try {
-      const response = await fetch(`/api/market/purchase`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ itemId })
-      });
-      const result = await response.json();
-
-      if (response.ok) {
-        alert("구매 성공: " + result.message);
-      } else {
-        alert("구매 실패: " + result.message);
-      }
-    } catch (err) {
-      console.error("에러 발생:", err);
-      alert("에러가 발생했습니다. 콘솔을 확인해주세요.");
-    }
-  });
+// 예시 라우트 (필요한 로그인 로직 추가)
+router.post('/', (req, res) => {
+  const { username, password } = req.body;
+  if (username === 'admin' && password === 'password') {
+    res.status(200).json({ message: '로그인 성공' });
+  } else {
+    res.status(401).json({ message: '로그인 실패' });
+  }
 });
+
+module.exports = router;
+
+// public/js/market.js 로 따로 클라이언트 스크립트를 분리해야 함
+// routes/market.js 는 서버 사이드 코드이므로 document 관련 코드가 있으면 안 됨
