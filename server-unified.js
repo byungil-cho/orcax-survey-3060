@@ -79,13 +79,3 @@ router.get('/status', (req, res) => {
 
 module.exports = router;
 
-
-// public/js/market.js
-// 클라이언트 측에서 동작하는 코드 예시
-// 이 파일은 브라우저 환경에서만 동작
-
-document.querySelectorAll(".purchase-button").forEach((button) => {
-  button.addEventListener("click", () => {
-    alert("구매 완료!");
-  });
-});
