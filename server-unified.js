@@ -11,17 +11,19 @@ app.use(express.json());
 // ✅ 라우터 연결
 const loginRoute = require('./routes/login');
 const marketRoute = require('./routes/market');
-const userRoute = require('./routes/user');           // 기존 유지
-const userdataRoute = require('./routes/userdata');   // ✅ 추가된 라우터
+const userRoute = require('./routes/user');             // 세션 기반 route
+const userdataRoute = require('./routes/userdata');     // MongoDB route for /api/userdata
 const seedRoute = require('./routes/seed');
 const initUserRoute = require('./routes/init-user');
+const apiUserRoute = require('./api/user');             // ✅ REST API 기반 user.js
 
 app.use('/api/login', loginRoute);
 app.use('/api/market', marketRoute);
-app.use('/api/users', userRoute);
-app.use('/api/userdata', userdataRoute);  // ✅ 반드시 추가
+app.use('/api/users', userRoute);           // 세션 기반
+app.use('/api/userdata', userdataRoute);    // Mongo 전용
 app.use('/api/seed', seedRoute);
 app.use('/api/init-user', initUserRoute);
+app.use('/api/user', apiUserRoute);         // ✅ REST API (예: /api/user/userdata)
 
 mongoose.connect(process.env.MONGODB_URL, {
   useNewUrlParser: true,
