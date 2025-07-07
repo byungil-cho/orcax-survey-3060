@@ -1,11 +1,15 @@
 const express = require('express');
 const router = express.Router();
 
-// 임시 로그인 핸들러
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const { kakaoId } = req.body;
-  if (!kakaoId) return res.status(400).json({ message: 'kakaoId가 필요합니다.' });
-  res.status(200).json({ message: '로그인 성공', kakaoId });
+
+  if (!kakaoId) {
+    return res.status(400).json({ error: '카카오 ID가 필요합니다.' });
+  }
+
+  // 여기서 실제 로그인 처리나 DB 조회를 해야 함
+  res.json({ message: `${kakaoId} 로그인 완료`, success: true });
 });
 
 module.exports = router;
