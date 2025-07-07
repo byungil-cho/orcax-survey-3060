@@ -1,5 +1,6 @@
-""// server-unified.js
+// server-unified.js
 require('dotenv').config();
+const express = require('express');
 const mongoose = require('mongoose');
 const app = express();
 const port = 3060;
@@ -15,9 +16,12 @@ app.use('/api/market', marketRoute);
 app.use('/api/users', userRoute);
 app.use('/api/seed', seedRoute);
 
-mongoose.connect(process.env.MONGODB_URL)
-  .then(() => console.log('✅ MongoDB 연결 성공'))
-  .catch(err => console.error('❌ MongoDB 연결 실패:', err));
+mongoose.connect(process.env.MONGODB_URL, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => console.log('✅ MongoDB 연결 성공'))
+.catch(err => console.error('❌ MongoDB 연결 실패:', err));
 
 app.listen(port, () => {
   console.log(`🚀 Server running on http://localhost:${port}`);
@@ -25,10 +29,9 @@ app.listen(port, () => {
 
 
 // routes/login.js
-const express = require('express');
-const router = express.Router();
+const loginRouter = require('express').Router();
 
-router.post('/', (req, res) => {
+loginRouter.post('/', (req, res) => {
   const { username, password } = req.body;
   if (username === 'admin' && password === 'password') {
     res.status(200).json({ message: '로그인 성공' });
@@ -37,41 +40,47 @@ router.post('/', (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = loginRouter;
 
 
 // routes/market.js
-const router = express.Router();
+const marketRouter = require('express').Router();
 
-// 예시 마켓 데이터
 const dummyProducts = [
   { id: 1, name: '사과', price: 1000 },
   { id: 2, name: '바나나', price: 1500 }
 ];
 
-router.get('/', (req, res) => {
+marketRouter.get('/', (req, res) => {
   res.json(dummyProducts);
 });
 
-module.exports = router;
+module.exports = marketRouter;
 
 
 // routes/user.js
-const router = express.Router();
+const userRouter = require('express').Router();
 
-router.get('/me', (req, res) => {
+userRouter.get('/me', (req, res) => {
   res.json({ id: 1, username: 'admin' });
 });
 
-module.exports = router;
+module.exports = userRouter;
 
 
 // routes/seed.js
-const router = express.Router();
+const seedRouter = require('express').Router();
 
-router.get('/status', (req, res) => {
+seedRouter.get('/status', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-module.exports = router;
+module.exports = seedRouter;
 
+
+// public/js/market.js
+document.querySelectorAll(".purchase-button").forEach((button) => {
+  button.addEventListener("click", () => {
+    alert("구매 완료!");
+  });
+});
