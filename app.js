@@ -38,7 +38,12 @@ db.once('open', () => {
   console.log('✅ MongoDB 연결 성공');
 });
 
-app.use(cors());
+// ✅ CORS 설정 수정
+app.use(cors({
+  origin: 'https://byungil-cho.github.io',
+  credentials: true
+}));
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
