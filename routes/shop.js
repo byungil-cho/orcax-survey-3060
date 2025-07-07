@@ -4,6 +4,7 @@ const router = express.Router();
 
 router.get('/', (req, res) => {
   res.json({
+    message: '상점 API 작동 중',
     items: [
       { id: 1, name: '감자 씨앗', price: 5 },
       { id: 2, name: '물뿌리개', price: 10 },

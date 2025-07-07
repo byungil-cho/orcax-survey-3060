@@ -1,11 +1,11 @@
-// routes/market.js
+// routes/seed-status.js
 const express = require('express');
 const router = express.Router();
 
 router.get('/', (req, res) => {
   res.json({
-    message: '마켓 데이터 조회 성공',
-    marketItems: []
+    seed: 0,
+    sprout: 0
   });
 });
 
