@@ -1,20 +1,11 @@
-const mongoose = require("mongoose");
-require("dotenv").config();
-
-mongoose.connect(process.env.MONGODB_URL, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-});
-
 const userSchema = new mongoose.Schema({
   kakaoId: { type: String, required: true, unique: true },
-  nickname: { type: String, default: "Unknown" },
-  email: { type: String, default: "" },
-  orcx: { type: Number, default: 0 },
+  nickname: String,
+  potato: { type: Number, default: 0 },
   water: { type: Number, default: 0 },
-  fertilizer: { type: Number, default: 0 }
+  fertilizer: { type: Number, default: 0 },
+  orcx: { type: Number, default: 0 },
+  seed: { type: Number, default: 0 },
+  sprout: { type: Number, default: 0 },
+  inventory: { type: Array, default: [] }
 });
-
-const User = mongoose.model("User", userSchema);
-
-module.exports = User;
