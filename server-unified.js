@@ -7,6 +7,9 @@ const cors = require('cors');
 const app = express();
 const port = 3060;
 
+const loginRouter = require('./routes/login');
+app.use('/api/login', loginRouter);
+
 // 미들웨어
 app.use(cors());
 app.use(express.json());
