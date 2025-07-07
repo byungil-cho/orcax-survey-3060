@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 const app = express();
 const port = 3060;
 
+app.use(express.static('public'));
 const loginRoute = require('./routes/login');
 const marketRoute = require('./routes/market');
 const userRoute = require('./routes/user');
