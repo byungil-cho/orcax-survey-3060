@@ -1,14 +1,14 @@
-// 📁 파일: routes/user.js
+// 파일: routes/user.js
 
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 
-// ✅ 로그인 유저 정보 조회 (kakaoId 기반)
+// ◼️ 수정된: 카카오 ID는 세션에서 확인
 router.get('/me', async (req, res) => {
-  const kakaoId = req.query.kakaoId;
+  const kakaoId = req.session.kakaoId; // ◼️ 이것이 한 단지!
 
-  if (!kakaoId) return res.status(400).json({ success: false, message: 'kakaoId 누락' });
+  if (!kakaoId) return res.status(401).json({ success: false, message: '로그인 안됨' });
 
   try {
     const user = await User.findOne({ kakaoId });
