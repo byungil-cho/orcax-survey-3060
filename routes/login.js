@@ -1,21 +1,15 @@
-const express = require("express");
+// login.js
+const express = require('express');
 const router = express.Router();
-const { getUserByKakaoId, createUser } = require("../api/login");
 
-router.post("/", async (req, res) => {
-  try {
-    const { kakaoId } = req.body;
-    if (!kakaoId) return res.status(400).json({ success: false, message: "카카오 ID 없음" });
-
-    let user = await getUserByKakaoId(kakaoId);
-    if (!user) {
-      user = await createUser(kakaoId); // 물10, 비료10, 토큰10 주는 함수
-    }
-
-    res.json({ success: true, user });
-  } catch (err) {
-    console.error("로그인 에러:", err);
-    res.status(500).json({ success: false, message: "서버 오류" });
+// 예시 라우트 (필요한 로그인 로직 추가)
+router.post('/', (req, res) => {
+  // 로그인 로직 처리 (예시)
+  const { username, password } = req.body;
+  if (username === 'admin' && password === 'password') {
+    res.status(200).json({ message: '로그인 성공' });
+  } else {
+    res.status(401).json({ message: '로그인 실패' });
   }
 });
 
