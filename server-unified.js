@@ -1,41 +1,91 @@
-// server-unified.js
+""// server-unified.js
+require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
-const cors = require('cors');
-require('dotenv').config();
-
 const app = express();
 const port = 3060;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+const loginRoute = require('./routes/login');
+const marketRoute = require('./routes/market');
+const userRoute = require('./routes/user');
+const seedRoute = require('./routes/seed');
 
-// DB Connection
-mongoose.connect(process.env.MONGODB_URL, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-}).then(() => {
-  console.log('✅ MongoDB connected');
-}).catch(err => {
-  console.error('❌ MongoDB connection error:', err);
+app.use(express.json());
+app.use('/api/login', loginRoute);
+app.use('/api/market', marketRoute);
+app.use('/api/users', userRoute);
+app.use('/api/seed', seedRoute);
+
+mongoose.connect(process.env.MONGODB_URL)
+  .then(() => console.log('✅ MongoDB 연결 성공'))
+  .catch(err => console.error('❌ MongoDB 연결 실패:', err));
+
+app.listen(port, () => {
+  console.log(`🚀 Server running on http://localhost:${port}`);
 });
 
-// Unified route registration
-const fs = require('fs');
-const path = require('path');
 
-const routesDir = path.join(__dirname, 'routes');
-fs.readdirSync(routesDir).forEach(file => {
-  const routePath = path.join(routesDir, file);
-  if (fs.statSync(routePath).isFile() && file.endsWith('.js')) {
-    const route = require(routePath);
-    const routeName = file.replace('.js', '');
-    app.use(`/api/${routeName}`, route);
+// routes/login.js
+const express = require('express');
+const router = express.Router();
+
+router.post('/', (req, res) => {
+  const { username, password } = req.body;
+  if (username === 'admin' && password === 'password') {
+    res.status(200).json({ message: '로그인 성공' });
+  } else {
+    res.status(401).json({ message: '로그인 실패' });
   }
 });
 
-// Start server
-app.listen(port, () => {
-  console.log(`🚀 Server running on http://localhost:${port}`);
+module.exports = router;
+
+
+// routes/market.js
+const express = require('express');
+const router = express.Router();
+
+// 예시 마켓 데이터
+const dummyProducts = [
+  { id: 1, name: '사과', price: 1000 },
+  { id: 2, name: '바나나', price: 1500 }
+];
+
+router.get('/', (req, res) => {
+  res.json(dummyProducts);
+});
+
+module.exports = router;
+
+
+// routes/user.js
+const express = require('express');
+const router = express.Router();
+
+router.get('/me', (req, res) => {
+  res.json({ id: 1, username: 'admin' });
+});
+
+module.exports = router;
+
+
+// routes/seed.js
+const express = require('express');
+const router = express.Router();
+
+router.get('/status', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+module.exports = router;
+
+
+// public/js/market.js
+// 클라이언트 측에서 동작하는 코드 예시
+// 이 파일은 브라우저 환경에서만 동작
+
+document.querySelectorAll(".purchase-button").forEach((button) => {
+  button.addEventListener("click", () => {
+    alert("구매 완료!");
+  });
 });
