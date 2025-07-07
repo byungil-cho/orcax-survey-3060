@@ -1,37 +1,40 @@
 // server-unified.js
-require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+require('dotenv').config();
+
 const app = express();
-const port = 3060;
+const port = process.env.PORT || 3060;
 
-app.use(express.static('public'));
-app.use(express.json());
+// 미들웨어
+app.use(cors());
+app.use(bodyParser.json());
 
-// ✅ 라우터 연결
-const loginRoute = require('./routes/login');
-const marketRoute = require('./routes/market');
-const userRoute = require('./routes/user');             // 세션 기반 route
-const userdataRoute = require('./routes/userdata');     // MongoDB route for /api/userdata
-const seedRoute = require('./routes/seed');
-const initUserRoute = require('./routes/init-user');
-const apiUserRoute = require('./api/user');             // ✅ REST API 기반 user.js
-
-app.use('/api/login', loginRoute);
-app.use('/api/market', marketRoute);
-app.use('/api/users', userRoute);           // 세션 기반
-app.use('/api/userdata', userdataRoute);    // Mongo 전용
-app.use('/api/seed', seedRoute);
-app.use('/api/init-user', initUserRoute);
-app.use('/api/user', apiUserRoute);         // ✅ REST API (예: /api/user/userdata)
-
-mongoose.connect(process.env.MONGODB_URL, {
+// 몽고디비 연결
+mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
-})
-.then(() => console.log('✅ MongoDB 연결 성공'))
-.catch(err => console.error('❌ MongoDB 연결 실패:', err));
+});
+
+const db = mongoose.connection;
+db.on('error', console.error.bind(console, 'MongoDB 연결 오류:'));
+db.once('open', () => {
+  console.log('MongoDB 연결 성공');
+});
+
+// 라우터들
+const initUserRouter = require('./routes/init-user');
+const loginRouter = require('./routes/login');
+const userdataRouter = require('./routes/userdata');
+const shopRouter = require('./routes/shop');
+
+app.use('/api/init-user', initUserRouter);
+app.use('/api/login', loginRouter);
+app.use('/api/userdata', userdataRouter);
+app.use('/api/shop', shopRouter);
 
 app.listen(port, () => {
-  console.log(`🚀 Server running on http://localhost:${port}`);
+  console.log(`서버가 ${port} 포트에서 실행 중입니다.`);
 });
