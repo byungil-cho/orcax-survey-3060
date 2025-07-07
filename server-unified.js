@@ -41,7 +41,6 @@ module.exports = router;
 
 
 // routes/market.js
-const express = require('express');
 const router = express.Router();
 
 // 예시 마켓 데이터
@@ -58,7 +57,6 @@ module.exports = router;
 
 
 // routes/user.js
-const express = require('express');
 const router = express.Router();
 
 router.get('/me', (req, res) => {
@@ -69,7 +67,6 @@ module.exports = router;
 
 
 // routes/seed.js
-const express = require('express');
 const router = express.Router();
 
 router.get('/status', (req, res) => {
