@@ -5,6 +5,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const loginRouter = require('./routes/login');
 
 const app = express();
 const port = 3060;
@@ -12,6 +13,7 @@ const port = 3060;
 // 🌱 Middleware
 app.use(cors());
 app.use(bodyParser.json());
+app.use('/api/login', loginRouter);
 
 // 🌐 MongoDB 연결
 mongoose.connect(process.env.MONGODB_URL, {
