@@ -5,6 +5,8 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const loginRouter = require('./routes/login');
+app.use('/api/login', loginRouter);
 
 const app = express();
 const port = 3060;
