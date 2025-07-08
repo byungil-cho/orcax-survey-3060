@@ -1,46 +1,62 @@
-// server-unified.js
-require('dotenv').config();
+// 통합 서버 코드(server-unified.js)
 const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
 const app = express();
-const port = 3060;
+const bodyParser = require('body-parser');
+const cors = require('cors');
 
-// 기본 미들웨어
 app.use(cors());
-app.use(express.json());
+app.use(bodyParser.json());
 
-// MongoDB 연결
-mongoose.connect(process.env.MONGODB_URL, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
-.then(() => console.log('✅ MongoDB 연결 성공'))
-.catch((err) => console.error('❌ MongoDB 연결 오류:', err));
+let users = {};
+let inventory = {
+  seedPotato: 100,
+  seedBarley: 100
+};
 
-// 라우터 모듈 불러오기
-const initUserRouter = require('./routes/init-user');
-const userDataRouter = require('./routes/userdata');
-const shopRouter = require('./routes/shop');
-const seedRouter = require('./routes/seed');
-const marketRouter = require('./routes/market');
-
-// API 라우터 연결
-app.use('/api/init-user', initUserRouter);   // POST: 사용자 초기화
-app.use('/api/userdata', userDataRouter);    // GET: 사용자 정보
-app.use('/api/shop', shopRouter);            // GET: 샵 아이템 목록
-
-// ✅ 추가된 라우터들
-app.use('/seed', seedRouter);                // GET: /seed/status, POST: /seed/purchase 등
-app.use('/market', marketRouter);            // GET: /market/items
-app.use('/users', userDataRouter);           // GET: /users/me? → 동일 라우터 재사용
-
-// 기본 루트
-app.get('/', (req, res) => {
-  res.send('🚜 감자 농장 API 서버 정상 작동 중');
+app.post('/api/init-user', (req, res) => {
+  const kakaoId = req.body.kakaoId;
+  if (!users[kakaoId]) {
+    users[kakaoId] = { nickname: req.body.nickname, tokens: 10 };
+  }
+  res.status(200).json(users[kakaoId]);
 });
 
-// 서버 실행
-app.listen(port, () => {
-  console.log(`🌱 서버가 ${port} 포트에서 실행 중입니다.`);
+app.get('/api/userdata', (req, res) => {
+  const kakaoId = req.query.kakaoId;
+  if (users[kakaoId]) {
+    res.status(200).json(users[kakaoId]);
+  } else {
+    res.status(404).send('User not found');
+  }
 });
+
+app.get('/seed/status', (req, res) => {
+  res.json(inventory);
+});
+
+app.post('/seed/purchase', (req, res) => {
+  const { kakaoId, type } = req.body;
+  if (!users[kakaoId]) return res.status(400).send('Invalid user');
+  if (type === 'potato' && inventory.seedPotato > 0) {
+    inventory.seedPotato--;
+    return res.status(200).send('Purchased seed potato');
+  } else if (type === 'barley' && inventory.seedBarley > 0) {
+    inventory.seedBarley--;
+    return res.status(200).send('Purchased seed barley');
+  } else {
+    return res.status(400).send('Out of stock');
+  }
+});
+
+app.get('/market', (req, res) => {
+  res.status(200).json({ items: [] }); // stub
+});
+
+app.get('/users/me', (req, res) => {
+  const kakaoId = req.query.kakaoId;
+  const user = users[kakaoId];
+  if (!user) return res.status(404).send('User not found');
+  res.status(200).json(user);
+});
+
+app.listen(3060, () => console.log('Server running on port 3060'));
