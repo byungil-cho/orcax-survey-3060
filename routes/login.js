@@ -1,23 +1,23 @@
-// api/login.js
+// 📁 routes/login.js
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 
 router.post('/', async (req, res) => {
-  const { kakaoId } = req.body;
-  if (!kakaoId) {
-    return res.status(400).json({ error: 'kakaoId는 필수입니다.' });
+  const { kakaoId, nickname } = req.body;
+  if (!kakaoId || !nickname) {
+    return res.status(400).json({ error: 'kakaoId와 nickname이 필요합니다' });
   }
 
   try {
-    const user = await User.findOne({ kakaoId });
+    let user = await User.findOne({ kakaoId });
     if (!user) {
-      return res.status(404).json({ error: '사용자 없음' });
+      user = new User({ kakaoId, nickname });
+      await user.save();
     }
-
-    res.status(200).json({ message: '로그인 성공', user });
+    res.status(200).json({ success: true, user });
   } catch (err) {
-    console.error('/api/login error:', err);
+    console.error('/api/login 오류:', err);
     res.status(500).json({ error: '서버 오류' });
   }
 });
