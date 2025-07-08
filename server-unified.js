@@ -5,7 +5,6 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const loginRouter = require('./routes/login');
 
 const app = express();
 const port = 3060;
@@ -13,7 +12,6 @@ const port = 3060;
 // 🌱 Middleware
 app.use(cors());
 app.use(bodyParser.json());
-app.use('/api/login', loginRouter);
 
 // 🌐 MongoDB 연결
 mongoose.connect(process.env.MONGODB_URL, {
@@ -23,34 +21,30 @@ mongoose.connect(process.env.MONGODB_URL, {
   .then(() => console.log("✅ MongoDB 연결 성공"))
   .catch((err) => console.error("❌ MongoDB 연결 실패:", err));
 
-// 📦 예제 라우터 연결 (파일별로 나누었다면 require 해서 연결)
+// 📦 외부 라우터 연결
 const initUserRouter = require('./routes/init-user');
 const userDataRouter = require('./routes/userdata');
 const marketRouter = require('./routes/market');
-const seedRouter = require('./routes/seed');
 const shopRouter = require('./routes/shop');
+const loginRouter = require('./routes/login'); // ✅ 추가됨
 
 app.use('/api/init-user', initUserRouter);
 app.use('/api/userdata', userDataRouter);
 app.use('/market', marketRouter);
 app.use('/shop', shopRouter);
+app.use('/api/login', loginRouter); // ✅ 연결됨
 
-// ✅ /users/me용 개별 라우터 추가
+// ✅ /users/me 라우터
 const usersRouter = express.Router();
 const User = require('./models/User');
 
 usersRouter.get('/me', async (req, res) => {
   const { kakaoId } = req.query;
-  if (!kakaoId) {
-    return res.status(400).json({ error: 'kakaoId 쿼리 필요' });
-  }
+  if (!kakaoId) return res.status(400).json({ error: 'kakaoId 쿼리 필요' });
 
   try {
     const user = await User.findOne({ kakaoId });
-    if (!user) {
-      return res.status(404).json({ error: '유저 없음' });
-    }
-
+    if (!user) return res.status(404).json({ error: '유저 없음' });
     const { nickname, power, seed, token } = user;
     res.json({ nickname, power, seed, token });
   } catch (err) {
@@ -58,20 +52,13 @@ usersRouter.get('/me', async (req, res) => {
     res.status(500).json({ error: '서버 오류' });
   }
 });
-
 app.use('/users', usersRouter);
 
-// 🛍️ Market 모델 생성
-const mongooseSchema = new mongoose.Schema({
-  name: String,
-  quantity: Number,
-});
-
+// 🛍️ Market 라우터 직접 구현 (예시)
+const mongooseSchema = new mongoose.Schema({ name: String, quantity: Number });
 const Market = mongoose.model('Market', mongooseSchema);
 
-// 🛠 market 라우터 직접 구현 (routes/market.js 역할)
 const marketRouterInline = express.Router();
-
 marketRouterInline.get('/', async (req, res) => {
   try {
     const marketItems = await Market.find({});
@@ -81,20 +68,36 @@ marketRouterInline.get('/', async (req, res) => {
     res.status(500).json({ error: '시장 정보 불러오기 실패' });
   }
 });
-
 app.use('/market', marketRouterInline);
 
-// 🥔 /seed/status 추가
+// 🌱 Seed 관련 모델 및 라우터
 const SeedInventory = require('./models/SeedInventory');
-
 const seedRouterInline = express.Router();
 
+// ✅ 씨앗 상태 조회 + 자동 생성/보정
 seedRouterInline.get('/status', async (req, res) => {
   try {
-    const seedData = await SeedInventory.findOne({ _id: 'singleton' });
+    let seedData = await SeedInventory.findOne({ _id: 'singleton' });
+
     if (!seedData) {
-      return res.status(200).json({ seedPotato: { quantity: 0, price: 0 } });
+      seedData = await SeedInventory.create({
+        _id: 'singleton',
+        seedPotato: { quantity: 100, price: 2 },
+        seedBarley: { quantity: 100, price: 2 },
+      });
+    } else {
+      let changed = false;
+      if (!seedData.seedPotato) {
+        seedData.seedPotato = { quantity: 100, price: 2 };
+        changed = true;
+      }
+      if (!seedData.seedBarley) {
+        seedData.seedBarley = { quantity: 100, price: 2 };
+        changed = true;
+      }
+      if (changed) await seedData.save();
     }
+
     res.status(200).json(seedData);
   } catch (err) {
     console.error('/seed/status error:', err);
@@ -102,9 +105,31 @@ seedRouterInline.get('/status', async (req, res) => {
   }
 });
 
+// ✅ 씨앗 구매 라우트
+seedRouterInline.post('/purchase', async (req, res) => {
+  const { type, quantity } = req.body;
+  if (!['seedPotato', 'seedBarley'].includes(type)) {
+    return res.status(400).json({ error: '잘못된 씨앗 타입' });
+  }
+
+  try {
+    const seedData = await SeedInventory.findOne({ _id: 'singleton' });
+    if (!seedData || seedData[type].quantity < quantity) {
+      return res.status(400).json({ error: '재고 부족' });
+    }
+
+    seedData[type].quantity -= quantity;
+    await seedData.save();
+
+    res.status(200).json({ success: true, remaining: seedData[type].quantity });
+  } catch (err) {
+    console.error('/seed/purchase error:', err);
+    res.status(500).json({ error: '씨앗 구매 실패' });
+  }
+});
 app.use('/seed', seedRouterInline);
 
-// 🛠 기본 라우터
+// 🟢 기본 루트
 app.get('/', (req, res) => {
   res.send('🌽 OrcaX 감자 서버가 살아있다');
 });
