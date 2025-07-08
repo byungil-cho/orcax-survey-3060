@@ -26,13 +26,15 @@ const initUserRouter = require('./routes/init-user');
 const userDataRouter = require('./routes/userdata');
 const marketRouter = require('./routes/market');
 const shopRouter = require('./routes/shop');
-const loginRouter = require('./routes/login'); // ✅ 추가됨
+const loginRouter = require('./routes/login');
+const adminSeedRouter = require('./routes/seed-admin'); // ✅ 관리자용 씨앗 관리 라우터
 
 app.use('/api/init-user', initUserRouter);
 app.use('/api/userdata', userDataRouter);
 app.use('/market', marketRouter);
 app.use('/shop', shopRouter);
-app.use('/api/login', loginRouter); // ✅ 연결됨
+app.use('/api/login', loginRouter);
+app.use('/api/seed/admin', adminSeedRouter); // ✅ 연결 완료
 
 // ✅ /users/me 라우터
 const usersRouter = express.Router();
