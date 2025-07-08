@@ -5,7 +5,6 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const loginRouter = require('./routes/login');
 
 const app = express();
 const port = 3060;
@@ -13,7 +12,6 @@ const port = 3060;
 // 🌱 Middleware
 app.use(cors());
 app.use(bodyParser.json());
-app.use('/api/login', loginRouter);
 
 // 🌐 MongoDB 연결
 mongoose.connect(process.env.MONGODB_URL, {
@@ -23,7 +21,7 @@ mongoose.connect(process.env.MONGODB_URL, {
   .then(() => console.log("✅ MongoDB 연결 성공"))
   .catch((err) => console.error("❌ MongoDB 연결 실패:", err));
 
-// 📦 라우터 연결
+// 📦 예제 라우터 연결 (파일별로 나누었다면 require 해서 연결)
 const initUserRouter = require('./routes/init-user');
 const userDataRouter = require('./routes/userdata');
 const marketRouter = require('./routes/market');
@@ -36,7 +34,7 @@ app.use('/market', marketRouter);
 app.use('/seed', seedRouter);
 app.use('/shop', shopRouter);
 
-// ✅ /users/me용 개별 라우터
+// ✅ /users/me용 개별 라우터 추가
 const usersRouter = express.Router();
 const User = require('./models/User');
 
@@ -61,6 +59,29 @@ usersRouter.get('/me', async (req, res) => {
 });
 
 app.use('/users', usersRouter);
+
+// 🛍️ Market 모델 생성
+const mongooseSchema = new mongoose.Schema({
+  name: String,
+  quantity: Number,
+});
+
+const Market = mongoose.model('Market', mongooseSchema);
+
+// 🛠 market 라우터 직접 구현 (routes/market.js 역할)
+const marketRouterInline = express.Router();
+
+marketRouterInline.get('/', async (req, res) => {
+  try {
+    const marketItems = await Market.find({});
+    res.json(marketItems);
+  } catch (error) {
+    console.error('❌ /market GET 실패:', error);
+    res.status(500).json({ error: '시장 정보 불러오기 실패' });
+  }
+});
+
+app.use('/market', marketRouterInline);
 
 // 🛠 기본 라우터
 app.get('/', (req, res) => {
