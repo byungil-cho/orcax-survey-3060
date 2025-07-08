@@ -83,6 +83,26 @@ marketRouterInline.get('/', async (req, res) => {
 
 app.use('/market', marketRouterInline);
 
+// 🥔 /seed/status 추가
+const SeedInventory = require('./models/SeedInventory');
+
+const seedRouterInline = express.Router();
+
+seedRouterInline.get('/status', async (req, res) => {
+  try {
+    const seedData = await SeedInventory.findOne({ _id: 'singleton' });
+    if (!seedData) {
+      return res.status(200).json({ seedPotato: { quantity: 0, price: 0 } });
+    }
+    res.status(200).json(seedData);
+  } catch (err) {
+    console.error('/seed/status error:', err);
+    res.status(500).json({ error: '씨앗 정보 불러오기 실패' });
+  }
+});
+
+app.use('/seed', seedRouterInline);
+
 // 🛠 기본 라우터
 app.get('/', (req, res) => {
   res.send('🌽 OrcaX 감자 서버가 살아있다');
