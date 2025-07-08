@@ -34,7 +34,7 @@ app.use('/api/userdata', userDataRouter);
 app.use('/market', marketRouter);
 app.use('/shop', shopRouter);
 app.use('/api/login', loginRouter);
-app.use('/api/seed/admin', adminSeedRouter); // ✅ 연결 완료
+app.use('/api/seed/admin', adminSeedRouter);
 
 // ✅ /users/me 라우터
 const usersRouter = express.Router();
@@ -138,7 +138,6 @@ seedRouterInline.post('/purchase', async (req, res) => {
       return res.status(400).json({ error: '토큰 부족' });
     }
 
-    // 차감 처리
     user.orcx -= totalCost;
     seedData[type].quantity -= quantity;
     await user.save();
