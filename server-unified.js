@@ -56,6 +56,16 @@ usersRouter.get('/me', async (req, res) => {
 });
 app.use('/users', usersRouter);
 
+// ✅ 전원 상태 확인 라우트 추가
+app.get('/api/power-status', async (req, res) => {
+  try {
+    await mongoose.connection.db.admin().ping();
+    res.status(200).json({ status: '🟢 정상 작동 중', mongo: true });
+  } catch (error) {
+    res.status(500).json({ status: '🔴 MongoDB 연결 오류', mongo: false });
+  }
+});
+
 // 🛍️ Market 라우터 직접 구현 (예시)
 const mongooseSchema = new mongoose.Schema({ name: String, quantity: Number });
 const Market = mongoose.model('Market', mongooseSchema);
