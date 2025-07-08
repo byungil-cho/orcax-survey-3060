@@ -31,7 +31,6 @@ const shopRouter = require('./routes/shop');
 app.use('/api/init-user', initUserRouter);
 app.use('/api/userdata', userDataRouter);
 app.use('/market', marketRouter);
-app.use('/seed', seedRouter);
 app.use('/shop', shopRouter);
 
 // ✅ /users/me용 개별 라우터 추가
