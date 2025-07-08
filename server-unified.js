@@ -33,7 +33,32 @@ app.use('/api/userdata', userDataRouter);
 app.use('/market', marketRouter);
 app.use('/seed', seedRouter);
 app.use('/shop', shopRouter);
-app.use('/users', userDataRouter); // /users/me용
+
+// ✅ /users/me용 개별 라우터 추가
+const usersRouter = express.Router();
+const User = require('./models/User');
+
+usersRouter.get('/me', async (req, res) => {
+  const { kakaoId } = req.query;
+  if (!kakaoId) {
+    return res.status(400).json({ error: 'kakaoId 쿼리 필요' });
+  }
+
+  try {
+    const user = await User.findOne({ kakaoId });
+    if (!user) {
+      return res.status(404).json({ error: '유저 없음' });
+    }
+
+    const { nickname, power, seed, token } = user;
+    res.json({ nickname, power, seed, token });
+  } catch (err) {
+    console.error('/users/me error:', err);
+    res.status(500).json({ error: '서버 오류' });
+  }
+});
+
+app.use('/users', usersRouter);
 
 // 🛠 기본 라우터
 app.get('/', (req, res) => {
