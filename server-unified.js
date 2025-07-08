@@ -21,7 +21,7 @@ mongoose.connect(process.env.MONGODB_URL, {
   .then(() => console.log("✅ MongoDB 연결 성공"))
   .catch((err) => console.error("❌ MongoDB 연결 실패:", err));
 
-// 📦 예제 라우터 연결 (파일별로 나누었다면 require 해서 연결)
+// 📦 라우터 연결
 const initUserRouter = require('./routes/init-user');
 const userDataRouter = require('./routes/userdata');
 const marketRouter = require('./routes/market');
@@ -34,7 +34,7 @@ app.use('/market', marketRouter);
 app.use('/seed', seedRouter);
 app.use('/shop', shopRouter);
 
-// ✅ /users/me용 개별 라우터 추가
+// ✅ /users/me용 개별 라우터
 const usersRouter = express.Router();
 const User = require('./models/User');
 
