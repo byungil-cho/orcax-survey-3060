@@ -107,9 +107,9 @@ seedRouterInline.get('/status', async (req, res) => {
   }
 });
 
-// ✅ 씨앗 구매 라우트
+// ✅ 씨앗 구매 라우트 (토큰 차감 포함)
 seedRouterInline.post('/purchase', async (req, res) => {
-  const { type, quantity } = req.body;
+  const { kakaoId, type, quantity } = req.body;
   if (!['seedPotato', 'seedBarley'].includes(type)) {
     return res.status(400).json({ error: '잘못된 씨앗 타입' });
   }
@@ -120,15 +120,68 @@ seedRouterInline.post('/purchase', async (req, res) => {
       return res.status(400).json({ error: '재고 부족' });
     }
 
+    const user = await User.findOne({ kakaoId });
+    if (!user) return res.status(404).json({ error: '유저 없음' });
+
+    const totalCost = seedData[type].price * quantity;
+    if (user.orcx < totalCost) {
+      return res.status(400).json({ error: '토큰 부족' });
+    }
+
+    // 차감 처리
+    user.orcx -= totalCost;
     seedData[type].quantity -= quantity;
+    await user.save();
     await seedData.save();
 
-    res.status(200).json({ success: true, remaining: seedData[type].quantity });
+    res.status(200).json({
+      success: true,
+      remaining: seedData[type].quantity,
+      price: seedData[type].price,
+      message: `${type} 구매 완료`
+    });
   } catch (err) {
     console.error('/seed/purchase error:', err);
     res.status(500).json({ error: '씨앗 구매 실패' });
   }
 });
+
+// ✅ 로그아웃 시 유저 씨앗 보관소 환원
+seedRouterInline.post('/return-seeds', async (req, res) => {
+  const { seedPotato, seedBarley } = req.body;
+  try {
+    const seedData = await SeedInventory.findOne({ _id: 'singleton' });
+    if (!seedData) {
+      return res.status(404).json({ error: '보관소 정보 없음' });
+    }
+    if (seedPotato) seedData.seedPotato.quantity += seedPotato;
+    if (seedBarley) seedData.seedBarley.quantity += seedBarley;
+    await seedData.save();
+    res.status(200).json({ success: true, message: '씨앗 반환 완료' });
+  } catch (err) {
+    console.error('/seed/return-seeds error:', err);
+    res.status(500).json({ error: '씨앗 반환 실패' });
+  }
+});
+
+// ✅ /seed/restore 라우트 - 씨앗 복구 (로그아웃 등에서 사용)
+seedRouterInline.post('/restore', async (req, res) => {
+  const { seedPotato, seedBarley } = req.body;
+  try {
+    const seedData = await SeedInventory.findOne({ _id: 'singleton' });
+    if (!seedData) return res.status(404).json({ error: '보관소 없음' });
+
+    if (seedPotato) seedData.seedPotato.quantity += seedPotato;
+    if (seedBarley) seedData.seedBarley.quantity += seedBarley;
+
+    await seedData.save();
+    res.status(200).json({ success: true, message: '씨앗 복구 완료' });
+  } catch (err) {
+    console.error('/seed/restore error:', err);
+    res.status(500).json({ error: '복구 실패' });
+  }
+});
+
 app.use('/seed', seedRouterInline);
 
 // 🟢 기본 루트
