@@ -12,6 +12,7 @@ const port = 3060;
 // 🌱 Middleware
 app.use(cors());
 app.use(bodyParser.json());
+app.use('/api/seed', seedRouterInline);
 
 // 🌐 MongoDB 연결
 mongoose.connect(process.env.MONGODB_URL, {
