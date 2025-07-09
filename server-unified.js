@@ -12,7 +12,6 @@ const port = 3060;
 // 🌱 Middleware
 app.use(cors());
 app.use(bodyParser.json());
-app.use('/api/seed', seedRouterInline);
 
 // 🌐 MongoDB 연결
 mongoose.connect(process.env.MONGODB_URL, {
@@ -28,7 +27,7 @@ const userDataRouter = require('./routes/userdata');
 const marketRouter = require('./routes/market');
 const shopRouter = require('./routes/shop');
 const loginRouter = require('./routes/login');
-const adminSeedRouter = require('./routes/seed-admin'); // ✅ 관리자용 씨앗 관리 라우터
+const adminSeedRouter = require('./routes/seed-admin');
 
 app.use('/api/init-user', initUserRouter);
 app.use('/api/userdata', userDataRouter);
@@ -57,7 +56,7 @@ usersRouter.get('/me', async (req, res) => {
 });
 app.use('/users', usersRouter);
 
-// ✅ 전원 상태 확인 라우트 추가
+// ✅ 전원 상태 확인
 app.get('/api/power-status', async (req, res) => {
   try {
     await mongoose.connection.db.admin().ping();
@@ -67,11 +66,11 @@ app.get('/api/power-status', async (req, res) => {
   }
 });
 
-// 🛍️ Market 라우터 직접 구현 (예시)
+// 🛍️ Market inline 예시
 const mongooseSchema = new mongoose.Schema({ name: String, quantity: Number });
 const Market = mongoose.model('Market', mongooseSchema);
-
 const marketRouterInline = express.Router();
+
 marketRouterInline.get('/', async (req, res) => {
   try {
     const marketItems = await Market.find({});
@@ -83,11 +82,11 @@ marketRouterInline.get('/', async (req, res) => {
 });
 app.use('/market', marketRouterInline);
 
-// 🌱 Seed 관련 모델 및 라우터
+// 🌱 Seed 관련 인라인 라우터
 const SeedInventory = require('./models/SeedInventory');
 const seedRouterInline = express.Router();
 
-// ✅ 씨앗 상태 조회 + 자동 생성/보정
+// ✅ 씨앗 상태
 seedRouterInline.get('/status', async (req, res) => {
   try {
     let seedData = await SeedInventory.findOne({ _id: 'singleton' });
@@ -118,7 +117,7 @@ seedRouterInline.get('/status', async (req, res) => {
   }
 });
 
-// ✅ 씨앗 구매 라우트 (토큰 차감 포함)
+// ✅ 씨앗 구매
 seedRouterInline.post('/purchase', async (req, res) => {
   const { kakaoId, type, quantity } = req.body;
   if (!['seedPotato', 'seedBarley'].includes(type)) {
@@ -156,17 +155,17 @@ seedRouterInline.post('/purchase', async (req, res) => {
   }
 });
 
-// ✅ 로그아웃 시 유저 씨앗 보관소 환원
+// ✅ 로그아웃 시 환원
 seedRouterInline.post('/return-seeds', async (req, res) => {
   const { seedPotato, seedBarley } = req.body;
   try {
     const seedData = await SeedInventory.findOne({ _id: 'singleton' });
-    if (!seedData) {
-      return res.status(404).json({ error: '보관소 정보 없음' });
-    }
+    if (!seedData) return res.status(404).json({ error: '보관소 없음' });
+
     if (seedPotato) seedData.seedPotato.quantity += seedPotato;
     if (seedBarley) seedData.seedBarley.quantity += seedBarley;
     await seedData.save();
+
     res.status(200).json({ success: true, message: '씨앗 반환 완료' });
   } catch (err) {
     console.error('/seed/return-seeds error:', err);
@@ -174,7 +173,7 @@ seedRouterInline.post('/return-seeds', async (req, res) => {
   }
 });
 
-// ✅ /seed/restore 라우트 - 씨앗 복구 (로그아웃 등에서 사용)
+// ✅ 복구
 seedRouterInline.post('/restore', async (req, res) => {
   const { seedPotato, seedBarley } = req.body;
   try {
@@ -183,8 +182,8 @@ seedRouterInline.post('/restore', async (req, res) => {
 
     if (seedPotato) seedData.seedPotato.quantity += seedPotato;
     if (seedBarley) seedData.seedBarley.quantity += seedBarley;
-
     await seedData.save();
+
     res.status(200).json({ success: true, message: '씨앗 복구 완료' });
   } catch (err) {
     console.error('/seed/restore error:', err);
@@ -192,7 +191,9 @@ seedRouterInline.post('/restore', async (req, res) => {
   }
 });
 
+// ✅ 반드시 마지막에 위치시켜야 함
 app.use('/seed', seedRouterInline);
+app.use('/api/seed', seedRouterInline); // 🔥 이 줄이 이제 완벽히 작동!
 
 // 🟢 기본 루트
 app.get('/', (req, res) => {
