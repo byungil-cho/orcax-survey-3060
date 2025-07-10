@@ -18,7 +18,7 @@ mongoose
   .then(() => console.log("✅ MongoDB 연결 완료"))
   .catch((err) => console.error("❌ MongoDB 연결 실패", err));
 
-// ✅ 스키마 정의
+// ✅ 사용자 스키마
 const userSchema = new mongoose.Schema({
   kakaoId: { type: String, required: true, unique: true },
   nickname: String,
@@ -34,7 +34,7 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model("User", userSchema);
 
-// ✅ 사용자 등록 또는 조회
+// ✅ 기존 기능: 사용자 등록
 app.post("/users/register", async (req, res) => {
   const { kakaoId, nickname, farmName } = req.body;
   try {
@@ -50,7 +50,7 @@ app.post("/users/register", async (req, res) => {
   }
 });
 
-// ✅ 사용자 정보 가져오기
+// ✅ 사용자 정보 조회
 app.get("/users/me", async (req, res) => {
   const { kakaoId } = req.query;
   try {
@@ -62,13 +62,12 @@ app.get("/users/me", async (req, res) => {
   }
 });
 
-// ✅ 자원 사용 (물/거름)
+// ✅ 자원 사용
 app.patch("/users/use-resource", async (req, res) => {
   const { kakaoId, water = 0, fertilizer = 0 } = req.body;
   try {
     const user = await User.findOne({ kakaoId });
     if (!user) return res.status(404).send("사용자 없음");
-
     user.water += water;
     user.fertilizer += fertilizer;
     await user.save();
@@ -84,7 +83,6 @@ app.patch("/users/update-crops", async (req, res) => {
   try {
     const user = await User.findOne({ kakaoId });
     if (!user) return res.status(404).send("사용자 없음");
-
     user.potato += potato;
     user.barley += barley;
     await user.save();
@@ -94,11 +92,10 @@ app.patch("/users/update-crops", async (req, res) => {
   }
 });
 
-// ✅ 씨앗 반환 (수확 시 소모)
+// ✅ 씨앗 반환
 app.patch("/storage/return-seed", async (req, res) => {
   const { seedType, count } = req.body;
   const { kakaoId } = req.query;
-
   try {
     const user = await User.findOne({ kakaoId });
     if (!user) return res.status(404).send("사용자 없음");
@@ -113,7 +110,7 @@ app.patch("/storage/return-seed", async (req, res) => {
   }
 });
 
-// ✅ 통합 자원 저장 API (수정 핵심)
+// ✅ 자원 저장
 app.patch("/users/save-resources", async (req, res) => {
   const {
     kakaoId,
@@ -146,7 +143,16 @@ app.patch("/users/save-resources", async (req, res) => {
   }
 });
 
-// ✅ 서버 시작
+// ✅ [📌 추가된 부분] API 라우터 연결
+const initUserRouter = require('./routes/init-user');
+const userDataRouter = require('./routes/userdata');
+const loginRouter = require('./login');
+
+app.use('/api/init-user', initUserRouter);
+app.use('/api/userdata', userDataRouter);
+app.use('/api/login', loginRouter);
+
+// ✅ 서버 실행
 app.listen(PORT, () => {
   console.log(`🚀 서버 실행 중 : http://localhost:${PORT}`);
 });
