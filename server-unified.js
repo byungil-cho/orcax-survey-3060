@@ -1,123 +1,107 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-require('dotenv').config();
-
+const express = require("express");
+const cors = require("cors");
 const app = express();
+const port = 3060;
+
 app.use(cors());
 app.use(express.json());
 
-// 🔗 MongoDB 연결
-mongoose.connect(process.env.MONGODB_URL, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-}).then(() => {
-  console.log('✅ MongoDB 연결 완료');
-}).catch((err) => {
-  console.error('❌ MongoDB 연결 실패:', err);
+const userData = {}; // 유저 데이터 저장소
+
+// ✅ 초기 가입 (회원가입 시 기본 자원 지급)
+app.post("/api/register", (req, res) => {
+  const { kakaoId, nickname, farmName } = req.body;
+
+  if (userData[kakaoId]) {
+    return res.status(409).json({ message: "이미 가입된 사용자입니다." });
+  }
+
+  userData[kakaoId] = {
+    kakaoId,
+    nickname,
+    farmName,
+    orcx: 10,
+    water: 10,
+    fertilizer: 10,
+    seedPotato: 0,
+    seedBarley: 0,
+    potato: 0,
+    barley: 0,
+    power: "에러", // ✅ power 상태 초기값
+  };
+
+  res.json({ message: "가입 완료", user: userData[kakaoId] });
 });
 
-// 📦 유저 모델 불러오기
-const User = require('./models/User');
-
-// ✅ 유저 초기화
-app.post('/api/init-user', async (req, res) => {
-  const { kakaoId, nickname } = req.body;
-
-  try {
-    let user = await User.findOne({ kakaoId });
-    if (!user) {
-      user = new User({
-        kakaoId,
-        nickname,
-        farmName: `${nickname}의 농장`,
-        water: 10,
-        fertilizer: 10,
-        orcx: 10,
-        potato: 0,
-        barley: 0,
-        level: 1,
-        totalFarmingCount: 0
-      });
-      await user.save();
-      console.log(`[🆕 유저 생성]: ${nickname}`);
-    }
-
-    res.json({ message: '유저 초기화 완료', success: true });
-  } catch (err) {
-    console.error('❌ /api/init-user 오류:', err);
-    res.status(500).json({ error: '서버 오류' });
-  }
+// ✅ 유저 상태 조회
+app.get("/users/me", (req, res) => {
+  const kakaoId = req.query.kakaoId;
+  const user = userData[kakaoId];
+  if (!user) return res.status(404).json({ error: "유저 없음" });
+  res.json(user);
 });
 
-// ✅ 유저 조회
-app.get('/api/userdata', async (req, res) => {
-  const { kakaoId } = req.query;
+// ✅ 자원 사용 (물/거름 차감)
+app.patch("/users/use-resource", (req, res) => {
+  const { kakaoId, water = 0, fertilizer = 0 } = req.body;
+  const user = userData[kakaoId];
+  if (!user) return res.status(404).json({ error: "유저 없음" });
 
-  if (!kakaoId) {
-    return res.status(400).json({ error: 'kakaoId 쿼리 필요' });
-  }
+  user.water += water;
+  user.fertilizer += fertilizer;
 
-  try {
-    let user = await User.findOne({ kakaoId });
-
-    // 없으면 생성
-    if (!user) {
-      user = new User({
-        kakaoId,
-        nickname: "신규 사용자",
-        farmName: "신규 농장",
-        water: 10,
-        fertilizer: 10,
-        orcx: 10,
-        potato: 0,
-        barley: 0,
-        level: 1,
-        totalFarmingCount: 0
-      });
-      await user.save();
-    }
-
-    res.json({ user });
-  } catch (err) {
-    console.error('❌ /api/userdata 오류:', err);
-    res.status(500).json({ error: '서버 오류' });
-  }
+  res.json({ message: "자원 업데이트 완료", user });
 });
 
-// ✅ 통합 자원 저장 API
-app.post('/api/update-user', async (req, res) => {
-  const { kakaoId, potato, barley, water, fertilizer, orcx } = req.body;
+// ✅ 작물 수확 후 저장
+app.patch("/users/update-crops", (req, res) => {
+  const { kakaoId, potato = 0, barley = 0 } = req.body;
+  const user = userData[kakaoId];
+  if (!user) return res.status(404).json({ error: "유저 없음" });
 
-  if (!kakaoId) {
-    return res.status(400).json({ error: 'kakaoId는 필수입니다.' });
-  }
+  user.potato += potato;
+  user.barley += barley;
 
-  try {
-    const user = await User.findOne({ kakaoId });
-
-    if (!user) {
-      return res.status(404).json({ error: '유저를 찾을 수 없습니다.' });
-    }
-
-    // 존재하는 값만 업데이트
-    if (typeof potato === 'number') user.potato = potato;
-    if (typeof barley === 'number') user.barley = barley;
-    if (typeof water === 'number') user.water = water;
-    if (typeof fertilizer === 'number') user.fertilizer = fertilizer;
-    if (typeof orcx === 'number') user.orcx = orcx;
-
-    await user.save();
-
-    res.json({ success: true, message: '자원 업데이트 완료', user });
-  } catch (err) {
-    console.error('❌ /api/update-user 오류:', err);
-    res.status(500).json({ error: '자원 업데이트 실패' });
-  }
+  res.json({ message: "작물 업데이트 완료", user });
 });
 
-// ✅ 서버 시작
-const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`🚀 서버 실행 중: http://localhost:${PORT}`);
+// ✅ 씨앗 반환 처리
+app.patch("/storage/return-seed", (req, res) => {
+  const { seedType, count = 1 } = req.body;
+
+  for (const user of Object.values(userData)) {
+    if (seedType === "seedPotato") user.seedPotato -= count;
+    if (seedType === "seedBarley") user.seedBarley -= count;
+  }
+
+  res.json({ message: "씨앗 반환 처리 완료" });
+});
+
+// ✅ 자원 저장 통합 (물/거름/ORCX/감자/보리)
+app.patch("/api/save-resources", (req, res) => {
+  const { kakaoId, orcx, water, fertilizer, potato, barley } = req.body;
+  const user = userData[kakaoId];
+  if (!user) return res.status(404).json({ error: "유저 없음" });
+
+  if (orcx !== undefined) user.orcx = orcx;
+  if (water !== undefined) user.water = water;
+  if (fertilizer !== undefined) user.fertilizer = fertilizer;
+  if (potato !== undefined) user.potato = potato;
+  if (barley !== undefined) user.barley = barley;
+
+  res.json({ message: "자원 저장 완료", user });
+});
+
+// ✅ power 상태 조회 API 복구
+app.get("/api/power-status", (req, res) => {
+  const kakaoId = req.query.kakaoId;
+  const user = userData[kakaoId];
+  if (!user) return res.status(404).json({ error: "유저 없음" });
+
+  res.json({ power: user.power || "없음" });
+});
+
+// ✅ 서버 실행
+app.listen(port, () => {
+  console.log(`✅ 서버 실행 중: http://localhost:${port}`);
 });
