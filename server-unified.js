@@ -1,6 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
+const seedPriceRouter = require('./routes/seed-price');
+const seedStatusRouter = require('./routes/seed-status');
 require("dotenv").config();
 
 const app = express();
@@ -9,6 +11,8 @@ const PORT = 3060;
 // ✅ 미들웨어
 app.use(cors());
 app.use(express.json());
+app.use('/api/seed/price', seedPriceRouter);
+app.use('/api/seed/status', seedStatusRouter);
 
 // ✅ MongoDB 연결
 mongoose
@@ -159,4 +163,3 @@ app.use('/api/userdata', userDataRouter);
 app.listen(PORT, () => {
   console.log(`🚀 서버 실행 중 : http://localhost:${PORT}`);
 });
-
