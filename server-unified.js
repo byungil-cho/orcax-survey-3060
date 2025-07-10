@@ -140,11 +140,10 @@ app.patch("/users/save-resources", async (req, res) => {
 // ✅ [💡 추가된 부분] API 라우터 연결
 const initUserRouter = require('./routes/init-user');
 const userDataRouter = require('./routes/userdata');
-const loginRouter = require('./routes/login');
 
 app.use('/api/init-user', initUserRouter);
 app.use('/api/userdata', userDataRouter);
-app.use('/api/login', loginRouter);
+
 // ✅ 서버 시작
 app.listen(PORT, () => {
   console.log(`🚀 서버 실행 중 : http://localhost:${PORT}`);
