@@ -1,4 +1,3 @@
-
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
@@ -23,18 +22,29 @@ const UserSchema = new mongoose.Schema({
   nickname: String,
   power: Number,
   seed: Number,
+  seedPotato: Number,
+  seedBarley: Number,
   orcx: Number,
   water: Number,
   fertilizer: Number
 });
 const User = mongoose.model('User', UserSchema);
 
-// API - 상태 확인
+// 📦 라우터 등록 - 감자농장 모듈 탑재
+const userdataRoute = require('./routes/userdata');
+const tokenRoute = require('./routes/token');      // if you have one
+const purchaseRoute = require('./routes/purchase'); // for 씨감자 구매
+
+app.use('/api/userdata', userdataRoute);
+app.use('/api/token', tokenRoute);
+app.use('/api/purchase', purchaseRoute);
+
+// 상태 확인용
 app.get('/', (req, res) => {
   res.send('🟢 OrcaX 서버 작동 중');
 });
 
-// API - 유저 정보 조회
+// 기존 단일 유저 조회 API
 app.get('/api/users/me', async (req, res) => {
   const { kakaoId } = req.query;
   if (!kakaoId) return res.status(400).json({ error: 'kakaoId 쿼리 필요' });
@@ -43,8 +53,8 @@ app.get('/api/users/me', async (req, res) => {
     const user = await User.findOne({ kakaoId });
     if (!user) return res.status(404).json({ error: '유저 없음' });
 
-    const { nickname, power, seed, orcx, water, fertilizer } = user;
-    res.json({ nickname, power, seed, token: orcx, water, fertilizer });
+    const { nickname, power, seed, seedPotato, seedBarley, orcx, water, fertilizer } = user;
+    res.json({ nickname, power, seed, seedPotato, seedBarley, token: orcx, water, fertilizer });
   } catch (err) {
     console.error('/users/me error:', err);
     res.status(500).json({ error: '서버 오류' });
