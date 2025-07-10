@@ -3,6 +3,7 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const seedPriceRouter = require('./routes/seed-price');
 const seedStatusRouter = require('./routes/seed-status');
+const seedBuyRouter = require('./routes/seed-buy');
 require("dotenv").config();
 
 const app = express();
@@ -13,6 +14,7 @@ app.use(cors());
 app.use(express.json());
 app.use('/api/seed/price', seedPriceRouter);
 app.use('/api/seed/status', seedStatusRouter);
+app.use('/api/seed/buy', seedBuyRouter);
 
 // ✅ MongoDB 연결
 mongoose
