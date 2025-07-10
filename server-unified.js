@@ -34,7 +34,7 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model("User", userSchema);
 
-// ✅ 기존 기능: 사용자 등록
+// ✅ 기존 API: 사용자 등록
 app.post("/users/register", async (req, res) => {
   const { kakaoId, nickname, farmName } = req.body;
   try {
@@ -68,6 +68,7 @@ app.patch("/users/use-resource", async (req, res) => {
   try {
     const user = await User.findOne({ kakaoId });
     if (!user) return res.status(404).send("사용자 없음");
+
     user.water += water;
     user.fertilizer += fertilizer;
     await user.save();
@@ -83,6 +84,7 @@ app.patch("/users/update-crops", async (req, res) => {
   try {
     const user = await User.findOne({ kakaoId });
     if (!user) return res.status(404).send("사용자 없음");
+
     user.potato += potato;
     user.barley += barley;
     await user.save();
@@ -96,6 +98,7 @@ app.patch("/users/update-crops", async (req, res) => {
 app.patch("/storage/return-seed", async (req, res) => {
   const { seedType, count } = req.body;
   const { kakaoId } = req.query;
+
   try {
     const user = await User.findOne({ kakaoId });
     if (!user) return res.status(404).send("사용자 없음");
@@ -143,16 +146,16 @@ app.patch("/users/save-resources", async (req, res) => {
   }
 });
 
-// ✅ [📌 추가된 부분] API 라우터 연결
+// ✅ [💡 추가된 부분] API 라우터 연결
 const initUserRouter = require('./routes/init-user');
 const userDataRouter = require('./routes/userdata');
-const loginRouter = require('./login');
+const loginRouter = require('./routes/login');
 
 app.use('/api/init-user', initUserRouter);
 app.use('/api/userdata', userDataRouter);
 app.use('/api/login', loginRouter);
 
-// ✅ 서버 실행
+// ✅ 서버 시작
 app.listen(PORT, () => {
   console.log(`🚀 서버 실행 중 : http://localhost:${PORT}`);
 });
