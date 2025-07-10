@@ -1,51 +1,123 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const app = express();
-const PORT = 3060;
+require('dotenv').config();
 
-// 미들웨어
+const app = express();
 app.use(cors());
 app.use(express.json());
 
-// MongoDB 연결
-mongoose.connect('mongodb://localhost:27017/gamjafarm', {
+// 🔗 MongoDB 연결
+mongoose.connect(process.env.MONGODB_URL, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
+}).then(() => {
+  console.log('✅ MongoDB 연결 완료');
+}).catch((err) => {
+  console.error('❌ MongoDB 연결 실패:', err);
 });
-const db = mongoose.connection;
-db.on('error', console.error.bind(console, 'MongoDB 연결 실패:'));
-db.once('open', () => {
-  console.log('✅ MongoDB 연결 성공');
+
+// 📦 유저 모델 불러오기
+const User = require('./models/User');
+
+// ✅ 유저 초기화
+app.post('/api/init-user', async (req, res) => {
+  const { kakaoId, nickname } = req.body;
+
+  try {
+    let user = await User.findOne({ kakaoId });
+    if (!user) {
+      user = new User({
+        kakaoId,
+        nickname,
+        farmName: `${nickname}의 농장`,
+        water: 10,
+        fertilizer: 10,
+        orcx: 10,
+        potato: 0,
+        barley: 0,
+        level: 1,
+        totalFarmingCount: 0
+      });
+      await user.save();
+      console.log(`[🆕 유저 생성]: ${nickname}`);
+    }
+
+    res.json({ message: '유저 초기화 완료', success: true });
+  } catch (err) {
+    console.error('❌ /api/init-user 오류:', err);
+    res.status(500).json({ error: '서버 오류' });
+  }
 });
 
-// API 라우터 연결 (경로 통일: ./api)
-const userRoutes = require('./api/user');
-const tokenRoutes = require('./api/token');
-const purchaseRoutes = require('./api/purchase');
-const userdataRoutes = require('./api/userdata');
-const farmRoutes = require('./api/farm');
-const marketRoutes = require('./api/market');
-const seedBankRoutes = require('./api/seedBank');
-const processingRoutes = require('./api/processing');
-const withdrawRoutes = require('./api/withdraw');
-const authRoutes = require('./api/auth');
-const exchangeRoutes = require('./api/exchange');
+// ✅ 유저 조회
+app.get('/api/userdata', async (req, res) => {
+  const { kakaoId } = req.query;
 
-// 라우팅
-app.use('/api/user', userRoutes);
-app.use('/api/token', tokenRoutes);
-app.use('/api/purchase', purchaseRoutes);
-app.use('/api/userdata', userdataRoutes);
-app.use('/api/farm', farmRoutes);
-app.use('/api/market', marketRoutes);
-app.use('/api/seedbank', seedBankRoutes);
-app.use('/api/processing', processingRoutes);
-app.use('/api/withdraw', withdrawRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api/exchange', exchangeRoutes);
+  if (!kakaoId) {
+    return res.status(400).json({ error: 'kakaoId 쿼리 필요' });
+  }
 
-// 서버 시작
+  try {
+    let user = await User.findOne({ kakaoId });
+
+    // 없으면 생성
+    if (!user) {
+      user = new User({
+        kakaoId,
+        nickname: "신규 사용자",
+        farmName: "신규 농장",
+        water: 10,
+        fertilizer: 10,
+        orcx: 10,
+        potato: 0,
+        barley: 0,
+        level: 1,
+        totalFarmingCount: 0
+      });
+      await user.save();
+    }
+
+    res.json({ user });
+  } catch (err) {
+    console.error('❌ /api/userdata 오류:', err);
+    res.status(500).json({ error: '서버 오류' });
+  }
+});
+
+// ✅ 통합 자원 저장 API
+app.post('/api/update-user', async (req, res) => {
+  const { kakaoId, potato, barley, water, fertilizer, orcx } = req.body;
+
+  if (!kakaoId) {
+    return res.status(400).json({ error: 'kakaoId는 필수입니다.' });
+  }
+
+  try {
+    const user = await User.findOne({ kakaoId });
+
+    if (!user) {
+      return res.status(404).json({ error: '유저를 찾을 수 없습니다.' });
+    }
+
+    // 존재하는 값만 업데이트
+    if (typeof potato === 'number') user.potato = potato;
+    if (typeof barley === 'number') user.barley = barley;
+    if (typeof water === 'number') user.water = water;
+    if (typeof fertilizer === 'number') user.fertilizer = fertilizer;
+    if (typeof orcx === 'number') user.orcx = orcx;
+
+    await user.save();
+
+    res.json({ success: true, message: '자원 업데이트 완료', user });
+  } catch (err) {
+    console.error('❌ /api/update-user 오류:', err);
+    res.status(500).json({ error: '자원 업데이트 실패' });
+  }
+});
+
+// ✅ 서버 시작
+const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`🚀 서버 실행 중: http://localhost:${PORT}`);
 });
