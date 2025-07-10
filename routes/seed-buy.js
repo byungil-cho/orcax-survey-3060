@@ -1,35 +1,41 @@
 const express = require('express');
 const router = express.Router();
-const mongoose = require('mongoose');
+const SeedStock = require('../models/SeedStock');
+const User = require('../models/User');
 
-const SeedStockSchema = new mongoose.Schema({
-  type: String,
-  quantity: Number
-});
-const SeedStock = mongoose.model('SeedStock', SeedStockSchema);
-
-router.post('/', async (req, res) => {
+// 씨앗 구매
+router.post('/buy', async (req, res) => {
   const { kakaoId, seedType } = req.body;
-  if (!kakaoId || !seedType) {
-    return res.status(400).json({ success: false, message: '데이터 누락' });
-  }
+  const seedCost = 2;
 
   try {
     const stock = await SeedStock.findOne({ type: seedType });
     if (!stock || stock.quantity <= 0) {
-      return res.status(400).json({ success: false, message: '재고 없음' });
+      return res.json({ success: false, message: "재고 부족" });
     }
 
-    // 재고 감소
+    const user = await User.findOne({ kakaoId });
+    if (!user || user.orcx < seedCost) {
+      return res.json({ success: false, message: "토큰 부족" });
+    }
+
+    // 제한: 씨앗 2개 이상 보유 금지
+    if (user[seedType] >= 2) {
+      return res.json({ success: false, message: "씨앗 최대 보유 수 초과" });
+    }
+
+    // 구매 처리
+    user.orcx -= seedCost;
+    user[seedType] += 1;
+    await user.save();
+
     stock.quantity -= 1;
     await stock.save();
 
-    // 응답
-    return res.json({ success: true, message: '구매 완료' });
-
+    res.json({ success: true });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false, message: '서버 오류' });
+    res.status(500).json({ success: false, message: "서버 오류" });
   }
 });
 
