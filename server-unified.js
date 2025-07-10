@@ -6,6 +6,8 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 
+
+const Farm = require('./models/Farm');
 const app = express();
 const port = 3060;
 
@@ -201,6 +203,51 @@ app.get('/', (req, res) => {
 });
 
 // 🚀 서버 시작
+
+// ✅ 농작물 수확 관련 API
+app.post('/api/farm/add', async (req, res) => {
+  const { kakaoId, cropType, quantity } = req.body;
+  if (!kakaoId || !cropType || typeof quantity !== 'number') {
+    return res.status(400).json({ error: '요청 값이 잘못되었습니다.' });
+  }
+
+  try {
+    let farm = await Farm.findOne({ kakaoId });
+    if (!farm) {
+      farm = new Farm({ kakaoId });
+    }
+
+    if (cropType === 'potato') {
+      farm.potato += quantity;
+    } else if (cropType === 'barley') {
+      farm.barley += quantity;
+    } else {
+      return res.status(400).json({ error: '알 수 없는 작물 유형입니다.' });
+    }
+
+    await farm.save();
+    res.status(200).json({ success: true, message: '수확 저장 완료', farm });
+  } catch (err) {
+    console.error('/api/farm/add error:', err);
+    res.status(500).json({ error: '서버 오류' });
+  }
+});
+
+app.get('/api/farm/status', async (req, res) => {
+  const { kakaoId } = req.query;
+  if (!kakaoId) return res.status(400).json({ error: 'kakaoId가 필요합니다.' });
+
+  try {
+    const farm = await Farm.findOne({ kakaoId });
+    if (!farm) return res.status(200).json({ potato: 0, barley: 0 });
+
+    res.status(200).json({ potato: farm.potato, barley: farm.barley });
+  } catch (err) {
+    console.error('/api/farm/status error:', err);
+    res.status(500).json({ error: '서버 오류' });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
