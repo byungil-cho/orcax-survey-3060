@@ -42,9 +42,22 @@ app.use('/api/seed/admin', adminSeedRouter);
 const usersRouter = express.Router();
 const User = require('./models/User');
 
+
 usersRouter.get('/me', async (req, res) => {
   const { kakaoId } = req.query;
   if (!kakaoId) return res.status(400).json({ error: 'kakaoId 쿼리 필요' });
+
+  try {
+    const user = await User.findOne({ kakaoId });
+    if (!user) return res.status(404).json({ error: '유저 없음' });
+
+    const { nickname, power, seed, orcx, water, fertilizer } = user;
+    res.json({ nickname, power, seed, token: orcx, water, fertilizer }); // ✅ fixed: map orcx → token
+  } catch (err) {
+    console.error('/users/me error:', err);
+    res.status(500).json({ error: '서버 오류' });
+  }
+});
 
   try {
     const user = await User.findOne({ kakaoId });
