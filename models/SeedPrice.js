@@ -1,8 +1,8 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
-const SeedPriceSchema = new mongoose.Schema({
-  type: { type: String, required: true }, // "seedPotato" or "seedBarley"
-  price: { type: Number, required: true }
+const seedPriceSchema = new mongoose.Schema({
+  potato: { type: Number, default: 1 },  // 감자 가격 (ORCX)
+  barley: { type: Number, default: 1 }   // 보리 가격 (ORCX)
 });
 
-module.exports = mongoose.models.SeedPrice || mongoose.model("SeedPrice", SeedPriceSchema);
+module.exports = mongoose.model('SeedPrice', seedPriceSchema);
