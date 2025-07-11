@@ -1,32 +1,34 @@
-const express = require('express');
-const cors = require('cors');
-const mongoose = require('mongoose');
-const seedStatusRouter = require('./routes/seed-status');
-require('dotenv').config();
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+const morgan = require("morgan");
+require("dotenv").config();
 
+// 🔧 Express app init
 const app = express();
-const PORT = 3060;
+const PORT = process.env.PORT || 3060;
 
+// 🔌 Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public')); // HTML 정적 서비스
-app.use('/api/seed/status', seedStatusRouter);
+app.use(morgan("dev"));
 
+// ✅ MongoDB 연결
 mongoose.connect(process.env.MONGODB_URL, {
   useNewUrlParser: true,
-  useUnifiedTopology: true,
+  useUnifiedTopology: true
 })
 .then(() => console.log("✅ MongoDB 연결 완료"))
-.catch((err) => console.error("❌ MongoDB 연결 실패", err));
+.catch((err) => console.error("❌ MongoDB 연결 실패:", err));
 
-// 🔌 라우터 등록
-app.use('/api/login', require('./routes/login'));
-app.use('/api/init-user', require('./routes/init-user'));
-app.use('/api/userdata', require('./routes/userdata'));
-app.use('/api/seed/status', require('./routes/seed-status'));
-app.use('/api/seed', require('./routes/seed-buy')); // /buy 포함
-app.use('/api/seed/price', require('./routes/seed-price'));
+// ✅ 라우터 연결
+app.use(require("./routes/userdata"));
+app.use(require("./routes/seed-status"));
+app.use(require("./routes/seed-price"));
+app.use(require("./routes/init-user")); // 필요 시
+app.use(require("./routes/seed-buy"));  // 필요 시
 
+// ✅ 서버 실행
 app.listen(PORT, () => {
   console.log(`🚀 서버 실행 중 : http://localhost:${PORT}`);
 });
