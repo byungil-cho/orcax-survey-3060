@@ -1,25 +1,21 @@
 const express = require('express');
 const router = express.Router();
-const mongoose = require('mongoose');
+const SeedStock = require('../models/SeedStock');
 
-const SeedStockSchema = new mongoose.Schema({
-  type: String, // "seedPotato" or "seedBarley"
-  quantity: Number
-});
-
-const SeedStock = mongoose.model('SeedStock', SeedStockSchema);
-
-// 재고 조회 API
+// 씨앗 재고 조회 API
 router.get('/', async (req, res) => {
   try {
     const stocks = await SeedStock.find({});
-    const response = {};
-    stocks.forEach(seed => {
-      response[seed.type] = seed.quantity;
+    const result = {};
+
+    stocks.forEach(stock => {
+      result[stock.type] = stock.quantity;
     });
-    res.json(response);
+
+    res.json(result);
   } catch (err) {
-    res.status(500).send('재고 조회 실패');
+    console.error("씨앗 재고 조회 실패:", err);
+    res.status(500).json({ message: "서버 오류" });
   }
 });
 
