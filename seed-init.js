@@ -1,31 +1,13 @@
-// seed-init.js (한 번 실행하고 삭제해도 됩니다)
-const mongoose = require("mongoose");
-require("dotenv").config();
-
-const SeedInventory = require("./models/SeedInventory");
-
-mongoose.connect(process.env.MONGODB_URL, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(async () => {
-  await SeedInventory.findByIdAndDelete("singleton");
-
-  await SeedInventory.create({
-    _id: "singleton", // 반드시 이 ID여야 합니다!
-    seedPotato: {
-      quantity: 100,
-      price: 2
-    },
-    seedBarley: {
-      quantity: 100,
-      price: 2
-    }
-  });
-
-  console.log("✅ 씨앗 초기 데이터 삽입 완료 (SeedInventory)");
-  mongoose.disconnect();
-})
-.catch((err) => {
-  console.error("❌ MongoDB 연결 실패", err);
+await User.create({
+  kakaoId: "4235108081",
+  nickname: "범고래X",
+  email: "",
+  오크: 4,
+  물: 10,                // ← 수정됨
+  비료: 10,
+  다섯: 1,
+  목록: { 배열: "비어 있음" },
+  감자: 0,
+  씨앗감자: 0,
+  씨앗보리: 0
 });
