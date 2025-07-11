@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const seedStatusRouter = require('./routes/seed-status');
 require('dotenv').config();
 
 const app = express();
@@ -9,6 +10,7 @@ const PORT = 3060;
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public')); // HTML 정적 서비스
+app.use('/api/seed/status', seedStatusRouter);
 
 mongoose.connect(process.env.MONGODB_URL, {
   useNewUrlParser: true,
