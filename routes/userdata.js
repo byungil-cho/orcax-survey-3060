@@ -15,7 +15,7 @@ router.post('/', async (req, res) => {
 
     const users = await User.findOne({ kakaoId });
 
-    if (!user) {
+    if (!users) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
