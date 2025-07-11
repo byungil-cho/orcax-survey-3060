@@ -1,9 +1,8 @@
-// models/SeedStock.js
 const mongoose = require("mongoose");
 
-const SeedStockSchema = new mongoose.Schema({
-  type: { type: String, required: true, unique: true },
-  quantity: { type: Number, required: true },
+const seedStockSchema = new mongoose.Schema({
+  seedType: { type: String, required: true, unique: true },
+  quantity: { type: Number, default: 0 }
 });
 
-module.exports = mongoose.models.SeedStock || mongoose.model("SeedStock", SeedStockSchema);
+module.exports = mongoose.models.SeedStock || mongoose.model("SeedStock", seedStockSchema);

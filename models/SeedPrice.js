@@ -1,9 +1,8 @@
-// models/SeedPrice.js
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-const SeedPriceSchema = new mongoose.Schema({
-  type: { type: String, required: true, unique: true },
-  price: { type: Number, required: true },
+const seedPriceSchema = new mongoose.Schema({
+  seedType: { type: String, required: true, unique: true },
+  price: { type: Number, default: 1 }
 });
 
-module.exports = mongoose.models.SeedPrice || mongoose.model('SeedPrice', SeedPriceSchema);
+module.exports = mongoose.models.SeedPrice || mongoose.model("SeedPrice", seedPriceSchema);
