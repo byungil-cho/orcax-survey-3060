@@ -1,13 +1,18 @@
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User');  // 정확한 경로 주의
+const User = require('../models/User');
 
-router.post('/userdata', async (req, res) => {
+// 예시 POST 처리
+router.post('/', async (req, res) => {
   const { kakaoId } = req.body;
+  if (!kakaoId) return res.status(400).json({ error: 'No Kakao ID' });
+
   const user = await User.findOne({ kakaoId });
-  if (!user) return res.status(404).json({ success: false, message: "User not found" });
-  res.json({ success: true, data: user });
+  if (user) {
+    res.json({ success: true, user });
+  } else {
+    res.status(404).json({ error: 'User not found' });
+  }
 });
 
 module.exports = router;
-
