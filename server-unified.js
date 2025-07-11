@@ -1,24 +1,26 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const dotenv = require('dotenv');
 const cors = require('cors');
 
-dotenv.config();
+const seedRoutes = require('./routes/seed');
+
 const app = express();
+const PORT = 3060;
+
 app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || 3060;
-const MONGODB_URL = process.env.MONGODB_URL;
+// 라우터 연결
+app.use('/api/seed', seedRoutes);
 
-mongoose.connect(MONGODB_URL)
-  .then(() => console.log('✅ MongoDB 연결 완료'))
-  .catch(err => console.error('❌ MongoDB 연결 실패:', err));
-
-app.use('/api', require('./routes/userdata'));
-app.use('/api', require('./routes/seed'));
-app.use('/api', require('./routes/user-init'));
-
-app.listen(PORT, () => {
-  console.log(`✅ 서버 실행 중 http://localhost:${PORT}`);
-});
+// 서버 시작
+mongoose.connect('your_mongo_url_here')
+  .then(() => {
+    console.log('✅ MongoDB 연결 완료');
+    app.listen(PORT, () => {
+      console.log(`✅ 서버 실행 중 http://localhost:${PORT}`);
+    });
+  })
+  .catch(err => {
+    console.error('❌ MongoDB 연결 실패:', err);
+  });
