@@ -1,8 +1,7 @@
-// models/SeedInventory.js
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-const seedSchema = new mongoose.Schema({
-  _id: { type: String, default: 'singleton' },
+const seedInventorySchema = new mongoose.Schema({
+  _id: { type: String, default: "singleton" }, // 고정 ID
   seedPotato: {
     quantity: { type: Number, default: 100 },
     price: { type: Number, default: 2 }
@@ -13,4 +12,4 @@ const seedSchema = new mongoose.Schema({
   }
 });
 
-module.exports = mongoose.model('SeedInventory', seedSchema);
+module.exports = mongoose.models.SeedInventory || mongoose.model("SeedInventory", seedInventorySchema);
