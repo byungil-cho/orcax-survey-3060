@@ -13,13 +13,13 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, message: 'kakaoId is missing' });
     }
 
-    const user = await User.findOne({ kakaoId });
+    const users = await User.findOne({ kakaoId });
 
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    res.status(200).json({ success: true, data: user });
+    res.status(200).json({ success: true, data: users });
   } catch (err) {
     console.error('❌ /api/userdata 오류:', err);
     res.status(500).json({ success: false, message: 'Internal Server Error' });
