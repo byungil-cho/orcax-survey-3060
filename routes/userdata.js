@@ -9,15 +9,15 @@ router.post('/userdata', async (req, res) => {
 
   try {
     // 문자열로 변환하여 조회 (MongoDB에 저장된 형태와 일치)
-    const user = await User.findOne({ kakaoId: String(kakaoId) });
+    const users = await User.findOne({ kakaoId: String(kakaoId) });
 
-    if (!user) {
+    if (!users) {
       console.warn('⚠️ 사용자 정보 없음:', kakaoId);
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    console.log('✅ 사용자 정보 조회 성공:', user);
-    res.status(200).json({ success: true, data: user });
+    console.log('✅ 사용자 정보 조회 성공:', users);
+    res.status(200).json({ success: true, data: users });
 
   } catch (error) {
     console.error('❌ 서버 오류 발생:', error);
