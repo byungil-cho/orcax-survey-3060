@@ -1,20 +1,19 @@
-// routes/seed.js
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const SeedPrice = require("../models/SeedPrice");
+const Seed = require('../models/Seed');
 
-// 가격 조회
-router.get("/price", async (req, res) => {
-  try {
-    const prices = await SeedPrice.find({});
-    const result = {};
-    prices.forEach((s) => {
-      result[s.type] = s.price;
-    });
-    res.json(result);
-  } catch (err) {
-    res.status(500).json({ error: "가격 조회 실패" });
-  }
+router.get('/seed/price', async (req, res) => {
+  const seeds = await Seed.find({});
+  res.json(seeds);
+});
+
+router.get('/seed/status', async (req, res) => {
+  const seeds = await Seed.find({});
+  const status = {};
+  seeds.forEach(seed => {
+    status[seed.name] = seed.quantity;
+  });
+  res.json(status);
 });
 
 module.exports = router;
