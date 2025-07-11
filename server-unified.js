@@ -11,6 +11,7 @@ const PORT = process.env.PORT || 3060;
 app.use(cors());
 app.use(express.json());
 app.use(morgan("dev"));
+app.use("/api/seed", require("./routes/seed")); 
 
 // MongoDB 연결
 mongoose.connect(process.env.MONGODB_URL, {
