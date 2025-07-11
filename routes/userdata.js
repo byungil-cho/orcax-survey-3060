@@ -1,6 +1,11 @@
+const express = require('express');
+const router = express.Router();
+const User = require('../models/User'); // 경로는 실제 User 모델에 맞게 조정
+
+// ✅ 사용자 정보 불러오기
 router.post('/', async (req, res) => {
   try {
-    console.log("🔍 Received POST /api/userdata body:", req.body);
+    console.log("🔍 받은 요청 req.body:", req.body);
 
     const { kakaoId } = req.body;
 
@@ -16,7 +21,9 @@ router.post('/', async (req, res) => {
 
     res.status(200).json({ success: true, data: user });
   } catch (err) {
-    console.error('❌ Error in /api/userdata:', err);
+    console.error('❌ /api/userdata 오류:', err);
     res.status(500).json({ success: false, message: 'Internal Server Error' });
   }
 });
+
+module.exports = router;
