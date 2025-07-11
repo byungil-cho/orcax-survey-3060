@@ -9,6 +9,7 @@ const userRoutes = require('./routes/userdata');
 const farmRoutes = require('./routes/farm');
 const seedRoutes = require('./routes/seed');
 const initUserRoutes = require('./routes/init-user');
+const userDataRoute = require('./routes/userdata');
 
 const app = express();
 const PORT = process.env.PORT || 3060;
@@ -29,10 +30,16 @@ app.use('/api/userdata', userRoutes);
 app.use('/api/farm', farmRoutes);
 app.use('/api/seed', seedRoutes);
 app.use('/api/init-user', initUserRoutes);
+app.use('/api', userDataRoute); 
 
 // 루트 테스트
 app.get("/", (req, res) => {
   res.send("🟢 OrcaX Unified Backend is running");
+});
+
+// 서버 실행
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
 });
 
 // 서버 실행
