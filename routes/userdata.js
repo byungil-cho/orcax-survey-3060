@@ -1,22 +1,23 @@
 // routes/userdata.js
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User'); // 유저 스키마
+const User = require('../models/User');
 
-// 사용자 정보 불러오기
-router.post('/userdata', async (req, res) => {
-  const { kakaoId } = req.body;
-
+router.post('/', async (req, res) => {
   try {
-    const user = await User.findOne({ kakaoId });
+    const kakaoId = String(req.body.kakaoId);
+    console.log("🔍 요청된 kakaoId:", kakaoId);
 
-    if (user) {
-      res.json({ success: true, user });
-    } else {
-      res.status(404).json({ success: false, message: 'User not found' });
+    const user = await User.findOne({ kakaoId });
+    if (!user) {
+      console.warn("❌ 해당 유저 없음");
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
-  } catch (error) {
-    console.error('🚨 Error:', error);
+
+    console.log("✅ 유저 찾음:", user);
+    res.status(200).json({ success: true, data: user });
+  } catch (err) {
+    console.error("🔥 서버 오류:", err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
