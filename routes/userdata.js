@@ -1,14 +1,11 @@
-const express = require('express');
-const router = express.Router();
-const User = require('../models/User');
-
-// POST /api/userdata
 router.post('/', async (req, res) => {
   try {
+    console.log("🔍 Received POST /api/userdata body:", req.body);
+
     const { kakaoId } = req.body;
 
     if (!kakaoId) {
-      return res.status(400).json({ success: false, message: 'kakaoId is required' });
+      return res.status(400).json({ success: false, message: 'kakaoId is missing' });
     }
 
     const user = await User.findOne({ kakaoId });
@@ -18,10 +15,8 @@ router.post('/', async (req, res) => {
     }
 
     res.status(200).json({ success: true, data: user });
-  } catch (error) {
-    console.error('Error in /api/userdata:', error);
-    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  } catch (err) {
+    console.error('❌ Error in /api/userdata:', err);
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
   }
 });
-
-module.exports = router;
