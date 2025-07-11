@@ -1,17 +1,15 @@
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
-  kakaoId: String,
+  kakaoId: { type: String, required: true, unique: true },
   nickname: String,
-  email: String,
-  오크: Number,
-  물: Number,
-  비료: Number,
-  다섯: Number,
-  목록: Object,
-  감자: Number,
-  씨앗감자: Number,
-  씨앗보리: Number
+  orcx: { type: Number, default: 0 },       // 🪙 보유 토큰
+  물: { type: Number, default: 0 },         // 💧
+  거름: { type: Number, default: 0 },       // 🌿
+  씨앗감자: { type: Number, default: 0 },   // 🥔
+  씨앗보리: { type: Number, default: 0 },   // 🌾
+  감자: { type: Number, default: 0 },       // 🥔
+  보리: { type: Number, default: 0 }        // 🌾
 });
 
 module.exports = mongoose.model('User', userSchema);
