@@ -1,39 +1,44 @@
-// routes/userdata.js
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const User = require('../models/User');
+const mongoose = require("mongoose");
 
-router.get('/', async (req, res) => {
+// ✅ 사용자 스키마 정의
+const userSchema = new mongoose.Schema({
+  kakaoId: { type: String, required: true, unique: true },
+  nickname: { type: String, default: "신규 사용자" },
+  farmName: { type: String, default: "" },
+  token: { type: Number, default: 0 }, // DB 내 필드명은 token
+  seedPotato: { type: Number, default: 0 },
+  seedBarley: { type: Number, default: 0 }
+});
+
+const User = mongoose.model("User", userSchema);
+
+// ✅ 사용자 정보 조회 API
+router.get("/", async (req, res) => {
   const { kakaoId } = req.query;
-  if (!kakaoId) {
-    return res.status(400).json({ error: 'kakaoId 쿼리 필요' });
-  }
+  if (!kakaoId) return res.status(400).json({ error: "kakaoId 누락" });
 
   try {
     let user = await User.findOne({ kakaoId });
 
-    // 유저 없으면 자동 생성
+    // 유저가 없으면 새로 생성
     if (!user) {
-      user = new User({
-        kakaoId,
-        nickname: "신규 사용자",
-        farmName: "신규 농장",
-        water: 10,
-        fertilizer: 10,
-        token: 0,
-        potato: 0,
-        barley: 0,
-        level: 1,
-        totalFarmingCount: 0
-      });
+      user = new User({ kakaoId });
       await user.save();
-      console.log(`[🆕 자동 생성된 유저]: ${kakaoId}`);
     }
 
-    res.json({ user });
+    // ✅ 프론트에서 요구하는 필드명 orcx 로 변환해서 전달
+    res.json({
+      nickname: user.nickname,
+      farmName: user.farmName,
+      seedPotato: user.seedPotato || 0,
+      seedBarley: user.seedBarley || 0,
+      orcx: user.token || 0 // ✅ 핵심: orcx 이름으로 내려줌
+    });
   } catch (err) {
-    console.error('[❌ userdata 오류]:', err);
-    res.status(500).json({ error: '서버 오류' });
+    console.error("❌ 사용자 정보 조회 실패:", err);
+    res.status(500).json({ error: "서버 오류" });
   }
 });
 
