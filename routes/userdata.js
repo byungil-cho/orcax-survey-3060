@@ -9,7 +9,7 @@ router.post('/userdata', async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    console.log('✅ 찾은 사용자:', users);
+    console.log('✅ 찾은 사용자:', user);
     res.status(200).json({ success: true, data: users });
 
   } catch (error) {
