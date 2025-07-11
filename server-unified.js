@@ -15,6 +15,9 @@ const PORT = process.env.PORT || 3060;
 
 app.use(cors());
 app.use(express.json());
+app.get("/api/status", (req, res) => {
+  res.send("서버 정상 작동 중입니다.");
+});
 
 // ✅ 라우터 통합
 app.use('/api/userdata', userRoutes);
