@@ -2,7 +2,13 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+
+// 라우터 연결
 const loginRoute = require('./routes/login');
+const userRoutes = require('./routes/userdata');
+const farmRoutes = require('./routes/farm');
+const seedRoutes = require('./routes/seed');
+const initUserRoutes = require('./routes/init-user');
 
 const app = express();
 const PORT = process.env.PORT || 3060;
@@ -16,28 +22,20 @@ mongoose.connect(MONGODB_URL, {
 
 app.use(cors());
 app.use(express.json());
+
+// 각 기능별 API 경로
 app.use('/api/login', loginRoute); 
-
-// 사용자 라우트
-const userRoutes = require('./routes/userdata');
 app.use('/api/userdata', userRoutes);
-
-// 농장 라우트
-const farmRoutes = require('./routes/farm');
 app.use('/api/farm', farmRoutes);
-
-// 씨앗 보관소 라우트
-const seedRoutes = require('./routes/seed');
 app.use('/api/seed', seedRoutes);
-
-// 초기 자산 지급
-const initUserRoutes = require('./routes/init-user');
 app.use('/api/init-user', initUserRoutes);
 
+// 루트 테스트
 app.get("/", (req, res) => {
   res.send("🟢 OrcaX Unified Backend is running");
 });
 
+// 서버 실행
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
