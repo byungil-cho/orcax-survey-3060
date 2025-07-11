@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const loginRoute = require('./routes/login');
 
 const app = express();
 const PORT = process.env.PORT || 3060;
@@ -15,6 +16,7 @@ mongoose.connect(MONGODB_URL, {
 
 app.use(cors());
 app.use(express.json());
+app.use('/api/login', loginRoute); 
 
 // 사용자 라우트
 const userRoutes = require('./routes/userdata');
