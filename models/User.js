@@ -1,12 +1,13 @@
-const mongoose = require("mongoose");
-
 const userSchema = new mongoose.Schema({
-  kakaoId: { type: String, required: true, unique: true },
-  nickname: { type: String, default: "신규 사용자" },
-  farmName: { type: String, default: "" },
-  token: { type: Number, default: 0 },
-  seedPotato: { type: Number, default: 0 },
-  seedBarley: { type: Number, default: 0 }
+  kakaoId: String,
+  nickname: String,
+  email: String,
+  오크: Number,
+  물: Number,            // ← 수정됨
+  비료: Number,
+  다섯: Number,
+  목록: Object,
+  감자: Number,
+  씨앗감자: Number,
+  씨앗보리: Number
 });
-
-module.exports = mongoose.models.User || mongoose.model("User", userSchema);
