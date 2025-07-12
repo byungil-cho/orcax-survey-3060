@@ -13,10 +13,10 @@ router.get("/", async (req, res) => {
 
     for (const item of stocks) {
       const type = item.type?.toLowerCase();
-      const count = item.count ?? 0;
+      const count = item.quantity ?? 0; // ✅ 실제 Mongo 필드 사용
 
-      if (type === "potato") result.seed_potato = count;
-      else if (type === "barley") result.seed_barley = count;
+      if (type === "seedpotato") result.seed_potato = count;
+      else if (type === "seedbarley") result.seed_barley = count;
     }
 
     res.json({ success: true, ...result });
