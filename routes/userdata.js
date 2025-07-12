@@ -1,30 +1,19 @@
-// routes/userdata.js
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const User = require('../models/User'); // 사용자 모델
+const User = require("../models/User");
 
-// POST /api/userdata
-router.post('/', async (req, res) => {
+router.post("/", async (req, res) => {
   const { kakaoId } = req.body;
-
-  console.log("🔍 kakaoId 받음:", kakaoId);
-
   try {
     const user = await User.findOne({ kakaoId });
-
-    console.log("🔎 DB 결과:", user);
-
-    if (user) {
-      // ✅ 프론트가 기대하는 구조로 응답
-      res.json({ success: true, users: [user] });
-    } else {
-      res.status(404).json({ success: false, message: 'User not found' });
+    if (!user) {
+      return res.json({ success: false, message: "사용자 없음" });
     }
-  } catch (error) {
-    console.error('🚨 Server error:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
+    res.json({ success: true, users: [user] });
+  } catch (err) {
+    console.error("유저 데이터 오류:", err);
+    res.status(500).json({ success: false, error: "서버 오류" });
   }
 });
 
 module.exports = router;
-

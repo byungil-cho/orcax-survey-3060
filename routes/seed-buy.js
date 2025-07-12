@@ -1,40 +1,38 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const SeedStock = require('../models/SeedStock');
-const User = require('../models/User');
+const User = require("../models/User");
+const SeedStock = require("../models/SeedStock");
+const SeedPrice = require("../models/SeedPrice");
 
-// 씨앗 구매
-router.post('/buy', async (req, res) => {
+router.post("/", async (req, res) => {
   const { kakaoId, seedType } = req.body;
-  const seedCost = 2;
 
   try {
-    const stock = await SeedStock.findOne({ type: seedType });
-    if (!stock || stock.quantity <= 0) {
-      return res.json({ success: false, message: "재고 부족" });
-    }
-
     const user = await User.findOne({ kakaoId });
-    if (!user || user.orcx < seedCost) {
-      return res.json({ success: false, message: "토큰 부족" });
-    }
+    if (!user) return res.json({ success: false, message: "사용자 없음" });
 
-    // 제한: 씨앗 2개 이상 보유 금지
-    if (user[seedType] >= 2) {
-      return res.json({ success: false, message: "씨앗 최대 보유 수 초과" });
-    }
+    const stock = await SeedStock.findOne({ 유형: seedType === "seedPotato" ? "씨앗감자" : "씨앗보리" });
+    const priceDoc = await SeedPrice.findOne();
+    const price = seedType === "seedPotato" ? priceDoc?.감자 : priceDoc?.보리;
 
-    // 구매 처리
-    user.orcx -= seedCost;
-    user[seedType] += 1;
-    await user.save();
+    if (!stock || stock.수량 <= 0) return res.json({ success: false, message: "재고 없음" });
+    if (user.orcx < price) return res.json({ success: false, message: "토큰 부족" });
 
-    stock.quantity -= 1;
+    // 재고 감소
+    stock.수량 -= 1;
     await stock.save();
 
-    res.json({ success: true });
+    // 유저 씨앗 증가
+    if (seedType === "seedPotato") user.seedPotato += 1;
+    else user.seedBarley += 1;
+
+    user.orcx -= price;
+    await user.save();
+
+    res.json({ success: true, message: "구매 완료" });
+
   } catch (err) {
-    console.error(err);
+    console.error("구매 오류:", err);
     res.status(500).json({ success: false, message: "서버 오류" });
   }
 });
