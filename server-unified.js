@@ -35,6 +35,8 @@ app.use('/api/init-user', initUserRoutes);
 app.use('/api', userDataRoute); 
 app.use('/api/userdata_v2', userRoutesV2);
 app.use("/api/seed", seedStatusRoute);
+app.use('/api/seed/status', require('./routes/seed-status'));
+app.use('/api/seed/price', require('./routes/seed-price'));
 
 // 루트 테스트
 app.get("/", (req, res) => {
