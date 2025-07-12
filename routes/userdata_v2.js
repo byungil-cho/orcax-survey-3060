@@ -5,13 +5,15 @@ const User = require("../models/User");
 router.post("/", async (req, res) => {
   try {
     const kakaoId = req.body.kakaoId;
+
     if (!kakaoId) {
-      return res.status(400).json({ success: false, message: "kakaoId 누락" });
+      return res.status(400).json({ success: false, message: "kakaoId is missing" });
     }
 
     const user = await User.findOne({ 카카오아이디: kakaoId });
+
     if (!user) {
-      return res.status(404).json({ success: false, message: "사용자 없음" });
+      return res.status(404).json({ success: false, message: "User not found" });
     }
 
     res.json({
@@ -28,8 +30,8 @@ router.post("/", async (req, res) => {
       }
     });
   } catch (err) {
-    console.error("❌ /api/userdata_v2 오류", err);
-    res.status(500).json({ success: false });
+    console.error("❌ /api/userdata_v2 error", err);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 });
 
