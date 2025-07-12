@@ -7,19 +7,24 @@ router.get("/", async (req, res) => {
     const stocks = await SeedStock.find({});
 
     const result = {
-      seed_potato: 0,
-      seed_barley: 0
+      seedPotato: 0,
+      seedBarley: 0
     };
 
     for (const item of stocks) {
       const type = item.type?.toLowerCase();
-      const count = item.quantity ?? 0; // ✅ 실제 Mongo 필드 사용
+      const count = item.quantity ?? 0;
 
-      if (type === "seedpotato") result.seed_potato = count;
-      else if (type === "seedbarley") result.seed_barley = count;
+      console.log("📦 씨앗 보관소 아이템:", type, count);
+
+      if (type?.includes("potato")) result.seedPotato = count;
+      else if (type?.includes("barley")) result.seedBarley = count;
     }
 
-    res.json({ success: true, ...result });
+    res.json({
+      success: true,
+      ...result
+    });
   } catch (err) {
     console.error("❌ /api/seed/status 오류", err);
     res.status(500).json({ success: false });
