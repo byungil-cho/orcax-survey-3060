@@ -1,16 +1,14 @@
 const express = require("express");
 const router = express.Router();
-const User = require("../models/User");
+const mongoose = require("mongoose");
+
+const User = mongoose.model("users", new mongoose.Schema({}, { strict: false }));
 
 router.post("/", async (req, res) => {
   try {
-    const kakaoId = req.body.kakaoId;
+    const { id } = req.body;
 
-    if (!kakaoId) {
-      return res.status(400).json({ success: false, message: "kakaoId is missing" });
-    }
-
-    const user = await User.findOne({ 카카오아이디: kakaoId });
+    const user = await User.findOne({ id });
 
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
@@ -18,20 +16,14 @@ router.post("/", async (req, res) => {
 
     res.json({
       success: true,
-      user: {
-        nickname: user["별명"],
-        orcx_token: user["오크"],
-        water: user["물"],
-        fertilizer: user["비료"],
-        inventory: {
-          seed_potato: user["씨앗감자"],
-          seed_barley: user["씨앗보리"]
-        }
-      }
+      nickname: user.nickname || "No Nickname",
+      token: user.token || 0,
+      seed_potato: user.seedPotato || 0,
+      seed_barley: user.seedBarley || 0
     });
   } catch (err) {
-    console.error("❌ /api/userdata_v2 error", err);
-    res.status(500).json({ success: false, message: "Internal Server Error" });
+    console.error("❌ userdata-en.js error:", err);
+    res.status(500).json({ success: false });
   }
 });
 
