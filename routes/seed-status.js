@@ -4,26 +4,12 @@ const SeedStock = require("../models/SeedStock");
 
 router.get("/", async (req, res) => {
   try {
-    const stocks = await SeedStock.find({});
-
-    const result = {
-      seedPotato: 0,
-      seedBarley: 0
-    };
-
-    for (const item of stocks) {
-      const type = item.type?.toLowerCase();
-      const count = item.quantity ?? 0;
-
-      console.log("📦 씨앗 보관소 아이템:", type, count);
-
-      if (type?.includes("potato")) result.seedPotato = count;
-      else if (type?.includes("barley")) result.seedBarley = count;
-    }
+    const stock = await SeedStock.findOne();
 
     res.json({
       success: true,
-      ...result
+      seedPotato: stock?.seedPotato ?? 0,
+      seedBarley: stock?.seedBarley ?? 0
     });
   } catch (err) {
     console.error("❌ /api/seed/status 오류", err);

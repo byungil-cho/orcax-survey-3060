@@ -5,8 +5,14 @@ const SeedPrice = require("../models/SeedPrice");
 router.get("/", async (req, res) => {
   try {
     const latest = await SeedPrice.findOne().sort({ _id: -1 });
+
     if (!latest) {
-      return res.status(404).json({ success: false, message: "가격 정보 없음" });
+      console.warn("⚠️ 씨앗 가격 정보 없음, 기본값으로 반환");
+      return res.json({
+        success: true,
+        seed_potato: 1,
+        seed_barley: 1
+      });
     }
 
     res.json({
