@@ -11,6 +11,7 @@ const seedRoutes = require('./routes/seed');
 const initUserRoutes = require('./routes/init-user');
 const userDataRoute = require('./routes/userdata');
 const userRoutesV2 = require('./routes/userdata_v2');
+const seedStatusRoute = require("./routes/seed-status");
 
 const app = express();
 const PORT = process.env.PORT || 3060;
@@ -33,6 +34,7 @@ app.use('/api/seed', seedRoutes);
 app.use('/api/init-user', initUserRoutes);
 app.use('/api', userDataRoute); 
 app.use('/api/userdata_v2', userRoutesV2);
+app.use("/api/seed", seedStatusRoute);
 
 // 루트 테스트
 app.get("/", (req, res) => {
