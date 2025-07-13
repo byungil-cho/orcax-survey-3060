@@ -21,30 +21,33 @@ router.post("/", async (req, res) => {
     const priceDoc = await SeedPrice.findOne();
     if (!priceDoc) return res.json({ success: false, message: "가격 정보 없음" });
 
+    // ✅ 가격 접근 수정: 영문 필드명 사용
     const price =
-      seedType === "seedPotato" ? priceDoc.감자 :
-      seedType === "seedBarley" ? priceDoc.보리 : null;
+      seedType === "seedPotato" ? priceDoc.potato :
+      seedType === "seedBarley" ? priceDoc.barley : null;
 
     if (price === null || typeof price !== 'number' || isNaN(price)) {
       return res.json({ success: false, message: "가격 오류" });
     }
 
-    // 🛡️ 사용자 필드 방어 처리
+    // ✅ 누락 가능성 있는 필드 방어 (User 저장 실패 방지)
+    if (!user.nickname) user.nickname = "무명";
     if (typeof user.orcx !== 'number' || isNaN(user.orcx)) user.orcx = 0;
     if (typeof user.seedPotato !== 'number' || isNaN(user.seedPotato)) user.seedPotato = 0;
     if (typeof user.seedBarley !== 'number' || isNaN(user.seedBarley)) user.seedBarley = 0;
 
+    // ✅ 토큰 및 재고 체크
     if (user.orcx < price)
       return res.json({ success: false, message: "토큰 부족" });
 
     if (stock.quantity <= 0)
       return res.json({ success: false, message: "재고 없음" });
 
-    // ✅ 재고 감소
+    // ✅ 재고 차감
     stock.quantity -= 1;
     await stock.save();
 
-    // ✅ 사용자 인벤토리 증가
+    // ✅ 씨앗 지급
     if (seedType === "seedPotato") user.seedPotato += 1;
     else if (seedType === "seedBarley") user.seedBarley += 1;
 
@@ -52,7 +55,7 @@ router.post("/", async (req, res) => {
     user.orcx -= price;
     await user.save();
 
-    console.log(`🎉 ${kakaoId} 님 ${seedType} 구매 성공`);
+    console.log(`🎉 구매 완료: ${kakaoId} → ${seedType} 1개 차감 / 토큰 ${price} 사용`);
     res.json({ success: true, message: "구매 완료" });
 
   } catch (err) {
