@@ -12,7 +12,7 @@ const seedRoutes = require('./routes/seed');
 const initUserRoutes = require('./routes/init-user');
 const seedStatusRoute = require('./routes/seed-status');
 const seedPriceRoute = require('./routes/seed-price');
-conconst seedReturnRoute = require('./routes/seed-return');
+const seedReturnRoute = require('./routes/seed-return');
 const seedReturnRoute = require('./routes/seed-return');
 
 const app = express();
