@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 const seedStockSchema = new mongoose.Schema({
-  seedType: { type: String, required: true, unique: true },
+  type: { type: String, required: true, unique: true },  // 수정된 필드명
   quantity: { type: Number, default: 0 }
 });
 
