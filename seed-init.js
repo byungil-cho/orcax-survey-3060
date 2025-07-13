@@ -1,19 +1,31 @@
 const mongoose = require('mongoose');
-const SeedStatus = require('./models/SeedStatus');
-const SeedPrice = require('./models/SeedPrice');
 
-const MONGODB_URL = 'your_mongo_url_here';
+const MONGODB_URI = process.env.MONGODB_URL || '몽고URL입력';
 
-(async () => {
-  await mongoose.connect(MONGODB_URL);
-  console.log('✅ MongoDB 연결 성공');
+const SeedInventorySchema = new mongoose.Schema({
+  _id: { type: String, default: 'singleton' },
+  seedPotato: { type: Object, default: {} },
+  seedBarley: { type: Object, default: {} }
+}, { collection: 'seedinventories' });
 
-  await SeedStatus.deleteMany();
-  await SeedPrice.deleteMany();
+const SeedInventory = mongoose.model('SeedInventory', SeedInventorySchema);
 
-  await SeedStatus.create({ potato: 100, barley: 50 });
-  await SeedPrice.create({ potato: 2, barley: 3 });
+async function initSingletonSeedInventory() {
+  await mongoose.connect(MONGODB_URI);
 
-  console.log('🌱 씨앗 수량 및 가격 초기화 완료!');
-  process.exit();
-})();
+  const exists = await SeedInventory.findById('singleton');
+  if (exists) {
+    console.log('✅ singleton 문서가 이미 존재합니다.');
+  } else {
+    await SeedInventory.create({
+      _id: 'singleton',
+      seedPotato: {},
+      seedBarley: {}
+    });
+    console.log('🌱 seedinventories 초기 singleton 문서 생성 완료!');
+  }
+
+  mongoose.disconnect();
+}
+
+initSingletonSeedInventory();
