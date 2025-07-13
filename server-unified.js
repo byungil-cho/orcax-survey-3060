@@ -12,6 +12,8 @@ const seedRoutes = require('./routes/seed');
 const initUserRoutes = require('./routes/init-user');
 const seedStatusRoute = require('./routes/seed-status');
 const seedPriceRoute = require('./routes/seed-price');
+conconst seedReturnRoute = require('./routes/seed-return');
+const seedReturnRoute = require('./routes/seed-return');
 
 const app = express();
 const PORT = process.env.PORT || 3060;
@@ -35,6 +37,8 @@ app.use('/api/seed', seedRoutes);
 app.use('/api/init-user', initUserRoutes);
 app.use('/api/seed/status', seedStatusRoute);
 app.use('/api/seed/price', seedPriceRoute);
+app.use('/api/seed/buy', seedBuyRoute);
+app.use('/api/seed/return', seedReturnRoute);
 
 // 테스트
 app.get("/", (req, res) => {
