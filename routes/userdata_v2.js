@@ -7,7 +7,6 @@ const User = mongoose.model("users", new mongoose.Schema({}, { strict: false }))
 router.post("/", async (req, res) => {
   try {
     const { id } = req.body;
-
     const user = await User.findOne({ id });
 
     if (!user) {
@@ -16,13 +15,17 @@ router.post("/", async (req, res) => {
 
     res.json({
       success: true,
-      nickname: user.nickname || "No Nickname",
-      token: user.token || 0,
-      seed_potato: user.seedPotato || 0,
-      seed_barley: user.seedBarley || 0
+      user: {
+        nickname: user.nickname || "No Nickname",
+        token: user.token || 0,
+        inventory: {
+          seedPotato: user.seedPotato || 0,
+          seedBarley: user.seedBarley || 0
+        }
+      }
     });
   } catch (err) {
-    console.error("❌ userdata-en.js error:", err);
+    console.error("❌ userdata_v2.js error:", err);
     res.status(500).json({ success: false });
   }
 });
