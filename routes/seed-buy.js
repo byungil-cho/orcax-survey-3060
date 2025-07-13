@@ -5,7 +5,9 @@ const SeedStock = require("../models/SeedStock");
 const SeedPrice = require("../models/SeedPrice");
 
 router.post("/", async (req, res) => {
-  const { kakaoId, seedType } = req.body;
+  const { id, type } = req.body; // 클라이언트에서 받는 필드에 맞춤
+  const kakaoId = id;            // 서버 내부에서 기대하는 필드명에 맞게 대응
+  const seedType = type;
 
   try {
     const user = await User.findOne({ kakaoId });
@@ -23,9 +25,13 @@ router.post("/", async (req, res) => {
     await stock.save();
 
     // 유저 씨앗 증가
-    if (seedType === "seedPotato") user.seedPotato += 1;
-    else user.seedBarley += 1;
+    if (seedType === "seedPotato") {
+      user.seedPotato += 1;
+    } else {
+      user.seedBarley += 1;
+    }
 
+    // 토큰 차감
     user.orcx -= price;
     await user.save();
 
