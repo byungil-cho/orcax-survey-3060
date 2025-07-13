@@ -13,7 +13,6 @@ const initUserRoutes = require('./routes/init-user');
 const seedStatusRoute = require('./routes/seed-status');
 const seedPriceRoute = require('./routes/seed-price');
 const seedReturnRoute = require('./routes/seed-return');
-const seedReturnRoute = require('./routes/seed-return');
 
 const app = express();
 const PORT = process.env.PORT || 3060;
