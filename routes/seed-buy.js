@@ -1,67 +1,50 @@
+// routes/seed-buy.js
+
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const SeedStock = require('../models/SeedStock');
 
-// POST /api/seed/buy
+// 씨앗 구매 API
 router.post('/buy', async (req, res) => {
+  const { kakaoId, type } = req.body;
+
   try {
-    const { kakaoId, seedType } = req.body;
-
-    // 필수 항목 체크
-    if (!kakaoId || !seedType) {
-      return res.status(400).json({ success: false, message: '필수 항목 누락' });
-    }
-
-    const seedKey = seedType === 'potato' ? 'seedPotato' : seedType === 'barley' ? 'seedBarley' : null;
-
-    if (!seedKey) {
-      return res.status(400).json({ success: false, message: '유효하지 않은 씨앗 종류' });
-    }
-
-    // 사용자 조회
     const user = await User.findOne({ kakaoId });
     if (!user) {
-      return res.status(404).json({ success: false, message: '사용자 없음' });
+      return res.status(404).json({ success: false, message: '사용자를 찾을 수 없습니다.' });
     }
 
-    // 씨앗 보유 수량 확인
-    if (user.inventory[seedKey] >= 2) {
-      return res.status(400).json({ success: false, message: '씨앗은 최대 2개까지만 보유 가능' });
-    }
+    // 씨앗 가격은 고정값 또는 외부에서 가져올 수 있음
+    const price = 2;
 
-    // 씨앗 재고 확인
-    const stock = await SeedStock.findOne();
-    if (!stock || stock[seedKey] <= 0) {
-      return res.status(400).json({ success: false, message: '씨앗 품절' });
-    }
-
-    // 씨앗 가격 계산
-    const price = stock.prices[seedKey];
     if (user.token < price) {
-      return res.status(400).json({ success: false, message: '토큰 부족' });
+      return res.status(400).json({ success: false, message: '토큰이 부족합니다.' });
     }
 
-    // 사용자 정보 업데이트
-    user.inventory[seedKey] += 1;
+    // 관리자 씨앗 보관소 재고 확인
+    const stock = await SeedStock.findOne({ type });
+    if (!stock || stock.quantity <= 0) {
+      return res.status(400).json({ success: false, message: '재고가 부족합니다.' });
+    }
+
+    // 유저 씨앗 2개 초과 보유 금지
+    if (user.inventory[type] >= 2) {
+      return res.status(400).json({ success: false, message: '씨앗은 최대 2개까지만 보유할 수 있습니다.' });
+    }
+
+    // 구매 처리
     user.token -= price;
+    user.inventory[type] += 1;
     await user.save();
 
-    // 씨앗 재고 차감
-    stock[seedKey] -= 1;
-    await stock.save();
+    // 관리자 재고 차감
+    await SeedStock.findOneAndUpdate({ type }, { $inc: { quantity: -1 } });
 
-    return res.json({
-      success: true,
-      message: '씨앗 구매 성공',
-      seedType,
-      newCount: user.inventory[seedKey],
-      remainToken: user.token
-    });
-
+    res.json({ success: true, message: `${type} 구매 완료`, token: user.token, inventory: user.inventory });
   } catch (error) {
     console.error('씨앗 구매 오류:', error);
-    res.status(500).json({ success: false, message: '서버 오류' });
+    res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
   }
 });
 
