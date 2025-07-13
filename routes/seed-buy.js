@@ -5,38 +5,41 @@ const SeedStock = require("../models/SeedStock");
 const SeedPrice = require("../models/SeedPrice");
 
 router.post("/", async (req, res) => {
-  const { id, type } = req.body; // 클라이언트에서 받는 필드에 맞춤
-  const kakaoId = id;            // 서버 내부에서 기대하는 필드명에 맞게 대응
+  const { id, type } = req.body;
+  const kakaoId = id;
   const seedType = type;
 
   try {
     const user = await User.findOne({ kakaoId });
     if (!user) return res.json({ success: false, message: "사용자 없음" });
 
-    const stock = await SeedStock.findOne({ 유형: seedType === "seedPotato" ? "씨앗감자" : "씨앗보리" });
+    // ✅ 수정된 부분: 필드명을 'type' 으로 변경 (한글 아님!)
+    const stock = await SeedStock.findOne({ type: seedType });
+
     const priceDoc = await SeedPrice.findOne();
     const price = seedType === "seedPotato" ? priceDoc?.감자 : priceDoc?.보리;
 
-    if (!stock || stock.수량 <= 0) return res.json({ success: false, message: "재고 없음" });
-    if (user.orcx < price) return res.json({ success: false, message: "토큰 부족" });
+    if (!stock || stock.quantity <= 0)
+      return res.json({ success: false, message: "재고 없음" });
+    if (user.orcx < price)
+      return res.json({ success: false, message: "토큰 부족" });
 
-    // 재고 감소
-    stock.수량 -= 1;
+    // ✅ 재고 감소
+    stock.quantity -= 1;
     await stock.save();
 
-    // 유저 씨앗 증가
+    // ✅ 유저 씨앗 증가
     if (seedType === "seedPotato") {
       user.seedPotato += 1;
     } else {
       user.seedBarley += 1;
     }
 
-    // 토큰 차감
+    // ✅ 토큰 차감
     user.orcx -= price;
     await user.save();
 
     res.json({ success: true, message: "구매 완료" });
-
   } catch (err) {
     console.error("구매 오류:", err);
     res.status(500).json({ success: false, message: "서버 오류" });
