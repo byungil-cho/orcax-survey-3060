@@ -11,8 +11,8 @@ const seedRoutes = require('./routes/seed');
 const initUserRoutes = require('./routes/init-user');
 const userDataRoute = require('./routes/userdata');
 const userRoutesV2 = require('./routes/userdata_v2');
-const seedStatusRoute = require("./routes/seed-status");
-const userDataV2 = require('./routes/userdata_v2');
+const seedStatusRoute = require('./routes/seed-status');
+const seedPriceRoute = require('./routes/seed-price');
 
 const app = express();
 const PORT = process.env.PORT || 3060;
@@ -27,18 +27,17 @@ mongoose.connect(MONGODB_URL, {
 app.use(cors());
 app.use(express.json());
 
-// 각 기능별 API 경로
+// ✅ 핵심 API 경로 등록
 app.use('/api/login', loginRoute); 
 app.use('/api/userdata', userRoutes);
+app.use('/api/userdata_v2', userRoutesV2);
+app.use('/api/user/data', userRoutesV2); // ✅ 실질적으로 HTML이 호출하는 경로
 app.use('/api/farm', farmRoutes);
 app.use('/api/seed', seedRoutes);
 app.use('/api/init-user', initUserRoutes);
-app.use('/api', userDataRoute); 
-app.use('/api/userdata_v2', userRoutesV2);
-app.use("/api/seed", seedStatusRoute);
-app.use('/api/seed/status', require('./routes/seed-status'));
-app.use('/api/seed/price', require('./routes/seed-price'));
-app.use('/api/user/data', userDataV2);
+app.use('/api/seed/status', seedStatusRoute);
+app.use('/api/seed/price', seedPriceRoute);
+
 // 루트 테스트
 app.get("/", (req, res) => {
   res.send("🟢 OrcaX Unified Backend is running");
