@@ -4,10 +4,10 @@ const mongoose = require("mongoose");
 
 const User = mongoose.model("users", new mongoose.Schema({}, { strict: false }));
 
-// ✅ GET 방식도 대응하도록 추가
-router.get("/", async (req, res) => {
+router.post("/", async (req, res) => {
   try {
-    const { id } = req.query; // 예: /api/user/data?id=1234
+    const { id } = req.body;
+
     const user = await User.findOne({ id });
 
     if (!user) {
@@ -16,13 +16,13 @@ router.get("/", async (req, res) => {
 
     res.json({
       success: true,
-      nickname: user.nickname || "범고래X",
+      nickname: user.nickname || "No Nickname",
       token: user.token || 0,
       seed_potato: user.seedPotato || 0,
       seed_barley: user.seedBarley || 0
     });
   } catch (err) {
-    console.error("❌ user data fetch error:", err);
+    console.error("❌ userdata-en.js error:", err);
     res.status(500).json({ success: false });
   }
 });
