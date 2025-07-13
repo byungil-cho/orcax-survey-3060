@@ -4,7 +4,7 @@ const User = require('../models/User');
 
 // 로그인 요청 처리
 router.post('/login', async (req, res) => {
-  const { kakaoId, nickname } = req.body;
+  const { kakaoId, nickname, email } = req.body;
 
   if (!kakaoId || !nickname) {
     return res.status(400).json({ success: false, message: '카카오 ID와 닉네임은 필수입니다.' });
@@ -18,6 +18,7 @@ router.post('/login', async (req, res) => {
       user = new User({
         kakaoId,
         nickname,
+        email: email || null, // ← 여기 추가
         orcx: 10,
         water: 10,
         fertilizer: 10,
