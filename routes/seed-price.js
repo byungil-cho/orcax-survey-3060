@@ -1,27 +1,24 @@
-// routes/seed-price.js
 const express = require('express');
 const router = express.Router();
-const SeedPrice = require('../models/SeedPrice');
+const mongoose = require('mongoose');
 
-router.get('/', async (req, res) => {
+const SeedPrice = mongoose.model("seedprices", new mongoose.Schema({}, { strict: false }));
+
+router.get("/", async (req, res) => {
   try {
-    const priceData = await SeedPrice.findOne();
-    if (!priceData) {
-      return res.json({
-        success: true,
-        seedPotatoPrice: 0,
-        seedBarleyPrice: 0,
-      });
+    const latest = await SeedPrice.findOne({}).sort({ _id: -1 }); // 최신 가격 1건
+    if (!latest) {
+      return res.json({ success: false, message: "가격 정보 없음" });
     }
 
     res.json({
       success: true,
-      seedPotatoPrice: priceData.potato || 0,
-      seedBarleyPrice: priceData.barley || 0,
+      seedPotatoPrice: latest.potato || 0,
+      seedBarleyPrice: latest.barley || 0
     });
-  } catch (error) {
-    console.error('❌ 씨앗 가격 불러오기 실패:', error);
-    res.status(500).json({ success: false, message: '씨앗 가격 불러오기 실패' });
+  } catch (err) {
+    console.error("❌ seed-price.js error:", err);
+    res.status(500).json({ success: false, message: "서버 오류" });
   }
 });
 
