@@ -1,4 +1,3 @@
-// routes/init-user.js
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
@@ -13,18 +12,24 @@ router.post('/', async (req, res) => {
         kakaoId,
         nickname,
         farmName: `${nickname}의 감자농장`,
-        물: 10,
-        거름: 10,
-        씨앗감자: 2,
-        씨앗보리: 2,
-        감자: 5,
-        보리: 3,
-        orcx: 10
+        inventory: {
+          water: 10,
+          fertilizer: 10,
+          seedPotato: 0,
+          seedBarley: 0
+        },
+        storage: {
+          gamja: 0,
+          bori: 0
+        },
+        wallet: {
+          orcx: 10
+        }
       });
       await user.save();
-      console.log(`[✅ 사용자 생성됨]: ${kakaoId}`);
+      console.log(`[✅ 신규 사용자 생성]: ${kakaoId}`);
     } else {
-      console.log(`[🔁 기존 사용자]: ${kakaoId}`);
+      console.log(`[🔁 기존 사용자 로그인]: ${kakaoId}`);
     }
 
     res.json({ message: '유저 초기화 완료', success: true, user });
