@@ -1,43 +1,17 @@
-const express = require("express");
-const router = express.Router();
-const User = require("../models/User");
-
-router.post("/", async (req, res) => {
-  const { kakaoId } = req.body;
-
-  try {
-    const user = await User.findOne({ kakaoId });
-
-    if (!user) {
-      return res.json({ success: false, message: "사용자 없음" });
-    }
-
-    // 통합 구조로 응답 변환
-    const formattedUser = {
-      nickname: user.nickname ?? "",
-      kakaoId: user.kakaoId ?? "",
-      email: user.email ?? "",
-      inventory: {
-        water: user.water ?? 0,
-        fertilizer: user.fertilizer ?? 0,
-        seedPotato: user.seedPotato ?? 0,
-        seedBarley: user.seedBarley ?? 0
-      },
-      wallet: {
-        orcx: user.orcx ?? 0
-      },
-      storage: {
-        gamja: user.potato ?? 0,
-        bori: user.bori ?? 0
-      }
-    };
-
-    res.json({ success: true, user: formattedUser });
-
-  } catch (err) {
-    console.error("유저 데이터 오류:", err);
-    res.status(500).json({ success: false, error: "서버 오류" });
+const formattedUser = {
+  nickname: user.nickname ?? "",
+  kakaoId: user.kakaoId ?? "",
+  inventory: {
+    water: user["물"] ?? 0,
+    fertilizer: user["거름"] ?? 0,
+    seedPotato: user["씨앗감자"] ?? user["씨감자"] ?? 0, // ✅ 둘 중 하나라도 있으면 사용
+    seedBarley: user["씨앗보리"] ?? user["씨보리"] ?? 0
+  },
+  wallet: {
+    orcx: user.orcx ?? 0
+  },
+  storage: {
+    gamja: user["감자"] ?? 0,
+    bori: user["보리"] ?? 0
   }
-});
-
-module.exports = router;
+};
