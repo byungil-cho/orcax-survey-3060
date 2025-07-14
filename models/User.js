@@ -10,6 +10,8 @@ const userSchema = new mongoose.Schema({
   씨앗보리: { type: Number, default: 0 },   // 🌾
   감자: { type: Number, default: 0 },       // 🥔
   보리: { type: Number, default: 0 }        // 🌾
+}, {
+ strict: false // 🔥 이거 추가!!
 });
 
 module.exports = mongoose.model('User', userSchema);
