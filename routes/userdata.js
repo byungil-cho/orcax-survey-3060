@@ -1,5 +1,3 @@
-const mongoose = require('mongoose');
-
 const express = require("express");
 const router = express.Router();
 const User = require("../models/User");
@@ -42,5 +40,4 @@ router.post("/", async (req, res) => {
   }
 });
 
-// 수정된 코드 (오류 해결)
-module.exports = mongoose.models.User || mongoose.model("User", userSchema);
+module.exports = router;
