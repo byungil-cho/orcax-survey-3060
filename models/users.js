@@ -1,20 +1,16 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
-  email: { type: String, unique: true, sparse: true },
+  kakaoId: String,
   nickname: String,
-  wallet: String,
-  inventory: {
-    water: { type: Number, default: 10 },
-    fertilizer: { type: Number, default: 10 },
-    orcx: { type: Number, default: 10 },
-    seed_potato: { type: Number, default: 0 },
-    seed_barley: { type: Number, default: 0 },
-    potato: { type: Number, default: 0 },
-    barley: { type: Number, default: 0 }
-  },
-  farmName: { type: String, default: "" },
-  createdAt: { type: Date, default: Date.now }
+  email: String,
+  seedPotato: { type: Number, default: 0 },
+  seedBarley: { type: Number, default: 0 },
+  orcx: { type: Number, default: 0 },
+  water: { type: Number, default: 0 },
+  fertilizer: { type: Number, default: 0 },
+  // 기타 필요한 필드들 추가
 });
 
-module.exports = mongoose.models.User || mongoose.model("User", userSchema);
+// 이 부분이 핵심입니다!
+module.exports = mongoose.models.User || mongoose.model('User', userSchema);
