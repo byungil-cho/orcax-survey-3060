@@ -12,6 +12,7 @@ const farmRoutes = require('./routes/farm');
 const seedRoutes = require('./routes/seed');
 const seedStatusRoute = require('./routes/seed-status');
 const seedPriceRoute = require('./routes/seed-price');
+const migrateRoute = require('./routes/migrate');
 
 const app = express();
 const PORT = process.env.PORT || 3060;
@@ -35,6 +36,7 @@ app.use('/api/farm', farmRoutes);
 app.use('/api/seed', seedRoutes);
 app.use('/api/seed/status', seedStatusRoute);
 app.use('/api/seed/price', seedPriceRoute);
+app.use('/api/migrate', migrateRoute);
 
 // 루트 테스트
 app.get("/", (req, res) => {
