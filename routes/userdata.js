@@ -6,11 +6,13 @@ router.post("/", async (req, res) => {
   const { kakaoId } = req.body;
 
   try {
-    const user = await User.findOne({ kakaoId });
+    const userDoc = await User.findOne({ kakaoId });
 
-    if (!user) {
+    if (!userDoc) {
       return res.json({ success: false, message: "사용자 없음" });
     }
+
+    const user = userDoc.toObject(); // 이 부분 중요
 
     const formattedUser = {
       nickname: user.nickname ?? "",
@@ -18,8 +20,8 @@ router.post("/", async (req, res) => {
       inventory: {
         water: user["물"] ?? 0,
         fertilizer: user["거름"] ?? 0,
-        seedPotato: user["씨앗감자"] ?? user["씨감자"] ?? 0,
-        seedBarley: user["씨앗보리"] ?? user["씨보리"] ?? 0
+        seedPotato: user["씨앗감자"] ?? 0,
+        seedBarley: user["씨앗보리"] ?? 0,
       },
       wallet: {
         orcx: user.orcx ?? 0
@@ -31,6 +33,7 @@ router.post("/", async (req, res) => {
     };
 
     console.log("👉 보낼 유저 데이터:", formattedUser);
+
     res.json({ success: true, user: formattedUser });
 
   } catch (err) {
