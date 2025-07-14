@@ -40,4 +40,5 @@ router.post("/", async (req, res) => {
   }
 });
 
-module.exports = router;
+// 수정된 코드 (오류 해결)
+module.exports = mongoose.models.User || mongoose.model("User", userSchema);
