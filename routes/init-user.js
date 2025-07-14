@@ -13,13 +13,13 @@ router.post('/', async (req, res) => {
         kakaoId,
         nickname,
         farmName: `${nickname}의 감자농장`,
-        water: 10,
-        fertilizer: 10,
-        token: 0,
-        potato: 0,
-        barley: 0,
-        level: 1,
-        totalFarmingCount: 0
+        물: 10,
+        거름: 10,
+        씨앗감자: 2,
+        씨앗보리: 2,
+        감자: 5,
+        보리: 3,
+        orcx: 10
       });
       await user.save();
       console.log(`[✅ 사용자 생성됨]: ${kakaoId}`);
