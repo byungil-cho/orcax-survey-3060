@@ -1,4 +1,3 @@
-
 const express = require("express");
 const router = express.Router();
 const User = require("../models/User");
@@ -17,17 +16,17 @@ router.post("/", async (req, res) => {
       nickname: user.nickname ?? "",
       kakaoId: user.kakaoId ?? "",
       inventory: {
-        water: user["물"] ?? 0,
-        fertilizer: user["거름"] ?? 0,
-        seedPotato: user["씨앗감자"] ?? 0,
-        seedBarley: user["씨앗보리"] ?? 0
+        water: user.inventory?.water ?? 0,
+        fertilizer: user.inventory?.fertilizer ?? 0,
+        seedPotato: user.inventory?.seedPotato ?? 0,
+        seedBarley: user.inventory?.seedBarley ?? 0
       },
       wallet: {
-        orcx: user.orcx ?? 0
+        orcx: user.wallet?.orcx ?? 0
       },
       storage: {
-        gamja: user["감자"] ?? 0,
-        bori: user["보리"] ?? 0
+        gamja: user.storage?.gamja ?? 0,
+        bori: user.storage?.bori ?? 0
       }
     };
 
