@@ -1,47 +1,19 @@
-const mongoose = require('mongoose');
-require('dotenv').config();
-const User = require('./models/User');
+// routes/migrate.js 또는 api/migrate.js
+const express = require('express');
+const router = express.Router();
+const SeedStock = require('../models/SeedStock');
 
-mongoose.connect(process.env.MONGODB_URL, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
+router.get('/', async (req, res) => {
+  try {
+    await SeedStock.deleteMany({});
+    await SeedStock.insertMany([
+      { name: '씨감자', stock: 100, price: 2 },
+      { name: '씨보리', stock: 100, price: 2 },
+    ]);
+    res.status(200).json({ success: true, message: 'Migration 완료' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
-(async () => {
-  try {
-    const users = await User.find({});
-    for (const user of users) {
-      if (!user.inventory) {
-        user.inventory = {
-          seedPotato: user.seedPotato || 0,
-          seedBarley: user.seedBarley || 0,
-          water: user.water || 0,
-          fertilizer: user.fertilizer || 0,
-          token: user.token || 0,
-        };
-      }
-
-      if (!user.farm) {
-        user.farm = {
-          potato: user.potato || 0,
-          barley: user.barley || 0,
-        };
-      }
-
-      if (!user.products) {
-        user.products = {
-          chips: user.chips || 0,
-          noodles: user.noodles || 0,
-        };
-      }
-
-      await user.save();
-    }
-
-    console.log('✅ 마이그레이션 완료');
-    process.exit(0);
-  } catch (err) {
-    console.error('❌ 마이그레이션 실패:', err);
-    process.exit(1);
-  }
-})();
+module.exports = router;
