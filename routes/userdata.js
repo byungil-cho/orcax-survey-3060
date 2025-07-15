@@ -16,17 +16,17 @@ router.post("/", async (req, res) => {
       nickname: user.nickname ?? "",
       kakaoId: user.kakaoId ?? "",
       inventory: {
-        water: user.inventory?.water ?? 0,
-        fertilizer: user.inventory?.fertilizer ?? 0,
-        seedPotato: user.inventory?.seedPotato ?? 0,
-        seedBarley: user.inventory?.seedBarley ?? 0
+        water: user.water ?? 0,
+        fertilizer: user.fertilizer ?? 0,
+        seedPotato: user.seedPotato ?? 0,
+        seedBarley: user.seedBarley ?? 0
       },
       wallet: {
-        orcx: user.wallet?.orcx ?? 0
+        orcx: user.orcx ?? 0
       },
       storage: {
-        gamja: user.storage?.gamja ?? 0,
-        bori: user.storage?.bori ?? 0
+        gamja: user.gamja ?? 0,
+        bori: user.bori ?? 0
       }
     };
 
@@ -35,7 +35,7 @@ router.post("/", async (req, res) => {
     res.json({ success: true, user: formattedUser });
 
   } catch (err) {
-    console.error("유저 데이터 오류:", err);
+    console.error("❌ 유저 데이터 오류:", err);
     res.status(500).json({ success: false, error: "서버 오류" });
   }
 });
