@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const User = require('../models/user'); // 몽고 유저 모델 맞게
+const User = require('../models/users'); // 몽고 유저 모델 맞게
 
 // POST /api/user/v2data
 router.post('/', async (req, res) => {
