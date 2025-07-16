@@ -18,6 +18,7 @@ const app = express();
 const PORT = process.env.PORT || 3060;
 const MONGODB_URL = process.env.MONGODB_URL;
 
+// ✅ MongoDB 연결
 mongoose.connect(MONGODB_URL, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -27,7 +28,7 @@ mongoose.connect(MONGODB_URL, {
 app.use(cors());
 app.use(express.json());
 
-// ✅ API 라우팅 - 중복 제거 후 구조화
+// ✅ API 라우팅
 app.use('/api/login', loginRoute);
 app.use('/api/userdata', userRoutes);
 app.use('/api/userdata_v2', userRoutesV2);
@@ -38,12 +39,17 @@ app.use('/api/seed/status', seedStatusRoute);
 app.use('/api/seed/price', seedPriceRoute);
 app.use('/api/migrate', migrateRoute);
 
-// 루트 테스트
+// ✅ 서버 전원 상태 확인용 Ping API
+app.get('/api/ping', (req, res) => {
+  res.status(200).send("🟢 Ping 정상 작동 중");
+});
+
+// ✅ 루트 상태 메시지
 app.get("/", (req, res) => {
   res.send("🟢 OrcaX Unified Backend is running");
 });
 
-// 서버 실행
+// ✅ 서버 실행
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
