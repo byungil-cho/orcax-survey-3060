@@ -31,7 +31,10 @@ app.use(express.json());
 // ✅ API 라우팅
 app.use('/api/login', loginRoute);
 app.use('/api/userdata', userRoutes);
-app.use('/api/userdata_v2', userRoutesV2);
+
+// ★★★ 수정: V2 라우트 경로를 클라이언트와 동일하게! ★★★
+app.use('/api/user/v2data', userRoutesV2);
+
 app.use('/api/init-user', initUserRoutes);
 app.use('/api/farm', farmRoutes);
 app.use('/api/seed', seedRoutes);
