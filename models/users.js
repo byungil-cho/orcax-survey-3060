@@ -9,8 +9,12 @@ const userSchema = new mongoose.Schema({
   orcx: { type: Number, default: 0 },
   water: { type: Number, default: 0 },
   fertilizer: { type: Number, default: 0 },
-  // 기타 필요한 필드들 추가
+
+  // 🚩 성장포인트 필드 추가!
+  growth: {
+    potato: { type: Number, default: 0 },
+    barley: { type: Number, default: 0 }
+  }
 });
 
-// 이 부분이 핵심입니다!
 module.exports = mongoose.models.User || mongoose.model('User', userSchema);
