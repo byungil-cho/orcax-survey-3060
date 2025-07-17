@@ -41,7 +41,7 @@ app.use('/api/seed', seedRoutes);
 app.use('/api/seed/status', seedStatusRoute);
 app.use('/api/seed/price', seedPriceRoute);
 app.use('/api/migrate', migrateRoute);
-
+app.use('/api/seed', require('./routes/seed'));
 // ✅ 서버 전원 상태 확인용 Ping API
 app.get('/api/ping', (req, res) => {
   res.status(200).send("🟢 Ping 정상 작동 중");
