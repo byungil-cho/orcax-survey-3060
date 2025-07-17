@@ -1,4 +1,6 @@
-// server-unified.js - 전체 기능 포함, 수확 라우트 추가 버전
+// server-unified.js - 전체 기능 포함, Mongo 연결 통합
+
+require('dotenv').config();  // ✅ .env 지원 추가
 
 const express = require('express');
 const app = express();
@@ -15,30 +17,39 @@ const factoryRoutes = require('./routes/factory');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
 
+// 미들웨어
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-mongoose.connect('mongodb://localhost:27017/farmgame', {
+// ✅ Mongo 연결 (.env 우선, 실패 시 localhost)
+const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017/farmgame';
+
+mongoose.connect(mongoUrl, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
+}).then(() => {
+  console.log('✅ MongoDB 연결 성공');
+}).catch(err => {
+  console.error('❌ MongoDB 연결 실패:', err.message);
 });
 
+// 세션 설정
 app.use(
   session({
     secret: 'secret-key',
     resave: false,
     saveUninitialized: true,
-    store: MongoStore.create({ mongoUrl: 'mongodb://localhost:27017/farmgame' }),
+    store: MongoStore.create({ mongoUrl }),
   })
 );
 
-// API 경로들
+// API 경로
 app.use('/api/factory', factoryRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 
-// 수확 라우트 직접 등록
+// 수확 API 직접 등록
 app.post('/api/factory/harvest', async (req, res) => {
   const { kakaoId, cropType } = req.body;
 
@@ -50,8 +61,8 @@ app.post('/api/factory/harvest', async (req, res) => {
 
     const cropKey = cropType === 'potato' ? 'gamja' : 'bori';
     const growthKey = cropType === 'potato' ? 'potato' : 'barley';
-
     const currentGrowth = user.growth[growthKey] || 0;
+
     if (currentGrowth < 5) {
       return res.status(400).json({ success: false, message: 'Not enough growth to harvest' });
     }
@@ -79,10 +90,10 @@ app.post('/api/factory/harvest', async (req, res) => {
   }
 });
 
-// 서버 시작
+// 서버 실행
 const PORT = 3060;
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`🚀 Server is running on port ${PORT}`);
 });
 
 module.exports = app;
