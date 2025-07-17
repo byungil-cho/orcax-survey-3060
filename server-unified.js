@@ -1,60 +1,57 @@
-require('dotenv').config();
+// server-unified.js - 수정된 harvest 라우트 포함 버전
+
 const express = require('express');
+const app = express();
+const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const cors = require('cors');
-
-// 라우터 연결
-const loginRoute = require('./routes/login');
-const userRoutes = require('./routes/userdata');
-const userRoutesV2 = require('./routes/userdata_v2');
-const initUserRoutes = require('./routes/init-user');
-const farmRoutes = require('./routes/farm');
-const seedRoutes = require('./routes/seed');
-const seedStatusRoute = require('./routes/seed-status');
-const seedPriceRoute = require('./routes/seed-price');
-const migrateRoute = require('./routes/migrate');
-
-const app = express();
-const PORT = process.env.PORT || 3060;
-const MONGODB_URL = process.env.MONGODB_URL;
-
-// ✅ MongoDB 연결
-mongoose.connect(MONGODB_URL, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-}).then(() => console.log('✅ MongoDB 연결 성공'))
-  .catch((err) => console.error('❌ MongoDB 연결 실패:', err));
+const User = require('./models/users');
+const factoryRoutes = require('./routes/factory');
 
 app.use(cors());
-app.use(express.json());
+app.use(bodyParser.json());
 
-// ✅ API 라우팅
-app.use('/api/login', loginRoute);
-app.use('/api/userdata', userRoutes);
+app.use('/api/factory', factoryRoutes);
 
-// ★★★ 수정: V2 라우트 경로를 클라이언트와 동일하게! ★★★
-app.use('/api/user/v2data', userRoutesV2);
+// 수확 라우트 추가
+app.post('/api/factory/harvest', async (req, res) => {
+  const { kakaoId, cropType } = req.body;
 
-app.use('/api/init-user', initUserRoutes);
-app.use('/api/farm', farmRoutes);
-app.use('/api/seed', seedRoutes);
-app.use('/api/seed/status', seedStatusRoute);
-app.use('/api/seed/price', seedPriceRoute);
-app.use('/api/migrate', migrateRoute);
-app.use('/api/seed', require('./routes/seed'));
-app.use('/api/factory', require('./routes/factory'));
+  try {
+    const user = await User.findOne({ kakaoId });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
 
-// ✅ 서버 전원 상태 확인용 Ping API
-app.get('/api/ping', (req, res) => {
-  res.status(200).send("🟢 Ping 정상 작동 중");
+    const cropKey = cropType === 'potato' ? 'gamja' : 'bori';
+    const growthKey = cropType === 'potato' ? 'potato' : 'barley';
+
+    const currentGrowth = user.growth[growthKey] || 0;
+    if (currentGrowth < 5) {
+      return res.status(400).json({ success: false, message: 'Not enough growth to harvest' });
+    }
+
+    const rewardOptions = [3, 5, 7];
+    const reward = rewardOptions[Math.floor(Math.random() * rewardOptions.length)];
+
+    user.storage[cropKey] = (user.storage[cropKey] || 0) + reward;
+    user.growth[growthKey] = 0;
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: '수확 성공',
+      reward,
+      cropType,
+      cropAmount: user.storage[cropKey],
+      storage: user.storage,
+      growth: user.growth,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: '서버 오류' });
+  }
 });
 
-// ✅ 루트 상태 메시지
-app.get("/", (req, res) => {
-  res.send("🟢 OrcaX Unified Backend is running");
-});
-
-// ✅ 여기, 이놈아!! 드디어 서버 실행부!
-app.listen(PORT, () => {
-  console.log(`🚀 서버 실행 중: http://localhost:${PORT}`);
-});
+module.exports = app;
