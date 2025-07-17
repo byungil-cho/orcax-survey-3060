@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const User = require('../models/users');  // ← 수정된 부분!
+const User = require('../models/users');  // ✅ 정확하게 수정됨
 
 // 로그인 요청 처리
 router.post('/login', async (req, res) => {
@@ -24,19 +24,13 @@ router.post('/login', async (req, res) => {
         fertilizer: 10,
         seedPotato: 0,
         seedBarley: 0,
-        potatoCount: 0,
-        barleyCount: 0,
-        plantedPotato: 0,
-        harvestablePotato: 0,
-        harvestCount: 0,
-        inventory: [],
-        lastLogin: new Date(),
-        lastRecharge: new Date(),
+        storage: { gamja: 0, bori: 0 },
+        growth: { potato: 0, barley: 0 }
       });
       await user.save();
     } else {
       // 기존 유저 로그인 기록 업데이트
-      user.lastLogin = new Date();
+      user.lastLogin = new Date();  // 필드가 없어도 일단 임시로 추가 가능
       await user.save();
     }
 
