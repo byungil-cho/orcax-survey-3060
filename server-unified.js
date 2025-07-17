@@ -1,4 +1,4 @@
-// server-unified.js - 수정된 harvest 라우트 포함 버전
+// server-unified.js - 전체 기능 포함, 수확 라우트 추가 버전
 
 const express = require('express');
 const app = express();
@@ -6,14 +6,39 @@ const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const User = require('./models/users');
+const session = require('express-session');
+const MongoStore = require('connect-mongo');
+const path = require('path');
+
+// 라우터들
 const factoryRoutes = require('./routes/factory');
+const authRoutes = require('./routes/auth');
+const userRoutes = require('./routes/user');
 
 app.use(cors());
 app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
+mongoose.connect('mongodb://localhost:27017/farmgame', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
+
+app.use(
+  session({
+    secret: 'secret-key',
+    resave: false,
+    saveUninitialized: true,
+    store: MongoStore.create({ mongoUrl: 'mongodb://localhost:27017/farmgame' }),
+  })
+);
+
+// API 경로들
 app.use('/api/factory', factoryRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/user', userRoutes);
 
-// 수확 라우트 추가
+// 수확 라우트 직접 등록
 app.post('/api/factory/harvest', async (req, res) => {
   const { kakaoId, cropType } = req.body;
 
@@ -52,6 +77,12 @@ app.post('/api/factory/harvest', async (req, res) => {
     console.error(err);
     res.status(500).json({ success: false, message: '서버 오류' });
   }
+});
+
+// 서버 시작
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
 
 module.exports = app;
