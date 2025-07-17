@@ -14,8 +14,11 @@ router.post('/', async (req, res) => {
       success: true,
       user: {
         nickname: user.nickname,
-        token: user.wallet.orcx ?? 0,
-        inventory: user.inventory ?? {},
+        orcx: user.orcx ?? 0,             // <<<< 이 부분!!
+        water: user.water ?? 0,
+        fertilizer: user.fertilizer ?? 0,
+        seedPotato: user.seedPotato ?? 0,
+        seedBarley: user.seedBarley ?? 0
       }
     });
   } catch (err) {
@@ -23,3 +26,4 @@ router.post('/', async (req, res) => {
   }
 });
 module.exports = router;
+
