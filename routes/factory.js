@@ -23,14 +23,20 @@ router.patch('/use-resource', async (req, res) => {
       user.fertilizer += fertilizer; // fertilizer도 -1로 들어옴
     }
 
-    // 성장 포인트 증가 (예: 물 1 = 1, 거름 1 = 2, 복합 처리도 가능)
-    let growth = user.growth || { potato: 0, barley: 0 };
-    if (cropType === "seedPotato") growth.potato = (growth.potato || 0) + (water ? 1 : 0) + (fertilizer ? 2 : 0);
-    if (cropType === "seedBarley") growth.barley = (growth.barley || 0) + (water ? 1 : 0) + (fertilizer ? 2 : 0);
-    user.growth = growth;
+    // 성장 포인트 증가 (물 1 = +1, 거름 1 = +2)
+    // 항상 growth 객체 안전하게!
+    if (!user.growth || typeof user.growth !== 'object') {
+      user.growth = { potato: 0, barley: 0 };
+    }
+    if (cropType === "seedPotato") {
+      user.growth.potato = (user.growth.potato || 0) + (water ? 1 : 0) + (fertilizer ? 2 : 0);
+    }
+    if (cropType === "seedBarley") {
+      user.growth.barley = (user.growth.barley || 0) + (water ? 1 : 0) + (fertilizer ? 2 : 0);
+    }
 
     await user.save();
-    res.json({ success: true, water: user.water, fertilizer: user.fertilizer, growth });
+    res.json({ success: true, water: user.water, fertilizer: user.fertilizer, growth: user.growth });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -57,35 +63,36 @@ router.post('/harvest', async (req, res) => {
     const user = await User.findOne({ kakaoId });
     if (!user) return res.status(404).json({ success: false, message: "유저 없음" });
 
-    let growth = user.growth || { potato: 0, barley: 0 };
+    if (!user.growth || typeof user.growth !== 'object') {
+      user.growth = { potato: 0, barley: 0 };
+    }
     let reward = 0, cropKey = "", growthKey = "";
 
     if (cropType === "seedPotato") {
       if ((user.seedPotato ?? 0) < 1) return res.json({ success: false, message: "씨감자 없음" });
-      if ((growth.potato ?? 0) < 5) return res.json({ success: false, message: "성장포인트 부족" });
+      if ((user.growth.potato ?? 0) < 5) return res.json({ success: false, message: "성장포인트 부족" });
       // 랜덤 수확
       const yieldOptions = [3, 5, 7];
       reward = yieldOptions[Math.floor(Math.random() * yieldOptions.length)];
       user.seedPotato -= 1;
       user.potato = (user.potato ?? 0) + reward;
-      growth.potato = 0; // 수확 후 초기화
+      user.growth.potato = 0; // 수확 후 초기화
       cropKey = "potato";
       growthKey = "potato";
     } else if (cropType === "seedBarley") {
       if ((user.seedBarley ?? 0) < 1) return res.json({ success: false, message: "씨보리 없음" });
-      if ((growth.barley ?? 0) < 5) return res.json({ success: false, message: "성장포인트 부족" });
+      if ((user.growth.barley ?? 0) < 5) return res.json({ success: false, message: "성장포인트 부족" });
       const yieldOptions = [3, 5, 7];
       reward = yieldOptions[Math.floor(Math.random() * yieldOptions.length)];
       user.seedBarley -= 1;
       user.barley = (user.barley ?? 0) + reward;
-      growth.barley = 0;
+      user.growth.barley = 0;
       cropKey = "barley";
       growthKey = "barley";
     } else {
       return res.json({ success: false, message: "잘못된 작물 종류" });
     }
 
-    user.growth = growth;
     await user.save();
 
     res.json({
@@ -94,7 +101,7 @@ router.post('/harvest', async (req, res) => {
       reward,
       cropType,
       cropAmount: user[cropKey],
-      growth,
+      growth: user.growth,
       seedPotato: user.seedPotato,
       seedBarley: user.seedBarley
     });
