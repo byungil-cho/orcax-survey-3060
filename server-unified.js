@@ -80,7 +80,7 @@ app.post('/api/factory/harvest', async (req, res) => {
 });
 
 // 서버 시작
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3060;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
