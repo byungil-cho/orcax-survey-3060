@@ -38,7 +38,7 @@ app.use('/api/factory', factoryRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 
-// 🌾 수확 라우트 - 성장포인트 초기화 & 저장소 반영
+// 수확 라우트 직접 등록
 app.post('/api/factory/harvest', async (req, res) => {
   const { kakaoId, cropType } = req.body;
 
