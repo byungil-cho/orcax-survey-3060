@@ -43,7 +43,6 @@ app.use('/api/seed/price', seedPriceRoute);
 app.use('/api/migrate', migrateRoute);
 app.use('/api/seed', require('./routes/seed'));
 app.use('/api/factory', require('./routes/factory'));
-app.use('/api/seed/price', require('./routes/seed-price'));
 
 // ✅ 서버 전원 상태 확인용 Ping API
 app.get('/api/ping', (req, res) => {
