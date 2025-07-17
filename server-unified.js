@@ -54,7 +54,7 @@ app.get("/", (req, res) => {
   res.send("🟢 OrcaX Unified Backend is running");
 });
 
-// ✅ 서버 실행
+// ✅ 여기, 이놈아!! 드디어 서버 실행부!
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🚀 서버 실행 중: http://localhost:${PORT}`);
 });
