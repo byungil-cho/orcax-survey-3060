@@ -24,10 +24,8 @@ router.post("/", async (req, res) => {
       wallet: {
         orcx: user.orcx ?? 0
       },
-      storage: {
-        gamja: user.gamja ?? 0,
-        bori: user.bori ?? 0
-      }
+      potato: user.storage?.gamja ?? 0,   // 감자
+      barley: user.storage?.bori ?? 0     // 보리
     };
 
     console.log("👉 보낼 유저 데이터:", formattedUser);
