@@ -8,7 +8,7 @@ router.get("/status", async (req, res) => {
     // 배열: [{type, stock, price}]
     const result = stocks.map(item => ({
       type: item.seedType,     // "gamja", "bori"
-      stock: item.quantity,    // 씨앗 재고
+      stock: item.stock,       // 필드명 quantity → stock으로 수정!!
       price: item.price ?? "-",// 씨앗 가격
     }));
     res.json(result);
