@@ -1,21 +1,31 @@
-// routes/seed-status.js
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const SeedStock = require('../models/SeedStock'); // 모델 경로 주의
+const SeedStock = require("../models/SeedStock");
 
-router.get('/', async (req, res) => {
+router.get("/status", async (req, res) => {
   try {
-    const potato = await SeedStock.findOne({ type: 'seedPotato' });
-    const barley = await SeedStock.findOne({ type: 'seedBarley' });
+    const stocks = await SeedStock.find({});
+
+    const result = {
+      seedPotato: 0,
+      seedBarley: 0
+    };
+
+    for (const item of stocks) {
+      const type = item.type?.toLowerCase();
+      const count = item.quantity ?? 0;
+
+      if (type?.includes("potato")) result.seedPotato = count;
+      else if (type?.includes("barley")) result.seedBarley = count;
+    }
 
     res.json({
       success: true,
-      seedPotato: potato?.quantity || 0,
-      seedBarley: barley?.quantity || 0,
+      ...result
     });
-  } catch (error) {
-    console.error('❌ 씨앗 수량 불러오기 실패:', error);
-    res.status(500).json({ success: false, message: '씨앗 수량 불러오기 실패' });
+  } catch (err) {
+    console.error("❌ /api/seed/status 오류", err);
+    res.status(500).json({ success: false });
   }
 });
 
