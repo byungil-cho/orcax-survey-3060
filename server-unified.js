@@ -19,7 +19,10 @@ const factoryRoutes = require('./routes/factory');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
 const userdataV2Routes = require('./routes/userdata_v2');
-const seedRoutes = require('./routes/seed-status'); // ✅ 추가: 씨앗 라우터
+const seedRoutes = require('./routes/seed-status');
+
+// ✅ 추가: init-user 라우터 등록!
+const initUserRoutes = require('./routes/init-user');
 
 // 미들웨어
 app.use(cors());
@@ -52,7 +55,11 @@ app.use('/api/factory', factoryRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/user/v2data', userdataV2Routes);
-app.use('/api/seed', seedRoutes); // ✅ 추가: 씨앗 경로 등록
+app.use('/api/seed', seedRoutes);
+
+// ✅ init-user 라우터 등록 (중요!)
+// 반드시 이 줄이 있어야 /api/init-user 404 안 남
+app.use('/api/init-user', initUserRoutes);
 
 // ✅ DB 구조와 일치하는 /api/userdata 라우터 (gamja-farm.html fetch용)
 app.post('/api/userdata', async (req, res) => {
@@ -133,4 +140,3 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
-
