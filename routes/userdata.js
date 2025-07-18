@@ -38,4 +38,5 @@ router.post("/", async (req, res) => {
   }
 });
 
-module.exports = router;
+document.getElementById("potato").textContent = user.potato || 0;
+
