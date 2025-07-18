@@ -1,6 +1,9 @@
+const router = require('express').Router(); // <-- 이 한줄 꼭 필요!
+const User = require('../models/users');
+
 router.post('/', async (req, res) => {
   try {
-    console.log("받은 body:", req.body);   // ★ 추가
+    console.log("받은 body:", req.body);   // 디버그용
     const { id } = req.body;
     if (!id) return res.json({ success: false, message: "no id" });
     const user = await User.findOne({ kakaoId: id });
@@ -20,7 +23,9 @@ router.post('/', async (req, res) => {
       }
     });
   } catch (err) {
-    console.error("서버 오류:", err); // ★ 추가
+    console.error("서버 오류:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
+
+module.exports = router;
