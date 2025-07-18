@@ -15,20 +15,14 @@ router.post("/", async (req, res) => {
     const formattedUser = {
       nickname: user.nickname ?? "",
       kakaoId: user.kakaoId ?? "",
-      inventory: {
-        water: user.water ?? 0,
-        fertilizer: user.fertilizer ?? 0,
-        seedPotato: user.seedPotato ?? 0,
-        seedBarley: user.seedBarley ?? 0
-      },
-      wallet: {
-        orcx: user.orcx ?? 0
-      },
-      potato: user.storage?.gamja ?? 0,   // 감자
-      barley: user.storage?.bori ?? 0     // 보리
+      water: user.water ?? 0,
+      fertilizer: user.fertilizer ?? 0,
+      seedPotato: user.seedPotato ?? 0,
+      seedBarley: user.seedBarley ?? 0,
+      orcx: user.orcx ?? 0,
+      potato: user.storage?.gamja ?? 0,
+      bori: user.storage?.bori ?? 0,
     };
-
-    console.log("👉 보낼 유저 데이터:", formattedUser);
 
     res.json({ success: true, user: formattedUser });
 
@@ -38,5 +32,4 @@ router.post("/", async (req, res) => {
   }
 });
 
-document.getElementById("potato").textContent = user.potato || 0;
-
+module.exports = router;
