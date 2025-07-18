@@ -1,5 +1,4 @@
-// server-unified.js - OrcaX 통합 서버 전체본 (2024-07-18 기준 최신)
-// 주: .env 파일에 MONGODB_URL 세팅 필수!
+// server-unified.js - OrcaX 통합 서버 전체본 (2024-07-18 최신/DB 일치 응답)
 
 require('dotenv').config();
 
@@ -19,7 +18,7 @@ const User = require('./models/users');
 const factoryRoutes = require('./routes/factory');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
-const userdataV2Routes = require('./routes/userdata_v2');  // v2데이터 통합용
+const userdataV2Routes = require('./routes/userdata_v2');
 
 // 미들웨어
 app.use(cors());
@@ -51,9 +50,9 @@ app.use(
 app.use('/api/factory', factoryRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
-app.use('/api/user/v2data', userdataV2Routes);  // v2 통합버전
+app.use('/api/user/v2data', userdataV2Routes);
 
-// ✅ 프론트 호환용 /api/userdata 라우터 추가 (gamja-farm.html 등 호환 전용)
+// ✅ DB 구조와 일치하는 /api/userdata 라우터 (gamja-farm.html fetch용)
 app.post('/api/userdata', async (req, res) => {
   try {
     const { kakaoId } = req.body;
@@ -64,24 +63,18 @@ app.post('/api/userdata', async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
-    // 감자/보리/ORCX 등 자원 모두 응답
+    // 🚩 실제 DB 구조 그대로 응답!
     res.json({
       success: true,
       user: {
         nickname: user.nickname,
-        inventory: {
-          water: user.inventory?.water || 0,
-          fertilizer: user.inventory?.fertilizer || 0,
-          seedPotato: user.inventory?.seedPotato || 0,
-          seedBarley: user.inventory?.seedBarley || 0,
-        },
-        wallet: {
-          orcx: user.wallet?.orcx || 0,
-        },
-        storage: {
-          gamja: user.storage?.gamja || 0,
-          bori: user.storage?.bori || 0,
-        }
+        orcx: user.orcx ?? 0,
+        water: user.water ?? 0,
+        fertilizer: user.fertilizer ?? 0,
+        seedPotato: user.seedPotato ?? 0,
+        seedBarley: user.seedBarley ?? 0,
+        potato: user.storage?.gamja ?? 0,
+        bori: user.storage?.bori ?? 0
       }
     });
   } catch (err) {
@@ -138,6 +131,3 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
-
-
-
