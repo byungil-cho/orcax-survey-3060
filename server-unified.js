@@ -27,6 +27,8 @@ const loginRoutes = require('./routes/login');
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json()); // ★ 이거 없으면 req.body 못 읽음
+app.use(express.urlencoded({ extended: true }));
 
 // ✅ Mongo 연결
 const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017/farmgame';
