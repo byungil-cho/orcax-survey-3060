@@ -5,11 +5,11 @@ const SeedStock = require("../models/SeedStock");
 router.get("/status", async (req, res) => {
   try {
     const stocks = await SeedStock.find({});
-    // 필드명 변환: seedType→type, quantity→stock, price 유지
+    // 배열: [{type, stock, price}]
     const result = stocks.map(item => ({
-      type: item.seedType,      // 프론트에서 'type'으로 찾음 ("gamja"/"bori")
-      stock: item.quantity,     // 프론트에서 'stock'으로 표시
-      price: item.price ?? "-", // 프론트에서 'price'로 표시
+      type: item.seedType,     // "gamja", "bori"
+      stock: item.quantity,    // 씨앗 재고
+      price: item.price ?? "-",// 씨앗 가격
     }));
     res.json(result);
   } catch (err) {
