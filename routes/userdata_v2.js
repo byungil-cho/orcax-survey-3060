@@ -1,5 +1,6 @@
+// routes/userdata_v2.js
 const router = require('express').Router();
-const User = require('../models/users'); // User 모델 경로
+const User = require('../models/users');
 
 router.post('/', async (req, res) => {
   try {
