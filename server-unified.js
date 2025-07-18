@@ -1,4 +1,4 @@
-// server-unified.js - OrcaX 통합 서버 전체본 (2024-07-18 최신/DB 일치 응답, 실장 수정)
+// server-unified.js - OrcaX 통합 서버 전체본 (2024-07-18 최종, 감자/보리 데이터 공통 구조 적용)
 
 require('dotenv').config();
 
@@ -63,7 +63,7 @@ app.get('/api/ping', (req, res) => {
   res.status(200).send('pong');
 });
 
-// ✅ 프론트 요구에 맞춘 /api/userdata 라우터 (bori-farm.html, gamja-farm.html fetch용)
+// ✅ 감자/보리 프론트 구조에 맞춘 /api/userdata 라우터
 app.post('/api/userdata', async (req, res) => {
   try {
     const { kakaoId } = req.body;
@@ -74,7 +74,6 @@ app.post('/api/userdata', async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
-    // 프론트엔드(bori-farm.html 등) 요구에 맞춰 inventory/키값 구조로 통일!
     res.json({
       success: true,
       user: {
@@ -82,11 +81,13 @@ app.post('/api/userdata', async (req, res) => {
         inventory: {
           water: user.water ?? 0,
           fertilizer: user.fertilizer ?? 0,
+          seedPotato: user.seedPotato ?? 0,
           seedBarley: user.seedBarley ?? 0
         },
         orcx: user.orcx ?? 0,
         wallet: { orcx: user.orcx ?? 0 },
-        barley: user.storage?.bori ?? 0,
+        potato: user.storage?.gamja ?? 0,
+        barley: user.storage?.bori ?? 0
       }
     });
   } catch (err) {
