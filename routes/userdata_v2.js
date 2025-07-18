@@ -1,8 +1,6 @@
-const express = require('express');
-const router = express.Router();
-const User = require('../models/users'); // 몽고 유저 모델 맞게
+const router = require('express').Router();
+const User = require('../models/users'); // User 모델 경로
 
-// POST /api/user/v2data
 router.post('/', async (req, res) => {
   try {
     const { id } = req.body;
@@ -14,16 +12,18 @@ router.post('/', async (req, res) => {
       success: true,
       user: {
         nickname: user.nickname,
-        orcx: user.orcx ?? 0,             // <<<< 이 부분!!
+        orcx: user.orcx ?? 0,
         water: user.water ?? 0,
         fertilizer: user.fertilizer ?? 0,
         seedPotato: user.seedPotato ?? 0,
-        seedBarley: user.seedBarley ?? 0
+        seedBarley: user.seedBarley ?? 0,
+        potato: user.storage?.gamja ?? 0,
+        bori: user.storage?.bori ?? 0
       }
     });
   } catch (err) {
     res.json({ success: false, message: err.message });
   }
 });
-module.exports = router;
 
+module.exports = router;
