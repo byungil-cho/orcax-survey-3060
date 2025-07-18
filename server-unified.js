@@ -1,4 +1,4 @@
-// server-unified.js - OrcaX 통합 서버 전체본 (2024-07-18 최신/DB 일치 응답)
+// server-unified.js - OrcaX 통합 서버 전체본 (2024-07-18 최신/DB 일치 응답, 실장 수정)
 
 require('dotenv').config();
 
@@ -20,9 +20,8 @@ const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
 const userdataV2Routes = require('./routes/userdata_v2');
 const seedRoutes = require('./routes/seed-status');
-
-// ✅ 추가: init-user 라우터 등록!
 const initUserRoutes = require('./routes/init-user');
+const loginRoutes = require('./routes/login');
 
 // 미들웨어
 app.use(cors());
@@ -56,12 +55,15 @@ app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/user/v2data', userdataV2Routes);
 app.use('/api/seed', seedRoutes);
-
-// ✅ init-user 라우터 등록 (중요!)
-// 반드시 이 줄이 있어야 /api/init-user 404 안 남
 app.use('/api/init-user', initUserRoutes);
+app.use('/api/login', loginRoutes);
 
-// ✅ DB 구조와 일치하는 /api/userdata 라우터 (gamja-farm.html fetch용)
+// ✅ 서버 헬스체크(PING) 라우트 추가
+app.get('/api/ping', (req, res) => {
+  res.status(200).send('pong');
+});
+
+// ✅ 프론트 요구에 맞춘 /api/userdata 라우터 (bori-farm.html, gamja-farm.html fetch용)
 app.post('/api/userdata', async (req, res) => {
   try {
     const { kakaoId } = req.body;
@@ -72,18 +74,19 @@ app.post('/api/userdata', async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
-    // 🚩 실제 DB 구조 그대로 응답!
+    // 프론트엔드(bori-farm.html 등) 요구에 맞춰 inventory/키값 구조로 통일!
     res.json({
       success: true,
       user: {
         nickname: user.nickname,
+        inventory: {
+          water: user.water ?? 0,
+          fertilizer: user.fertilizer ?? 0,
+          seedBarley: user.seedBarley ?? 0
+        },
         orcx: user.orcx ?? 0,
-        water: user.water ?? 0,
-        fertilizer: user.fertilizer ?? 0,
-        seedPotato: user.seedPotato ?? 0,
-        seedBarley: user.seedBarley ?? 0,
-        potato: user.storage?.gamja ?? 0,
-        bori: user.storage?.bori ?? 0
+        wallet: { orcx: user.orcx ?? 0 },
+        barley: user.storage?.bori ?? 0,
       }
     });
   } catch (err) {
