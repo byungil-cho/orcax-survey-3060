@@ -17,6 +17,7 @@ mongoose.connect(mongoURI, {
 app.use(cors());
 app.use(express.json());
 app.use("/api/seed", require("./routes/seed-status"));
+app.use("/api/seed", require("./routes/seed"));
 
 // ✅ /api/userdata 라우트 연결
 const userdataRoutes = require('./routes/userdata');

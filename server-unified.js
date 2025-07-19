@@ -20,6 +20,7 @@ const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
 const userdataV2Routes = require('./routes/userdata_v2');
 const seedRoutes = require('./routes/seed-status');
+const seedBuyRoutes = require('./routes/seed');
 const initUserRoutes = require('./routes/init-user');
 const loginRoutes = require('./routes/login');
 
@@ -30,6 +31,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json()); // ★ 이거 없으면 req.body 못 읽음
 app.use(express.urlencoded({ extended: true }));
 app.use('/api/user/v2data', require('./routes/userdata_v2'));
+app.use('/api/seed', seedRoutes);    // (seed-status.js)
+app.use('/api/seed', seedBuyRoutes); // (seed.js 구매 라우트 등록!)
 
 // ✅ Mongo 연결
 const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017/farmgame';
