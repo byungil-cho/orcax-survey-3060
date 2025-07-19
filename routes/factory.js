@@ -43,7 +43,7 @@ router.patch('/use-resource', async (req, res) => {
   }
 });
 
-// 감자/보리 수확 라우트
+// 감자/보리 수확 라우트 (랜덤 3, 5, 7개 지급)
 router.post('/harvest', async (req, res) => {
   try {
     const { kakaoId, cropType } = req.body;
@@ -57,25 +57,29 @@ router.post('/harvest', async (req, res) => {
     if (!user.growth) user.growth = {};
     let growthField = cropType === "seedPotato" ? "potato" : "barley";
     let storageField = cropType === "seedPotato" ? "gamja" : "bori";
-    const requiredGrowth = 5; // 수확에 필요한 성장포인트 (필요시 조정)
+    const requiredGrowth = 5;
 
     if ((user.growth[growthField] || 0) < requiredGrowth) {
       return res.status(400).json({ success: false, message: "Not enough growth to harvest" });
     }
 
-    // 수확 후 성장포인트 차감, 보관함 증가
+    // 랜덤 수확 개수(3,5,7)
+    const possibleRewards = [3, 5, 7];
+    const reward = possibleRewards[Math.floor(Math.random() * possibleRewards.length)];
+
+    // 성장포인트 차감, 보관함 증가
     user.growth[growthField] -= requiredGrowth;
     if (!user.storage) user.storage = {};
-    user.storage[storageField] = (user.storage[storageField] || 0) + 1;
+    user.storage[storageField] = (user.storage[storageField] || 0) + reward;
 
     await user.save();
 
     res.json({
       success: true,
-      reward: 1,
+      reward,                   // 수확 개수
       storage: user.storage,
       growth: user.growth,
-      message: "수확 성공"
+      message: `${reward}개 수확 성공`
     });
   } catch (e) {
     res.status(500).json({ success: false, message: "서버 오류" });
