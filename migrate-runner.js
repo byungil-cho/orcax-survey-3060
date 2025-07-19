@@ -1,21 +1,13 @@
-// migrate-runner.js
-
 const mongoose = require('mongoose');
 require('dotenv').config();
 
 const MONGODB_URL = process.env.MONGODB_URL;
 
 const seedStockSchema = new mongoose.Schema({
-  name: String,
+  type: { type: String, unique: true },  // "gamja", "bori"
   stock: Number,
-  price: Number,
-  seedType: String,
-  type: {
-    type: String,
-    unique: true // 'gamja', 'bori' 등 구분자
-  }
+  price: Number
 });
-
 const SeedStock = mongoose.model('SeedStock', seedStockSchema);
 
 async function runMigration() {
@@ -23,29 +15,16 @@ async function runMigration() {
     await mongoose.connect(MONGODB_URL);
     console.log('✅ MongoDB 연결 성공');
 
-    // 기존 데이터 모두 삭제 (중복 방지)
+    // 기존 데이터 모두 삭제
     await SeedStock.deleteMany({});
     console.log('🧹 기존 SeedStock 데이터 제거 완료');
 
-    // 마이그레이션 데이터
+    // 씨앗 데이터 세팅
     const seedData = [
-      {
-        name: '씨감자',
-        stock: 100,
-        price: 2,
-        seedType: '감자',
-        type: 'gamja'
-      },
-      {
-        name: '씨보리',
-        stock: 100,
-        price: 2,
-        seedType: '보리',
-        type: 'bori'
-      }
+      { type: 'gamja', stock: 100, price: 2 },
+      { type: 'bori',  stock: 100, price: 2 }
     ];
 
-    // 데이터 삽입
     const result = await SeedStock.insertMany(seedData);
     console.log('🚀 마이그레이션 완료:', result);
   } catch (err) {
