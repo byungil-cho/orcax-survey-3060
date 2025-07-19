@@ -4,7 +4,7 @@ require('dotenv').config();
 const MONGODB_URL = process.env.MONGODB_URL;
 
 const seedStockSchema = new mongoose.Schema({
-  type: { type: String, unique: true },  // "gamja", "bori"
+  type: { type: String, unique: true },
   stock: Number,
   price: Number
 });
@@ -15,11 +15,12 @@ async function runMigration() {
     await mongoose.connect(MONGODB_URL);
     console.log('✅ MongoDB 연결 성공');
 
-    // 기존 데이터 모두 삭제
+    // 컬렉션 완전 삭제!
     await SeedStock.deleteMany({});
+    // 또는 await SeedStock.collection.drop();
+
     console.log('🧹 기존 SeedStock 데이터 제거 완료');
 
-    // 씨앗 데이터 세팅
     const seedData = [
       { type: 'gamja', stock: 100, price: 2 },
       { type: 'bori',  stock: 100, price: 2 }
