@@ -1,113 +1,93 @@
-// factory.js (2025-07-19 통합 최신본)
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User');
+const User = require('../models/users');
 const SeedStock = require('../models/SeedStock');
 
-// [공통 유틸]
-function getResourceNames(type) {
-    if (type === 'potato') return { seed: 'seedPotato', crop: 'potato', storage: 'gamja' };
-    if (type === 'barley') return { seed: 'seedBarley', crop: 'barley', storage: 'bori' };
-    throw new Error('Invalid type');
-}
+// 씨감자/씨보리 구매
+router.post('/buy-seed', async (req, res) => {
+  const { kakaoId, type } = req.body; // type: 'seedPotato' or 'seedBarley'
+  const user = await User.findOne({ kakaoId });
+  const adminStock = await SeedStock.findOne({ type });
+  if (!user || !adminStock || adminStock.count < 1) {
+    return res.json({ success: false, message: "씨앗 부족(관리자창고)" });
+  }
+  user[type] = (user[type] || 0) + 1;
+  adminStock.count -= 1;
+  await user.save();
+  await adminStock.save();
+  res.json({ success: true, user, adminSeed: adminStock.count });
+});
 
-// [성장포인트 계산]
-function calcGrowth(usedWater, usedFertilizer) {
-    return (usedWater * 1) + (usedFertilizer * 2);
-}
-
-// [물주기/거름주기/성장]
+// PATCH /use-resource : 물, 거름 한 번에 처리(사업용)
 router.patch('/use-resource', async (req, res) => {
-    try {
-        const { id, type, useWater, useFertilizer } = req.body;
-        const resource = getResourceNames(type);
+  const { kakaoId, cropType, water, fertilizer } = req.body;
+  const user = await User.findOne({ kakaoId });
+  if (!user) return res.json({ success: false, message: "유저 없음" });
 
-        // 유저 찾기
-        const user = await User.findOne({ kakaoId: id });
-        if (!user) return res.status(404).json({ message: 'User not found' });
+  // 물/거름 소모량(무조건 양수) 처리
+  const waterUsed = Math.abs(water || 0);
+  const fertUsed = Math.abs(fertilizer || 0);
 
-        // 자원 체크
-        if (user[resource.seed] < 1 || user.water < useWater || user.fertilizer < useFertilizer)
-            return res.status(400).json({ message: 'Not enough resources' });
+  // 자원 부족 체크
+  if ((user.water || 0) < waterUsed || (user.fertilizer || 0) < fertUsed) {
+    return res.json({ success: false, message: "자원 부족" });
+  }
 
-        // 자원 차감
-        user[resource.seed] -= 1;
-        user.water -= useWater;
-        user.fertilizer -= useFertilizer;
+  // 자원 차감(0 미만 방지)
+  user.water = Math.max((user.water || 0) - waterUsed, 0);
+  user.fertilizer = Math.max((user.fertilizer || 0) - fertUsed, 0);
 
-        // 성장포인트 증가
-        user.growth[type] = (user.growth[type] || 0) + calcGrowth(useWater, useFertilizer);
+  // 성장포인트 누적(물 1 → +1, 거름 1 → +2)
+  if (!user.growth) user.growth = {};
+  const growthField = cropType === "seedPotato" ? "potato" : "barley";
+  user.growth[growthField] = (user.growth[growthField] || 0) + waterUsed * 1 + fertUsed * 2;
 
-        await user.save();
-
-        // 관리자 보관소(씨앗 반환)
-        await SeedStock.updateOne({ type: resource.seed }, { $inc: { quantity: 1 } });
-
-        res.json({
-            success: true,
-            user: {
-                water: user.water,
-                fertilizer: user.fertilizer,
-                seed: user[resource.seed],
-                growth: user.growth[type]
-            }
-        });
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
+  await user.save();
+  res.json({ success: true, user });
 });
 
-// [수확하기]
+// 농사짓기(씨감자/씨보리 소모 +1, 운영자 창고 회수 +1)
+router.post('/farm', async (req, res) => {
+  const { kakaoId, cropType } = req.body;
+  const user = await User.findOne({ kakaoId });
+  if (!user) return res.json({ success: false, message: "유저 없음" });
+  if ((user[cropType] || 0) < 1) return res.json({ success: false, message: "씨앗 없음" });
+  user[cropType] -= 1;
+  // 운영자 창고 회수
+  const adminStock = await SeedStock.findOne({ type: cropType });
+  if (adminStock) {
+    adminStock.count += 1;
+    await adminStock.save();
+  }
+  await user.save();
+  res.json({ success: true, user, adminSeed: adminStock?.count });
+});
+
+// 수확 (성장포인트 5이상, 랜덤 3/5/7개, 운영자창고 씨앗 +reward)
 router.post('/harvest', async (req, res) => {
-    try {
-        const { id, type } = req.body;
-        const resource = getResourceNames(type);
+  const { kakaoId, cropType } = req.body;
+  const user = await User.findOne({ kakaoId });
+  if (!user) return res.json({ success: false, message: "유저 없음" });
+  if (!user.growth) user.growth = {};
+  const growthField = cropType === "seedPotato" ? "potato" : "barley";
+  const storageField = cropType === "seedPotato" ? "gamja" : "bori";
+  if ((user.growth[growthField] || 0) < 5) return res.json({ success: false, message: "성장포인트 부족" });
 
-        const user = await User.findOne({ kakaoId: id });
-        if (!user) return res.status(404).json({ message: 'User not found' });
+  // 수확 보상 (랜덤 3,5,7)
+  const rewardArr = [3, 5, 7];
+  const reward = rewardArr[Math.floor(Math.random() * rewardArr.length)];
+  if (!user.storage) user.storage = {};
+  user.storage[storageField] = (user.storage[storageField] || 0) + reward;
+  user.growth[growthField] = 0; // 성장포인트 초기화
+  await user.save();
 
-        // 수확 조건(예: 성장포인트 5 이상)
-        if ((user.growth[type] || 0) < 5)
-            return res.status(400).json({ message: 'Not enough growth to harvest' });
-
-        // 랜덤 수확 (3, 5, 7)
-        const harvestAmount = [3, 5, 7][Math.floor(Math.random() * 3)];
-        user.storage[resource.storage] = (user.storage[resource.storage] || 0) + harvestAmount;
-        user.growth[type] -= 5; // 성장포인트 차감(수확마다 -5)
-
-        await user.save();
-
-        res.json({
-            success: true,
-            crop: user.storage[resource.storage],
-            growth: user.growth[type],
-            amount: harvestAmount
-        });
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-});
-
-// [보유 자원 조회]
-router.post('/v2data', async (req, res) => {
-    try {
-        const { id } = req.body;
-        const user = await User.findOne({ kakaoId: id });
-        if (!user) return res.status(404).json({ message: 'User not found' });
-
-        res.json({
-            water: user.water,
-            fertilizer: user.fertilizer,
-            seedPotato: user.seedPotato,
-            seedBarley: user.seedBarley,
-            orcx: user.orcx,
-            growthPotato: user.growth.potato || 0,
-            growthBarley: user.growth.barley || 0,
-            storage: user.storage
-        });
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
+  // 운영자 창고 씨앗 reward만큼 증가(수확 보상 회수)
+  const adminStock = await SeedStock.findOne({ type: cropType });
+  if (adminStock) {
+    adminStock.count += reward;
+    await adminStock.save();
+  }
+  res.json({ success: true, reward, storage: user.storage, adminSeed: adminStock?.count });
 });
 
 module.exports = router;
