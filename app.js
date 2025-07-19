@@ -7,6 +7,7 @@ const port = 3060;
 
 app.use(cors());
 app.use(express.json());
+app.use("/api/seed", require("./routes/seed-status"));
 
 // 임시 메모리 저장소
 let users = {};
