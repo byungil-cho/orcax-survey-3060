@@ -1,6 +1,7 @@
+// routes/processing.js
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User');
+const User = require('../models/user'); // 소문자 user 경로!!
 
 // 유저 가공제품 인벤토리 조회
 router.post('/get-inventory', async (req, res) => {
@@ -20,11 +21,11 @@ router.post('/get-inventory', async (req, res) => {
     seedPotato: user.seedPotato || 0,
     seedBarley: user.seedBarley || 0,
     nickname: user.nickname,
-    farmName: user.farmName || '' // 필요시 추가
+    farmName: user.farmName || ''
   });
 });
 
-// 가공제품 생산
+// 가공제품 생산 (12종 제한)
 router.post('/make-product', async (req, res) => {
   const { kakaoId, rawType, productName } = req.body;
   if (!kakaoId || !rawType || !productName)
@@ -47,9 +48,14 @@ router.post('/make-product', async (req, res) => {
   }
 
   // 제품 12종 제한 (products 오브젝트 key가 12개 이상이면 생산불가)
-  const productKeys = Object.keys(user.products || {});
+  // 0개인 제품명은 자동 삭제
+  if (!user.products) user.products = {};
+  Object.keys(user.products).forEach(key => {
+    if (user.products[key] <= 0) delete user.products[key];
+  });
+  const productKeys = Object.keys(user.products);
   if (!user.products[productName] && productKeys.length >= 12) {
-    return res.status(400).json({ error: '최대 12종류까지 생산가능' });
+    return res.status(400).json({ error: '최대 12종류까지 생산가능. 기존 제품 모두 소진 후 새로운 제품 생산 가능' });
   }
 
   // 원료 1개 차감
@@ -57,7 +63,6 @@ router.post('/make-product', async (req, res) => {
   if (rawType === '보리') user.storage.bori -= 1;
 
   // products 필드에 생산 제품 추가/수량 증가
-  if (!user.products) user.products = {};
   user.products[productName] = (user.products[productName] || 0) + 1;
 
   await user.save();
