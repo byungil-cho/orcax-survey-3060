@@ -35,6 +35,7 @@ app.use('/api/user/v2data', require('./routes/userdata_v2'));
 app.use('/api/seed', seedRoutes);
 app.use('/api/seed', seedBuyRoutes);
 app.use('/api/processing', processingRoutes);
+app.use('/api/processing', require('./routes/processing'));
 
 // ✅ Mongo 연결
 const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017/farmgame';
