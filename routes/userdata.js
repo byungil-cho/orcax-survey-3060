@@ -1,14 +1,21 @@
-const router = require('express').Router();
+const express = require('express');
+const router = express.Router();
 const User = require('../models/users');
 
 router.post('/', async (req, res) => {
   try {
-    // 반드시 kakaoId로 받을 것!
+    // 프론트에서 body: { kakaoId }로 보내므로 반드시 kakaoId로 받을 것!
     const { kakaoId } = req.body;
-    if (!kakaoId) return res.json({ success: false, message: "no kakaoId" });
-    const user = await User.findOne({ kakaoId });
-    if (!user) return res.json({ success: false, message: "user not found" });
+    if (!kakaoId) {
+      return res.json({ success: false, message: "no kakaoId" });
+    }
 
+    const user = await User.findOne({ kakaoId });
+    if (!user) {
+      return res.json({ success: false, message: "user not found" });
+    }
+
+    // 값 변환 및 반환: 감자와 1:1 구조 동일
     res.json({
       success: true,
       user: {
@@ -17,15 +24,13 @@ router.post('/', async (req, res) => {
         water: user.water ?? 0,
         fertilizer: user.fertilizer ?? 0,
         seedBarley: user.seedBarley ?? 0,
-        // 성장포인트 포함
-        growth: user.growth || { potato: 0, barley: 0 },
-        // 보관함 포함
-        storage: user.storage || { gamja: 0, bori: 0 },
-        // 프론트 직접 바인딩용
-        barley: user.storage?.bori ?? 0,
         seedPotato: user.seedPotato ?? 0,
-        potato: user.storage?.gamja ?? 0,
-        bori: user.storage?.bori ?? 0,
+        growth: user.growth || { potato: 0, barley: 0 },
+        storage: user.storage || { gamja: 0, bori: 0 },
+        // 실제 바인딩용 값
+        barley: user.storage?.bori ?? 0,      // 보리 수량
+        bori: user.storage?.bori ?? 0,        // 보리 수량 (별칭)
+        potato: user.storage?.gamja ?? 0,     // 감자 수량 (혹시 필요하면)
       }
     });
   } catch (err) {
