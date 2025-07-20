@@ -1,4 +1,4 @@
-// models/user.js
+// models/users.js
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
@@ -18,7 +18,7 @@ const userSchema = new mongoose.Schema({
     gamja: { type: Number, default: 0 },
     bori: { type: Number, default: 0 }
   },
-  products: { type: Object, default: {} }, // 가공제품 종류별 수량
+  products: { type: Object, default: {} },
   farmName: { type: String, default: '' }
 });
 
