@@ -1,41 +1,67 @@
+// routes/processing.js
+
+const express = require('express');
+const router = express.Router();
+
+const User = require('../models/User');
+const UserInventory = require('../models/UserInventory');
+
+// 가공품 생산
 router.post('/make-product', async (req, res) => {
   try {
-    const { kakaoId, material, product } = req.body;
-    const user = await User.findOne({ kakaoId });
-    if(!user) return res.json({ success:false, message:'유저 없음' });
-    if(!product || product.length < 2) return res.json({ success:false, message:'제품명 오류' });
-
-    // 1. 감자/보리 자원 체크
-    if(material === 'potato' && (user.storage?.gamja||0) < 1)
-      return res.json({ success:false, message:'감자 부족!' });
-    if(material === 'barley' && (user.storage?.bori||0) < 1)
-      return res.json({ success:false, message:'보리 부족!' });
-
-    // 2. 현재 보유 제품 종류(12종 제한)
-    user.products = user.products || {};
-    // 0개인 제품은 키에서 제거
-    Object.keys(user.products).forEach(key => {
-      if(user.products[key] <= 0) delete user.products[key];
-    });
-
-    const productKinds = Object.keys(user.products);
-
-    // 3. 새 제품 생산 시 12종 이하만 허용
-    if(!user.products[product] && productKinds.length >= 12){
-      return res.json({ 
-        success:false, 
-        message:'최대 12종류까지만 보관할 수 있습니다. 기존 제품을 모두 소진하면 새로운 종류를 만들 수 있습니다!' 
-      });
+    const { kakaoId, productType, productName } = req.body;
+    if (!kakaoId || !productType || !productName) {
+      return res.status(400).json({ message: '필수 정보 누락' });
     }
 
-    // 4. 자원 차감/제품 누적
-    if(material === 'potato') user.storage.gamja -= 1;
-    if(material === 'barley') user.storage.bori -= 1;
-    user.products[product] = (user.products[product]||0) + 1;
+    // 유저 정보 불러오기
+    const user = await User.findOne({ kakaoId });
+    if (!user) return res.status(404).json({ message: '유저 없음' });
 
+    // 가공 원료(감자/보리) 확인 및 소진 처리
+    let available = false;
+    if (productType === '감자' && user.storage.gamja > 0) {
+      user.storage.gamja -= 1;
+      available = true;
+    } else if (productType === '보리' && user.storage.bori > 0) {
+      user.storage.bori -= 1;
+      available = true;
+    }
+    if (!available) return res.status(400).json({ message: '원료 부족' });
+
+    // 유저 인벤토리에 가공품 추가 (없으면 생성)
+    let inventory = await UserInventory.findOne({ kakaoId });
+    if (!inventory) {
+      inventory = new UserInventory({ kakaoId, products: {} });
+    }
+    inventory.products[productName] = (inventory.products[productName] || 0) + 1;
+
+    // 저장
     await user.save();
-    res.json({ success:true });
-  } catch(e){
-    res.json({ success:false, message:'서버 오류' });
+    await inventory.save();
+
+    res.json({ message: '가공 성공', inventory: inventory.products });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: '서버 에러' });
   }
 });
+
+// 유저 가공품 인벤토리 불러오기
+router.post('/get-inventory', async (req, res) => {
+  try {
+    const { kakaoId } = req.body;
+    if (!kakaoId) return res.status(400).json({ message: '필수 정보 누락' });
+
+    let inventory = await UserInventory.findOne({ kakaoId });
+    if (!inventory) {
+      return res.status(200).json({ products: {} });
+    }
+    res.json({ products: inventory.products });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: '서버 에러' });
+  }
+});
+
+module.exports = router;
