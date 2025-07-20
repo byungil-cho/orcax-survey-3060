@@ -2,14 +2,18 @@ const express = require("express");
 const router = express.Router();
 const SeedStock = require("../models/SeedStock");
 
+// 씨앗 상태 및 가격 조회 (프론트와 type 일치시킴!)
 router.get("/status", async (req, res) => {
   try {
     const stocks = await SeedStock.find({});
-    // 배열: [{type, stock, price}]
+    // type: "seedPotato"→"gamja", "seedBarley"→"bori"로 매핑
     const result = stocks.map(item => ({
-      type: item.type,     // "gamja", "bori"
-      stock: item.stock,   // 수량
-      price: item.price    // 가격
+      type:
+        item.type === "seedPotato" ? "gamja"
+      : item.type === "seedBarley" ? "bori"
+      : item.type, // 혹시 모를 기타 데이터도 그대로 반환
+      stock: item.stock,
+      price: item.price
     }));
     res.json(result);
   } catch (err) {
