@@ -143,6 +143,10 @@ app.post('/api/factory/harvest', async (req, res) => {
   }
 });
 
+// ✅ (필요하다면 아래 코드 추가! → 물/거름/성장포인트 라우터)
+// app.patch('/api/factory/use-resource', async (req, res) => { ... });
+
+
 // ✅ 서버 실행
 const PORT = 3060;
 app.listen(PORT, () => {
