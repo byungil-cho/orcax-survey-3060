@@ -1,4 +1,4 @@
-// server-unified.js - OrcaX 실전 통합 서버 전체본 (성장포인트 반영, 2024-07-18 최신)
+// server-unified.js - 씨앗 동기화 강화 버전 (2024-07-20)
 
 require('dotenv').config();
 
@@ -28,11 +28,11 @@ const loginRoutes = require('./routes/login');
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.json()); // ★ 이거 없으면 req.body 못 읽음
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/api/user/v2data', require('./routes/userdata_v2'));
-app.use('/api/seed', seedRoutes);    // (seed-status.js)
-app.use('/api/seed', seedBuyRoutes); // (seed.js 구매 라우트 등록!)
+app.use('/api/seed', seedRoutes);
+app.use('/api/seed', seedBuyRoutes);
 
 // ✅ Mongo 연결
 const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017/farmgame';
@@ -103,7 +103,7 @@ app.post('/api/userdata', async (req, res) => {
   }
 });
 
-// ✅ 수확 API 직접 등록
+// ✅ [완전보강] 씨앗(씨보리/씨감자) 체크, 차감, 반환 일치 처리
 app.post('/api/factory/harvest', async (req, res) => {
   const { kakaoId, cropType } = req.body;
 
@@ -114,20 +114,44 @@ app.post('/api/factory/harvest', async (req, res) => {
     }
 
     const cropKey = cropType === 'potato' ? 'gamja' : 'bori';
+    const seedKey = cropType === 'potato' ? 'seedPotato' : 'seedBarley';
     const growthKey = cropType === 'potato' ? 'potato' : 'barley';
-    const currentGrowth = user.growth[growthKey] || 0;
 
+    // 씨앗 개수 파악 (최상위 + inventory)
+    let seedCount = (user[seedKey] ?? 0);
+    if (user.inventory && typeof user.inventory[seedKey] === 'number') {
+      seedCount = Math.max(seedCount, user.inventory[seedKey]);
+    }
+
+    // [1] 씨앗(씨보리/씨감자) 체크
+    if (seedCount < 1) {
+      return res.status(400).json({ success: false, message: '씨앗이 없습니다' });
+    }
+
+    // [2] 씨앗 차감 (동시에)
+    if (typeof user[seedKey] === 'number' && user[seedKey] > 0) user[seedKey] -= 1;
+    if (user.inventory && typeof user.inventory[seedKey] === 'number' && user.inventory[seedKey] > 0) user.inventory[seedKey] -= 1;
+
+    // [3] 성장포인트 체크
+    const currentGrowth = user.growth?.[growthKey] || 0;
     if (currentGrowth < 5) {
       return res.status(400).json({ success: false, message: 'Not enough growth to harvest' });
     }
 
+    // [4] 수확 랜덤 보상
     const rewardOptions = [3, 5, 7];
     const reward = rewardOptions[Math.floor(Math.random() * rewardOptions.length)];
-
+    if (!user.storage) user.storage = {};
     user.storage[cropKey] = (user.storage[cropKey] || 0) + reward;
     user.growth[growthKey] = 0;
 
     await user.save();
+
+    // [5] 최종 씨앗 개수 반환 (최상위+inventory 중 큰 값)
+    let newSeedCount = (user[seedKey] ?? 0);
+    if (user.inventory && typeof user.inventory[seedKey] === 'number') {
+      newSeedCount = Math.max(newSeedCount, user.inventory[seedKey]);
+    }
 
     res.json({
       success: true,
@@ -137,6 +161,7 @@ app.post('/api/factory/harvest', async (req, res) => {
       cropAmount: user.storage[cropKey],
       storage: user.storage,
       growth: user.growth,
+      userSeed: newSeedCount
     });
   } catch (err) {
     console.error(err);
@@ -174,7 +199,6 @@ app.patch('/api/factory/use-resource', async (req, res) => {
   }
 });
 
-// ... [아래 기타 코드 동일] ...
 const PORT = 3060;
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
