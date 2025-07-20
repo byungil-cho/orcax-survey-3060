@@ -3,8 +3,8 @@
 const express = require('express');
 const router = express.Router();
 
-const User = require('../models/User');
-const UserInventory = require('../models/UserInventory');
+const User = require('../models/user');
+const UserInventory = require('../models/userInventory');
 
 // 가공품 생산
 router.post('/make-product', async (req, res) => {
