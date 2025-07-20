@@ -10,7 +10,7 @@ function getDbSeedType(cropType) {
   return cropType;
 }
 
-// 수확 라우터 (운영자 보관소도 reward만큼 증가)
+// 1. 수확 라우터 (운영자 보관소도 reward만큼 증가)
 router.post('/harvest', async (req, res) => {
   try {
     const { kakaoId, cropType } = req.body;
@@ -58,6 +58,40 @@ router.post('/harvest', async (req, res) => {
       storage: user.storage,
       adminSeed: adminStock?.stock,
       userSeed: user[cropType]
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: '서버 오류' });
+  }
+});
+
+// 2. 물주기/거름주기 라우터 (물/거름 차감, 성장포인트 증가)
+router.patch('/use-resource', async (req, res) => {
+  const { kakaoId, cropType, water = 0, fertilizer = 0 } = req.body;
+  try {
+    const user = await User.findOne({ kakaoId });
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    // 자재 보유량 체크
+    if ((user.water ?? 0) < water) return res.json({ success: false, message: '물 부족!' });
+    if ((user.fertilizer ?? 0) < fertilizer) return res.json({ success: false, message: '거름 부족!' });
+
+    // 물/거름 차감
+    user.water -= water;
+    user.fertilizer -= fertilizer;
+
+    // 성장포인트 증가 (감자: 'potato', 보리: 'barley')
+    user.growth = user.growth || {};
+    const growthKey = cropType === 'seedPotato' ? 'potato' : 'barley';
+    user.growth[growthKey] = (user.growth[growthKey] || 0) + (water * 1) + (fertilizer * 2);
+
+    await user.save();
+
+    res.json({
+      success: true,
+      growth: user.growth[growthKey],
+      water: user.water,
+      fertilizer: user.fertilizer
     });
   } catch (err) {
     console.error(err);
