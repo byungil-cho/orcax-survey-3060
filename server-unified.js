@@ -1,4 +1,4 @@
-// server-unified.js - OrcaX 통합 서버 전체본 (2024-07-18 최종, 감자/보리 데이터 공통 구조 적용)
+// server-unified.js - OrcaX 실전 통합 서버 전체본 (성장포인트 반영, 2024-07-18 최신)
 
 require('dotenv').config();
 
@@ -93,7 +93,8 @@ app.post('/api/userdata', async (req, res) => {
         orcx: user.orcx ?? 0,
         wallet: { orcx: user.orcx ?? 0 },
         potato: user.storage?.gamja ?? 0,
-        barley: user.storage?.bori ?? 0
+        barley: user.storage?.bori ?? 0,
+        growth: user.growth ?? {}
       }
     });
   } catch (err) {
@@ -143,11 +144,37 @@ app.post('/api/factory/harvest', async (req, res) => {
   }
 });
 
-// ✅ (필요하다면 아래 코드 추가! → 물/거름/성장포인트 라우터)
-// app.patch('/api/factory/use-resource', async (req, res) => { ... });
+// ✅ "물/거름/성장포인트 증가" 라우터 (완전 실전)
+app.patch('/api/factory/use-resource', async (req, res) => {
+  const { kakaoId, cropType, water = 0, fertilizer = 0 } = req.body;
+  try {
+    const user = await User.findOne({ kakaoId });
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    if ((user.water ?? 0) < water) return res.json({ success: false, message: '물 부족!' });
+    if ((user.fertilizer ?? 0) < fertilizer) return res.json({ success: false, message: '거름 부족!' });
+    user.water -= water;
+    user.fertilizer -= fertilizer;
 
+    // 성장포인트(감자/보리 구분)
+    user.growth = user.growth || {};
+    const growthKey = cropType === 'potato' ? 'potato' : 'barley';
+    const growthInc = (water * 1) + (fertilizer * 2);
+    user.growth[growthKey] = (user.growth[growthKey] || 0) + growthInc;
 
-// ✅ 서버 실행
+    await user.save();
+
+    res.json({
+      success: true,
+      growth: user.growth[growthKey],
+      water: user.water,
+      fertilizer: user.fertilizer
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: '서버 오류' });
+  }
+});
+
+// ... [아래 기타 코드 동일] ...
 const PORT = 3060;
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
