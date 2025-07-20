@@ -1,7 +1,7 @@
 // routes/processing.js
 const express = require('express');
 const router = express.Router();
-const User = require('../models/user'); // 소문자 user 경로!!
+const User = require('../models/users'); // 소문자 user 경로!!
 
 // 유저 가공제품 인벤토리 조회
 router.post('/get-inventory', async (req, res) => {
