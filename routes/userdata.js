@@ -22,6 +22,7 @@ router.post("/", async (req, res) => {
       orcx: user.orcx ?? 0,
       potato: user.storage?.gamja ?? 0,
       bori: user.storage?.bori ?? 0,
+      barley: user.storage?.bori ?? 0,    // ← 추가! 프론트 호환용
     };
 
     res.json({ success: true, user: formattedUser });
