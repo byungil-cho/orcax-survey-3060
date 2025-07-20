@@ -65,7 +65,7 @@ router.post('/harvest', async (req, res) => {
   }
 });
 
-// 2. 물주기/거름주기 라우터 (물/거름 차감, 성장포인트 증가)
+// 2. 물주기/거름주기 라우터 (자재 차감, 성장포인트 정상 증가)
 router.patch('/use-resource', async (req, res) => {
   const { kakaoId, cropType, water = 0, fertilizer = 0 } = req.body;
   try {
@@ -76,11 +76,11 @@ router.patch('/use-resource', async (req, res) => {
     if ((user.water ?? 0) < water) return res.json({ success: false, message: '물 부족!' });
     if ((user.fertilizer ?? 0) < fertilizer) return res.json({ success: false, message: '거름 부족!' });
 
-    // 물/거름 차감
+    // ✅ 물/거름 감소 (차감)
     user.water -= water;
     user.fertilizer -= fertilizer;
 
-    // 성장포인트 증가 (감자: 'potato', 보리: 'barley')
+    // ✅ 성장포인트 증가 (감자: 'potato', 보리: 'barley')
     user.growth = user.growth || {};
     const growthKey = cropType === 'seedPotato' ? 'potato' : 'barley';
     user.growth[growthKey] = (user.growth[growthKey] || 0) + (water * 1) + (fertilizer * 2);
