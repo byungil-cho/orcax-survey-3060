@@ -63,7 +63,7 @@ router.post('/farm', async (req, res) => {
   res.json({ success: true, user, adminSeed: adminStock?.count });
 });
 
-// 수확 (성장포인트 5이상, 랜덤 3/5/7개, 운영자창고 씨앗 +reward)
+// ===[★ 여기서부터 수확(수정완료)]===
 router.post('/harvest', async (req, res) => {
   const { kakaoId, cropType } = req.body;
   const user = await User.findOne({ kakaoId });
@@ -71,23 +71,40 @@ router.post('/harvest', async (req, res) => {
   if (!user.growth) user.growth = {};
   const growthField = cropType === "seedPotato" ? "potato" : "barley";
   const storageField = cropType === "seedPotato" ? "gamja" : "bori";
-  if ((user.growth[growthField] || 0) < 5) return res.json({ success: false, message: "성장포인트 부족" });
 
-  // 수확 보상 (랜덤 3,5,7)
+  // 1. 성장포인트 체크
+  if ((user.growth[growthField] || 0) < 5)
+    return res.json({ success: false, message: "성장포인트 부족" });
+
+  // 2. 씨앗 존재 체크 및 차감
+  if ((user[cropType] || 0) < 1)
+    return res.json({ success: false, message: "씨앗이 없습니다" });
+  user[cropType] -= 1;
+
+  // 3. 관리자 씨앗 창고 +1 (회수)
+  const adminStock = await SeedStock.findOne({ type: cropType });
+  if (adminStock) {
+    adminStock.count += 1;
+    await adminStock.save();
+  }
+
+  // 4. 수확 보상 (랜덤 3,5,7개)
   const rewardArr = [3, 5, 7];
   const reward = rewardArr[Math.floor(Math.random() * rewardArr.length)];
   if (!user.storage) user.storage = {};
   user.storage[storageField] = (user.storage[storageField] || 0) + reward;
-  user.growth[growthField] = 0; // 성장포인트 초기화
-  await user.save();
 
-  // 운영자 창고 씨앗 reward만큼 증가(수확 보상 회수)
-  const adminStock = await SeedStock.findOne({ type: cropType });
-  if (adminStock) {
-    adminStock.count += reward;
-    await adminStock.save();
-  }
-  res.json({ success: true, reward, storage: user.storage, adminSeed: adminStock?.count });
+  // 5. 성장포인트 초기화
+  user.growth[growthField] = 0;
+
+  await user.save();
+  res.json({
+    success: true,
+    reward,
+    storage: user.storage,
+    adminSeed: adminStock?.count,
+    userSeed: user[cropType], // 현재 씨앗 잔량
+  });
 });
 
 module.exports = router;
