@@ -76,7 +76,7 @@ router.patch('/use-resource', async (req, res) => {
     if ((user.water ?? 0) < water) return res.json({ success: false, message: '물 부족!' });
     if ((user.fertilizer ?? 0) < fertilizer) return res.json({ success: false, message: '거름 부족!' });
 
-    // ✅ 물/거름 감소 (차감)
+    // ✅ 물/거름 감소 (차감, 반드시 마이너스!)
     user.water -= water;
     user.fertilizer -= fertilizer;
 
