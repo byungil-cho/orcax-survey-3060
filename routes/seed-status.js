@@ -11,9 +11,9 @@ router.get("/status", async (req, res) => {
       type:
         item.type === "seedPotato" ? "gamja"
       : item.type === "seedBarley" ? "bori"
-      : item.type, // 혹시 모를 기타 데이터도 그대로 반환
-      stock: item.stock,
-      price: item.price
+      : item.type,
+      stock: item.count,    // ⭐ stock=DB의 count 필드 사용
+      price: item.price     // ⭐ price 필드 추가 (SeedStock.js도 price 필수!)
     }));
     res.json(result);
   } catch (err) {
