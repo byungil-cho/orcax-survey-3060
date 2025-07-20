@@ -3,10 +3,10 @@ const User = require('../models/users');
 
 router.post('/', async (req, res) => {
   try {
-    // 감자와 동일하게: id로 받기!
-    const { id } = req.body;
-    if (!id) return res.json({ success: false, message: "no id" });
-    const user = await User.findOne({ kakaoId: id });
+    // 반드시 kakaoId로 받을 것!
+    const { kakaoId } = req.body;
+    if (!kakaoId) return res.json({ success: false, message: "no kakaoId" });
+    const user = await User.findOne({ kakaoId });
     if (!user) return res.json({ success: false, message: "user not found" });
 
     res.json({
