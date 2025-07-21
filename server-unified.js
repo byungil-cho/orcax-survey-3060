@@ -1,5 +1,4 @@
-// server-unified.js - 관리자/마이페이지/출금통합 (2024-07-21 최신)
-// 모든 라우터, 모델, 출금API, 자산조회API 통합본
+// server-unified.js - OrcaX 마이페이지, 관리자, 자산/출금/대시보드 통합
 require('dotenv').config();
 
 const express = require('express');
@@ -11,20 +10,22 @@ const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const path = require('path');
 
-// 모델
-const User = require('./models/users');
+// [!!] User 모델 명확 선언(중복X, 파일명 정확!) 예시: user.js 사용
+const User = require('./models/user');
 
-// ✅ 출금요청 모델 (중복 선언 제거, email/amount 포함)
+// Withdraw 모델(중복X)
 const Withdraw = mongoose.models.Withdraw || mongoose.model('Withdraw', new mongoose.Schema({
   name: String,
   email: String,
   phone: String,
   wallet: String,
   amount: Number,
+  completed: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 }));
 
 // 라우터들
+// (실제 필요시 routes/폴더에 파일 직접 분리, 기본 구조만 참고)
 const factoryRoutes = require('./routes/factory');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
@@ -57,7 +58,7 @@ app.use('/api/market', marketRoutes);
 app.use('/api/init-user', initUserRoutes);
 app.use('/api/login', loginRoutes);
 
-// ✅ Mongo 연결
+// Mongo 연결
 const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017/farmgame';
 mongoose.connect(mongoUrl, {
   useNewUrlParser: true,
@@ -68,7 +69,7 @@ mongoose.connect(mongoUrl, {
   console.error('❌ MongoDB 연결 실패:', err.message);
 });
 
-// 세션 설정
+// 세션
 app.use(
   session({
     secret: 'secret-key',
@@ -78,9 +79,7 @@ app.use(
   })
 );
 
-// ==========================
-//        [출금 신청]
-// ==========================
+// [출금 신청]
 app.post('/api/withdraw', async (req, res) => {
   const { nickname, email, phone, wallet, amount } = req.body;
   try {
@@ -101,7 +100,7 @@ app.post('/api/withdraw', async (req, res) => {
   }
 });
 
-// 토큰 직접 수정/지급
+// [유저 토큰 직접 수정/지급]
 app.post('/api/user/update-token', async (req, res) => {
   const { kakaoId, orcx } = req.body;
   if (!kakaoId) return res.json({ success: false, message: '카카오ID 필요' });
@@ -114,20 +113,18 @@ app.post('/api/user/update-token', async (req, res) => {
   }
 });
 
-// 출금 신청 내역에서 '출금하기' 처리(토큰 자동 차감 + 출금완료 처리)
+// [출금신청 내역에서 '출금하기' 처리]
 app.post('/api/withdraw/process', async (req, res) => {
   const { withdrawId, amount } = req.body;
   try {
     const withdraw = await Withdraw.findById(withdrawId);
     if (!withdraw) return res.json({ success: false, message: "출금 신청 내역 없음" });
     if (withdraw.completed) return res.json({ success: false, message: "이미 완료됨" });
-    // 유저 찾아서 토큰 차감
     const user = await User.findOne({ nickname: withdraw.name });
     if (!user) return res.json({ success: false, message: "유저 없음" });
     if ((user.orcx ?? 0) < amount) return res.json({ success: false, message: "토큰 부족" });
     user.orcx -= amount;
     await user.save();
-    // 출금 이력 완료 표시
     withdraw.completed = true;
     await withdraw.save();
     res.json({ success: true });
@@ -136,9 +133,7 @@ app.post('/api/withdraw/process', async (req, res) => {
   }
 });
 
-// ==========================
-//     [유저 전체 자산 API]
-// ==========================
+// [유저 전체 자산 API]
 app.get('/api/userdata/all', async (req, res) => {
   try {
     const users = await User.find();
@@ -160,18 +155,14 @@ app.get('/api/userdata/all', async (req, res) => {
   }
 });
 
-// ==========================
-//   [서버 전원상태/헬스체크]
-// ==========================
+// [서버 전원상태/헬스체크]
 app.get('/api/power-status', (req, res) => {
   const mongoReady = mongoose.connection.readyState === 1;
   res.json({ status: mongoReady ? "정상" : "오류", mongo: mongoReady });
 });
 app.get('/api/ping', (req, res) => res.status(200).send('pong'));
 
-// ==========================
-//   [출금신청 리스트/관리자]
-// ==========================
+// [출금신청 리스트/관리자]
 app.get('/api/withdraw', async (req, res) => {
   try {
     const data = await Withdraw.find().sort({ createdAt: -1 }).limit(100);
@@ -181,9 +172,7 @@ app.get('/api/withdraw', async (req, res) => {
   }
 });
 
-// ==========================
 // [유저 통합 프로필(마이페이지)]
-// ==========================
 app.get('/api/user/profile/:nickname', async (req, res) => {
   const { nickname } = req.params;
   if (!nickname) return res.status(400).json({ error: "닉네임 필요" });
@@ -211,9 +200,7 @@ app.get('/api/user/profile/:nickname', async (req, res) => {
   }
 });
 
-// ==========================
 // [감자/보리 프론트 연동 라우터]
-// ==========================
 app.post('/api/userdata', async (req, res) => {
   try {
     const { kakaoId } = req.body;
@@ -241,8 +228,6 @@ app.post('/api/userdata', async (req, res) => {
     res.status(500).json({ success: false, message: "서버 오류" });
   }
 });
-
-// 기타 기존 팩토리/마켓/프로세싱/씨앗/로그인 라우터 이미 상단에서 연결
 
 // 서버 실행
 const PORT = 3060;
