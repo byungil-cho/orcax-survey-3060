@@ -14,13 +14,19 @@ router.get("/price-board", async (req, res) => {
   }
 });
 
-// 2. 유저 보관함(가공식품 전체)
+// 2. 유저 보관함(가공식품 전체, 자원 포함!)
 router.post("/user-inventory", async (req, res) => {
   const { kakaoId } = req.body;
   try {
     const user = await User.findOne({ kakaoId });
     if (!user) return res.json({ success: false, message: "유저 없음" });
-    res.json({ success: true, products: user.products || {} });
+    res.json({
+      success: true,
+      products: user.products || {},
+      water: user.water ?? 0,
+      fertilizer: user.fertilizer ?? 0,
+      orcx: user.orcx ?? 0
+    });
   } catch (e) {
     res.json({ success: false, message: "불러오기 오류" });
   }
