@@ -34,18 +34,30 @@ router.post('/make-product', async (req, res) => {
     const user = await User.findOne({ kakaoId });
     if(!user) return res.json({ success:false, message:'유저 없음' });
     if(!product || product.length<2) return res.json({ success:false, message:'제품명 오류' });
+
     // 감자/보리 자원 체크
     if(material === 'potato' && (user.storage?.gamja||0)<1)
       return res.json({ success:false, message:'감자 부족!' });
     if(material === 'barley' && (user.storage?.bori||0)<1)
       return res.json({ success:false, message:'보리 부족!' });
+
     // 자원 차감
     if(material === 'potato') user.storage.gamja -= 1;
     if(material === 'barley') user.storage.bori -= 1;
+
     // 제품명+수량 누적
     user.products = user.products || {};
     user.products[product] = (user.products[product]||0) + 1;
+
+    // 몽구스 Object 타입 강제 저장 처리
+    user.markModified('products');
+
     await user.save();
+
+    // 저장 후 실제 반영 확인용 로그(배포시 제거 가능)
+    const check = await User.findOne({ kakaoId });
+    console.log("✅ 저장 후 products:", check.products);
+
     res.json({ success:true });
   } catch(e){
     res.json({ success:false, message:'서버 오류' });
