@@ -25,6 +25,7 @@ const initUserRoutes = require('./routes/init-user');
 const loginRoutes = require('./routes/login');
 const processingRoutes = require('./routes/processing');
 const marketdataRoutes = require('./routes/marketdata');
+const marketRoutes = require('./routes/marketdata');
 
 // 미들웨어
 app.use(cors());
@@ -37,6 +38,7 @@ app.use('/api/seed', seedRoutes);
 app.use('/api/seed', seedBuyRoutes);
 app.use('/api/processing', processingRoutes);
 app.use('/api/marketdata', marketdataRoutes);
+app.use('/api/market', marketRoutes);
 
 // ✅ Mongo 연결
 const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017/farmgame';
