@@ -101,6 +101,41 @@ app.post('/api/withdraw', async (req, res) => {
   }
 });
 
+// 토큰 직접 수정/지급
+app.post('/api/user/update-token', async (req, res) => {
+  const { kakaoId, orcx } = req.body;
+  if (!kakaoId) return res.json({ success: false, message: '카카오ID 필요' });
+  try {
+    const user = await User.findOneAndUpdate({ kakaoId }, { orcx }, { new: true });
+    if (!user) return res.json({ success: false, message: '유저 없음' });
+    res.json({ success: true, user });
+  } catch (e) {
+    res.json({ success: false, message: 'DB 오류' });
+  }
+});
+
+// 출금 신청 내역에서 '출금하기' 처리(토큰 자동 차감 + 출금완료 처리)
+app.post('/api/withdraw/process', async (req, res) => {
+  const { withdrawId, amount } = req.body;
+  try {
+    const withdraw = await Withdraw.findById(withdrawId);
+    if (!withdraw) return res.json({ success: false, message: "출금 신청 내역 없음" });
+    if (withdraw.completed) return res.json({ success: false, message: "이미 완료됨" });
+    // 유저 찾아서 토큰 차감
+    const user = await User.findOne({ nickname: withdraw.name });
+    if (!user) return res.json({ success: false, message: "유저 없음" });
+    if ((user.orcx ?? 0) < amount) return res.json({ success: false, message: "토큰 부족" });
+    user.orcx -= amount;
+    await user.save();
+    // 출금 이력 완료 표시
+    withdraw.completed = true;
+    await withdraw.save();
+    res.json({ success: true });
+  } catch (e) {
+    res.json({ success: false, message: "서버 오류" });
+  }
+});
+
 // ==========================
 //     [유저 전체 자산 API]
 // ==========================
