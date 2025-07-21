@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 
-const User = require('../models/user'); // 유저 모델
+const User = require('../models/users'); // 유저 모델
 const Market = require('../models/market'); // 마켓 시세/거래내역 (없으면 생성)
 
 // [1] 유저의 모든 가공제품 정보 가져오기
