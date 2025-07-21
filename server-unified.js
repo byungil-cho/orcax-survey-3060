@@ -39,7 +39,6 @@ app.use('/api/seed', seedBuyRoutes);
 app.use('/api/processing', processingRoutes);
 app.use('/api/marketdata', marketdataRoutes);
 app.use('/api/market', marketRoutes);
-app.use("/api/user", require("./routes/userprofile"));
 
 // ✅ Mongo 연결
 const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017/farmgame';
@@ -74,6 +73,35 @@ app.use('/api/login', loginRoutes);
 // ✅ 서버 헬스체크(PING) 라우트 추가
 app.get('/api/ping', (req, res) => {
   res.status(200).send('pong');
+});
+// ✅ 유저 통합 프로필 API (마이페이지/내 정보 전체)
+app.get('/api/user/profile/:nickname', async (req, res) => {
+  const { nickname } = req.params;
+  if (!nickname) return res.status(400).json({ error: "닉네임 필요" });
+  try {
+    const user = await User.findOne({ nickname });
+    if (!user) return res.status(404).json({ error: "유저 없음" });
+
+    res.json({
+      nickname: user.nickname,
+      kakaoId: user.kakaoId,
+      farmName: user.farmName,
+      level: user.level || 1,
+      grade: user.grade || "초급",
+      orcx: user.orcx || 0,
+      water: user.water || 0,
+      fertilizer: user.fertilizer || 0,
+      seedPotato: user.seedPotato || 0,
+      seedBarley: user.seedBarley || 0,
+      potato: user.storage?.gamja || 0,
+      barley: user.storage?.bori || 0,
+      products: user.products || {},
+      lastLogin: user.lastLogin,
+      // 필요시 더 추가 가능
+    });
+  } catch (e) {
+    res.status(500).json({ error: "서버 오류" });
+  }
 });
 
 // ✅ 감자/보리 프론트 구조에 맞춘 /api/userdata 라우터
