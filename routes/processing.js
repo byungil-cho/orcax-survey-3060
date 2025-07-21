@@ -45,11 +45,10 @@ router.post('/make-product', async (req, res) => {
     if(material === 'potato') user.storage.gamja -= 1;
     if(material === 'barley') user.storage.bori -= 1;
 
-    // 제품명+수량 누적
-    user.products = user.products || {};
-    user.products[product] = (user.products[product]||0) + 1;
-
-    // 몽구스 Object 타입 강제 저장 처리
+    // 🚩 products 깊은 복사 후 저장!
+    let newProducts = { ...(user.products || {}) };
+    newProducts[product] = (newProducts[product]||0) + 1;
+    user.products = newProducts;
     user.markModified('products');
 
     await user.save();
