@@ -27,13 +27,17 @@ router.post('/get-inventory', async (req, res) => {
   }
 });
 
-// 2. 가공공장: 자유 제품명 가공/저장 (감자/보리 차감, 제품+1)
+// 2. 가공공장: 자유 제품명 가공/저장 (감자/보리 차감, 제품+1) - 띄어쓰기/공백 허용!
 router.post('/make-product', async (req, res) => {
   try {
     const { kakaoId, material, product } = req.body;
     const user = await User.findOne({ kakaoId });
     if(!user) return res.json({ success:false, message:'유저 없음' });
-    if(!product || product.length<2) return res.json({ success:false, message:'제품명 오류' });
+
+    // 🚩 앞뒤 공백 자동 제거, 중간 띄어쓰기/공백 모두 허용!
+    const name = (product || '').trim();
+    if(!name || name.length < 2) 
+      return res.json({ success:false, message:'제품명 오류(2자 이상, 공백만 금지)' });
 
     // 감자/보리 자원 체크
     if(material === 'potato' && (user.storage?.gamja||0)<1)
@@ -45,9 +49,9 @@ router.post('/make-product', async (req, res) => {
     if(material === 'potato') user.storage.gamja -= 1;
     if(material === 'barley') user.storage.bori -= 1;
 
-    // 🚩 products 깊은 복사 후 저장!
+    // 제품 누적 (Object 깊은 복사 방식)
     let newProducts = { ...(user.products || {}) };
-    newProducts[product] = (newProducts[product]||0) + 1;
+    newProducts[name] = (newProducts[name]||0) + 1;
     user.products = newProducts;
     user.markModified('products');
 
