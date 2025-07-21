@@ -1,5 +1,4 @@
-// server-unified.js - 씨앗 동기화 강화 버전 (2024-07-20)
-
+// server-unified.js - 관리자 페이지 연동 버전 (2024-07-21)
 require('dotenv').config();
 
 const express = require('express');
@@ -13,6 +12,14 @@ const path = require('path');
 
 // 모델
 const User = require('./models/users');
+
+// 출금 요청 모델 (withdraws 컬렉션, 없으면 임시 구조)
+const Withdraw = mongoose.model('Withdraw', new mongoose.Schema({
+  name: String,
+  phone: String,
+  wallet: String,
+  createdAt: { type: Date, default: Date.now }
+}));
 
 // 라우터들
 const factoryRoutes = require('./routes/factory');
@@ -70,10 +77,49 @@ app.use('/api/seed', seedRoutes);
 app.use('/api/init-user', initUserRoutes);
 app.use('/api/login', loginRoutes);
 
-// ✅ 서버 헬스체크(PING) 라우트 추가
+// ✅ 서버 헬스체크(PING)
 app.get('/api/ping', (req, res) => {
   res.status(200).send('pong');
 });
+
+// ✅ 관리자/마이페이지용: 전체 유저 자산 리스트 (닉네임, 카카오ID, 자원 등)
+app.get('/api/userdata/all', async (req, res) => {
+  try {
+    const users = await User.find();
+    const list = users.map(u => ({
+      nickname: u.nickname,
+      kakaoId: u.kakaoId,
+      isConnected: true, // 필요시 세션체크
+      orcx: u.orcx ?? 0,
+      water: u.water ?? 0,
+      fertilizer: u.fertilizer ?? 0,
+      potatoCount: u.storage?.gamja ?? 0,
+      barleyCount: u.storage?.bori ?? 0,
+      seedPotato: u.seedPotato ?? 0,
+      seedBarley: u.seedBarley ?? 0,
+    }));
+    res.json(list);
+  } catch (e) {
+    res.status(500).json({ error: 'DB 오류' });
+  }
+});
+
+// ✅ 관리자용: 서버 전원상태(몽고 연결)
+app.get('/api/power-status', (req, res) => {
+  const mongoReady = mongoose.connection.readyState === 1;
+  res.json({ status: mongoReady ? "정상" : "오류", mongo: mongoReady });
+});
+
+// ✅ 관리자/출금 요청 리스트
+app.get('/api/withdraw', async (req, res) => {
+  try {
+    const data = await Withdraw.find().sort({ createdAt: -1 }).limit(100);
+    res.json(data);
+  } catch (e) {
+    res.json([]);
+  }
+});
+
 // ✅ 유저 통합 프로필 API (마이페이지/내 정보 전체)
 app.get('/api/user/profile/:nickname', async (req, res) => {
   const { nickname } = req.params;
@@ -81,7 +127,6 @@ app.get('/api/user/profile/:nickname', async (req, res) => {
   try {
     const user = await User.findOne({ nickname });
     if (!user) return res.status(404).json({ error: "유저 없음" });
-
     res.json({
       nickname: user.nickname,
       kakaoId: user.kakaoId,
@@ -97,7 +142,6 @@ app.get('/api/user/profile/:nickname', async (req, res) => {
       barley: user.storage?.bori || 0,
       products: user.products || {},
       lastLogin: user.lastLogin,
-      // 필요시 더 추가 가능
     });
   } catch (e) {
     res.status(500).json({ error: "서버 오류" });
@@ -133,7 +177,6 @@ app.post('/api/userdata', async (req, res) => {
       }
     });
   } catch (err) {
-    console.error("❌ /api/userdata 오류:", err);
     res.status(500).json({ success: false, message: "서버 오류" });
   }
 });
@@ -141,53 +184,37 @@ app.post('/api/userdata', async (req, res) => {
 // ✅ [완전보강] 씨앗(씨보리/씨감자) 체크, 차감, 반환 일치 처리
 app.post('/api/factory/harvest', async (req, res) => {
   const { kakaoId, cropType } = req.body;
-
   try {
     const user = await User.findOne({ kakaoId });
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
-
     const cropKey = cropType === 'potato' ? 'gamja' : 'bori';
     const seedKey = cropType === 'potato' ? 'seedPotato' : 'seedBarley';
     const growthKey = cropType === 'potato' ? 'potato' : 'barley';
-
-    // 씨앗 개수 파악 (최상위 + inventory)
     let seedCount = (user[seedKey] ?? 0);
     if (user.inventory && typeof user.inventory[seedKey] === 'number') {
       seedCount = Math.max(seedCount, user.inventory[seedKey]);
     }
-
-    // [1] 씨앗(씨보리/씨감자) 체크
     if (seedCount < 1) {
       return res.status(400).json({ success: false, message: '씨앗이 없습니다' });
     }
-
-    // [2] 씨앗 차감 (동시에)
     if (typeof user[seedKey] === 'number' && user[seedKey] > 0) user[seedKey] -= 1;
     if (user.inventory && typeof user.inventory[seedKey] === 'number' && user.inventory[seedKey] > 0) user.inventory[seedKey] -= 1;
-
-    // [3] 성장포인트 체크
     const currentGrowth = user.growth?.[growthKey] || 0;
     if (currentGrowth < 5) {
       return res.status(400).json({ success: false, message: 'Not enough growth to harvest' });
     }
-
-    // [4] 수확 랜덤 보상
     const rewardOptions = [3, 5, 7];
     const reward = rewardOptions[Math.floor(Math.random() * rewardOptions.length)];
     if (!user.storage) user.storage = {};
     user.storage[cropKey] = (user.storage[cropKey] || 0) + reward;
     user.growth[growthKey] = 0;
-
     await user.save();
-
-    // [5] 최종 씨앗 개수 반환 (최상위+inventory 중 큰 값)
     let newSeedCount = (user[seedKey] ?? 0);
     if (user.inventory && typeof user.inventory[seedKey] === 'number') {
       newSeedCount = Math.max(newSeedCount, user.inventory[seedKey]);
     }
-
     res.json({
       success: true,
       message: '수확 성공',
@@ -199,12 +226,11 @@ app.post('/api/factory/harvest', async (req, res) => {
       userSeed: newSeedCount
     });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ success: false, message: '서버 오류' });
   }
 });
 
-// ✅ "물/거름/성장포인트 증가" 라우터 (완전 실전)
+// ✅ "물/거름/성장포인트 증가" 라우터
 app.patch('/api/factory/use-resource', async (req, res) => {
   const { kakaoId, cropType, water = 0, fertilizer = 0 } = req.body;
   try {
@@ -214,15 +240,11 @@ app.patch('/api/factory/use-resource', async (req, res) => {
     if ((user.fertilizer ?? 0) < fertilizer) return res.json({ success: false, message: '거름 부족!' });
     user.water -= water;
     user.fertilizer -= fertilizer;
-
-    // 성장포인트(감자/보리 구분)
     user.growth = user.growth || {};
     const growthKey = cropType === 'potato' ? 'potato' : 'barley';
     const growthInc = (water * 1) + (fertilizer * 2);
     user.growth[growthKey] = (user.growth[growthKey] || 0) + growthInc;
-
     await user.save();
-
     res.json({
       success: true,
       growth: user.growth[growthKey],
