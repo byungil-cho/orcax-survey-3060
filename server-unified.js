@@ -11,7 +11,7 @@ const MongoStore = require('connect-mongo');
 const path = require('path');
 
 // [!!] User 모델 명확 선언(중복X, 파일명 정확!) 예시: user.js 사용
-const User = require('./models/user');
+const User = require('./models/users');
 
 // Withdraw 모델(중복X)
 const Withdraw = mongoose.models.Withdraw || mongoose.model('Withdraw', new mongoose.Schema({
