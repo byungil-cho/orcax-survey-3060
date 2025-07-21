@@ -81,6 +81,36 @@ app.use('/api/login', loginRoutes);
 app.get('/api/ping', (req, res) => {
   res.status(200).send('pong');
 });
+// Withdraw 모델 구조 업데이트 (맨 위 부분에)
+const Withdraw = mongoose.model('Withdraw', new mongoose.Schema({
+  name: String,
+  email: String,         // 이메일 필드 추가
+  phone: String,
+  wallet: String,
+  amount: Number,        // 출금 토큰 금액
+  createdAt: { type: Date, default: Date.now }
+}));
+
+// 🟦 출금신청 라우터 추가 (amount, email까지 모두 저장!)
+app.post('/api/withdraw', async (req, res) => {
+  const { nickname, email, phone, wallet, amount } = req.body;
+  try {
+    if (!nickname || !email || !phone || !wallet || !amount || isNaN(amount)) {
+      return res.json({ success: false, message: "모든 정보를 입력해 주세요." });
+    }
+    await Withdraw.create({
+      name: nickname,
+      email,
+      phone,
+      wallet,
+      amount,
+      createdAt: new Date()
+    });
+    res.json({ success: true, message: "출금 신청 완료" });
+  } catch (e) {
+    res.json({ success: false, message: "출금 신청 실패" });
+  }
+});
 
 // ✅ 관리자/마이페이지용: 전체 유저 자산 리스트 (닉네임, 카카오ID, 자원 등)
 app.get('/api/userdata/all', async (req, res) => {
