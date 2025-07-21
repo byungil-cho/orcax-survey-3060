@@ -43,9 +43,13 @@ router.post("/sell", async (req, res) => {
 
     // 수량 차감, ORCX 지급
     user.products[product] -= qty;
+    if (user.products[product] <= 0) {
+      delete user.products[product];
+      user.markModified("products"); // [필수!] 몽구스가 삭제 감지
+    }
     user.orcx += priceObj.price * qty;
     await user.save();
-    res.json({ success: true, orcx: user.orcx, left: user.products[product] });
+    res.json({ success: true, orcx: user.orcx, left: user.products[product] || 0 });
   } catch (e) {
     res.json({ success: false, message: "판매 실패" });
   }
@@ -57,12 +61,17 @@ router.post("/exchange", async (req, res) => {
   try {
     const user = await User.findOne({ kakaoId });
     if (!user || (user.products?.[product] || 0) < qty) return res.json({ success: false, message: "교환 불가" });
+
     // 교환 비율 1:3 (예시)
     user.products[product] -= qty;
+    if (user.products[product] <= 0) {
+      delete user.products[product];
+      user.markModified("products"); // [필수!] 몽구스가 삭제 감지
+    }
     if (exchangeItem === "water") user.water += qty * 3;
     if (exchangeItem === "fertilizer") user.fertilizer += qty * 3;
     await user.save();
-    res.json({ success: true, left: user.products[product] });
+    res.json({ success: true, left: user.products[product] || 0 });
   } catch (e) {
     res.json({ success: false, message: "교환 실패" });
   }
