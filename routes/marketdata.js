@@ -1,93 +1,64 @@
 // routes/marketdata.js
-const express = require('express');
+const express = require("express");
 const router = express.Router();
+const User = require("../models/users");
+const Market = require("../models/markets");
 
-const User = require('../models/users'); // 유저 모델
-const Market = require('../models/market'); // 마켓 시세/거래내역 (없으면 생성)
+// 1. 전광판 시세(관리자 등록 제품)
+router.get("/price-board", async (req, res) => {
+  try {
+    const priceList = await Market.find({}); // 모든 전광판 제품
+    res.json({ success: true, priceList });
+  } catch (e) {
+    res.json({ success: false, message: "시세 불러오기 실패" });
+  }
+});
 
-// [1] 유저의 모든 가공제품 정보 가져오기
-router.post('/get-user-products', async (req, res) => {
+// 2. 유저 보관함(가공식품 전체)
+router.post("/user-inventory", async (req, res) => {
   const { kakaoId } = req.body;
   try {
     const user = await User.findOne({ kakaoId });
     if (!user) return res.json({ success: false, message: "유저 없음" });
-    return res.json({
-      success: true,
-      products: user.products || {},
-      orcx: user.orcx || 0
-    });
-  } catch (err) {
-    return res.json({ success: false, message: err.message });
+    res.json({ success: true, products: user.products || {} });
+  } catch (e) {
+    res.json({ success: false, message: "불러오기 오류" });
   }
 });
 
-// [2] 마켓 전광판 정보(시세, 거래내역, 전체 집계)
-router.get('/get-market-board', async (req, res) => {
-  try {
-    const board = await Market.findOne({ key: "market_board" });
-    return res.json({ success: true, board });
-  } catch (err) {
-    return res.json({ success: false, message: err.message });
-  }
-});
-
-// [3] 내 가공제품 판매 (ORCX 교환)
-router.post('/sell-product', async (req, res) => {
-  const { kakaoId, productName, amount } = req.body;
+// 3. ORCX로 판매 (전광판 등록 제품만)
+router.post("/sell", async (req, res) => {
+  const { kakaoId, product, qty } = req.body;
   try {
     const user = await User.findOne({ kakaoId });
-    if (!user) return res.json({ success: false, message: "유저 없음" });
+    const priceObj = await Market.findOne({ name: product });
+    if (!user || !priceObj) return res.json({ success: false, message: "상품 또는 유저 없음" });
+    if ((user.products?.[product] || 0) < qty) return res.json({ success: false, message: "수량 부족" });
 
-    let cnt = user.products?.[productName] || 0;
-    if (cnt < amount) return res.json({ success: false, message: "수량 부족" });
-
-    // 가격 정보 불러오기
-    const market = await Market.findOne({ key: "market_board" });
-    const price = market?.prices?.[productName] || 1;
-
-    // 차감, ORCX 지급
-    user.products[productName] -= amount;
-    if (user.products[productName] <= 0) delete user.products[productName];
-    user.orcx = (user.orcx || 0) + price * amount;
+    // 수량 차감, ORCX 지급
+    user.products[product] -= qty;
+    user.orcx += priceObj.price * qty;
     await user.save();
-
-    // 거래내역 기록
-    await Market.updateOne(
-      { key: "market_board" },
-      {
-        $inc: { [`sold.${productName}`]: amount },
-        $push: { history: { kakaoId, productName, amount, date: new Date() } }
-      },
-      { upsert: true }
-    );
-    return res.json({ success: true, orcx: user.orcx });
-  } catch (err) {
-    return res.json({ success: false, message: err.message });
+    res.json({ success: true, orcx: user.orcx, left: user.products[product] });
+  } catch (e) {
+    res.json({ success: false, message: "판매 실패" });
   }
 });
 
-// [4] 교환(제품 → 물/거름 등)
-router.post('/exchange', async (req, res) => {
-  const { kakaoId, productName, amount, exchangeItem, exchangeRate } = req.body;
+// 4. 물/거름 교환 (전광판 미등록 제품만)
+router.post("/exchange", async (req, res) => {
+  const { kakaoId, product, qty, exchangeItem } = req.body; // exchangeItem: "water" or "fertilizer"
   try {
     const user = await User.findOne({ kakaoId });
-    if (!user) return res.json({ success: false, message: "유저 없음" });
-
-    let cnt = user.products?.[productName] || 0;
-    if (cnt < amount) return res.json({ success: false, message: "수량 부족" });
-
-    // 차감
-    user.products[productName] -= amount;
-    if (user.products[productName] <= 0) delete user.products[productName];
-
-    // 자원 지급
-    if (exchangeItem === "water") user.water += amount * (exchangeRate || 1);
-    if (exchangeItem === "fertilizer") user.fertilizer += amount * (exchangeRate || 1);
+    if (!user || (user.products?.[product] || 0) < qty) return res.json({ success: false, message: "교환 불가" });
+    // 교환 비율 1:3 (예시)
+    user.products[product] -= qty;
+    if (exchangeItem === "water") user.water += qty * 3;
+    if (exchangeItem === "fertilizer") user.fertilizer += qty * 3;
     await user.save();
-
-    return res.json({ success: true, water: user.water, fertilizer: user.fertilizer });
-  } catch (err) {
-    return res.json({ success: false, message: err.message });
+    res.json({ success: true, left: user.products[product] });
+  } catch (e) {
+    res.json({ success: false, message: "교환 실패" });
   }
 });
 
