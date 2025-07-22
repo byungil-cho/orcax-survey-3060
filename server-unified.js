@@ -1,4 +1,4 @@
-// server-unified.js - OrcaX 마이페이지, 관리자, 자산/출금/대시보드 통합
+// server-unified.js - OrcaX 통합 서버 (보유 토큰/씨앗/관리자/마이페이지/출금 모두 동작)
 require('dotenv').config();
 
 const express = require('express');
@@ -10,10 +10,9 @@ const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const path = require('path');
 
-// [!!] User 모델 명확 선언(중복X, 파일명 정확!)
+// User 모델(예: ./models/users.js)
 const User = require('./models/users');
 
-// Withdraw 모델(중복X)
 const Withdraw = mongoose.models.Withdraw || mongoose.model('Withdraw', new mongoose.Schema({
   name: String,
   email: String,
@@ -24,7 +23,7 @@ const Withdraw = mongoose.models.Withdraw || mongoose.model('Withdraw', new mong
   createdAt: { type: Date, default: Date.now }
 }));
 
-// 라우터들
+// 라우터
 const factoryRoutes = require('./routes/factory');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
@@ -48,14 +47,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/factory', factoryRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
-app.use('/api/user/v2data', userdataV2Routes); // 모든 페이지(감자, 보리 등) 영향 없음
+app.use('/api/user/v2data', userdataV2Routes);
 app.use('/api/seed', seedRoutes);
 app.use('/api/seed', seedBuyRoutes);
 app.use('/api/processing', processingRoutes);
 app.use('/api/marketdata', marketdataRoutes);
 app.use('/api/market', marketRoutes);
 app.use('/api/init-user', initUserRoutes);
-// *** 로그인 엔드포인트 아래에 명확하게 추가! ***
 app.use('/api/login', loginRoutes);
 
 // Mongo 연결
@@ -79,11 +77,11 @@ app.use(
   })
 );
 
-// [출금 신청]
+// 출금 신청
 app.post('/api/withdraw', async (req, res) => {
   const { nickname, email, phone, wallet, amount } = req.body;
   try {
-    if (!nickname || !email || !phone || !wallet || !amount || isNaN(amount)) {
+    if (!nickname || !email || !phone || !wallet || isNaN(amount)) {
       return res.json({ success: false, message: "모든 정보를 입력해 주세요." });
     }
     await Withdraw.create({
@@ -100,7 +98,7 @@ app.post('/api/withdraw', async (req, res) => {
   }
 });
 
-// [유저 토큰 직접 수정/지급]
+// 유저 토큰 직접 수정/지급
 app.post('/api/user/update-token', async (req, res) => {
   const { kakaoId, orcx } = req.body;
   if (!kakaoId) return res.json({ success: false, message: '카카오ID 필요' });
@@ -113,7 +111,7 @@ app.post('/api/user/update-token', async (req, res) => {
   }
 });
 
-// [출금신청 내역에서 '출금하기' 처리]
+// 출금신청 내역에서 '출금하기' 처리
 app.post('/api/withdraw/process', async (req, res) => {
   const { withdrawId, amount } = req.body;
   try {
@@ -133,7 +131,7 @@ app.post('/api/withdraw/process', async (req, res) => {
   }
 });
 
-// [유저 전체 자산 API]
+// 유저 전체 자산 API
 app.get('/api/userdata/all', async (req, res) => {
   try {
     const users = await User.find();
@@ -155,14 +153,14 @@ app.get('/api/userdata/all', async (req, res) => {
   }
 });
 
-// [서버 전원상태/헬스체크]
+// 서버 전원상태/헬스체크
 app.get('/api/power-status', (req, res) => {
   const mongoReady = mongoose.connection.readyState === 1;
   res.json({ status: mongoReady ? "정상" : "오류", mongo: mongoReady });
 });
 app.get('/api/ping', (req, res) => res.status(200).send('pong'));
 
-// [출금신청 리스트/관리자]
+// 출금신청 리스트/관리자
 app.get('/api/withdraw', async (req, res) => {
   try {
     const data = await Withdraw.find().sort({ createdAt: -1 }).limit(100);
@@ -172,7 +170,7 @@ app.get('/api/withdraw', async (req, res) => {
   }
 });
 
-// [유저 통합 프로필(마이페이지)]
+// 유저 통합 프로필(마이페이지)
 app.get('/api/user/profile/:nickname', async (req, res) => {
   const { nickname } = req.params;
   if (!nickname) return res.status(400).json({ error: "닉네임 필요" });
@@ -200,7 +198,7 @@ app.get('/api/user/profile/:nickname', async (req, res) => {
   }
 });
 
-// [감자/보리 프론트 연동 라우터]
+// 감자/보리 프론트 연동 라우터
 app.post('/api/userdata', async (req, res) => {
   try {
     const { kakaoId } = req.body;
@@ -229,7 +227,7 @@ app.post('/api/userdata', async (req, res) => {
   }
 });
 
-// [씨앗상점 대응 - v2data 직접 구현! (중복X, 기존 라우터와 병행)]
+// 씨앗상점, 대시보드, 모든 프론트에서 사용되는 v2data API
 app.post('/api/user/v2data', async (req, res) => {
   const { kakaoId } = req.body;
   if (!kakaoId) return res.status(400).json({ success: false, message: 'kakaoId is required' });
@@ -238,9 +236,9 @@ app.post('/api/user/v2data', async (req, res) => {
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
     res.json({
       user: {
-        orcx: user.orcx ?? 0,
-        seedPotato: user.seedPotato ?? 0,
-        seedBarley: user.seedBarley ?? 0,
+        orcx: user.orcx ?? 0,            // 보유 ORCX
+        seedPotato: user.seedPotato ?? 0, // 씨감자
+        seedBarley: user.seedBarley ?? 0  // 씨보리
       }
     });
   } catch (err) {
@@ -248,7 +246,7 @@ app.post('/api/user/v2data', async (req, res) => {
   }
 });
 
-// [회원가입/로그인 - 반드시 kakaoId 저장 보장!]
+// 회원가입/로그인 시 kakaoId 필수 저장
 app.post('/api/login', async (req, res) => {
   const { kakaoId, nickname } = req.body;
   if (!kakaoId || !nickname) return res.json({ success: false, message: "kakaoId/nickname 필수" });
@@ -268,7 +266,6 @@ app.post('/api/login', async (req, res) => {
       products: {},
     });
   } else {
-    // 이미 있는 유저도 kakaoId/nickname 보정
     if (!user.kakaoId) user.kakaoId = kakaoId;
     if (!user.nickname) user.nickname = nickname;
     await user.save();
