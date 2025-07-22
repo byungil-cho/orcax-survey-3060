@@ -25,7 +25,6 @@ const Withdraw = mongoose.models.Withdraw || mongoose.model('Withdraw', new mong
 }));
 
 // 라우터들
-// (실제 필요시 routes/폴더에 파일 직접 분리, 기본 구조만 참고)
 const factoryRoutes = require('./routes/factory');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
@@ -49,7 +48,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/factory', factoryRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
-app.use('/api/user/v2data', userdataV2Routes);
+app.use('/api/user/v2data', userdataV2Routes); // 모든 페이지(감자, 보리 등) 영향 없음
 app.use('/api/seed', seedRoutes);
 app.use('/api/seed', seedBuyRoutes);
 app.use('/api/processing', processingRoutes);
