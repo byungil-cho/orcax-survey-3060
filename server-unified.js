@@ -43,6 +43,7 @@ const loginRoutes = require('./routes/login');
 const processingRoutes = require('./routes/processing');
 const marketdataRoutes = require('./routes/marketdata');
 const marketRoutes = require('./routes/marketdata');
+const seedPriceRoutes = require('./routes/seed-price');
 
 app.use(cors());
 app.use(bodyParser.json());
@@ -61,6 +62,7 @@ app.use('/api/marketdata', marketdataRoutes);
 app.use('/api/market', marketRoutes);
 app.use('/api/init-user', initUserRoutes);
 app.use('/api/login', loginRoutes);
+app.use('/api/seed', seedPriceRoutes);
 
 // ------[Mongo 연결]------
 const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017/farmgame';
