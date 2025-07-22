@@ -282,7 +282,7 @@ app.post('/api/login', async (req, res) => {
   res.json({ success: true, user });
 });
 
-// ------[여기부터 추가: 관리자 마켓/전광판 라우트]------
+// ------[여기부터 추가: 관리자 마켓/전광판 라우트/실제 전광판 연동]------
 
 // 1. 전체 유저 가공식품 집계 API
 app.get('/api/admin/all-products-quantities', async (req, res) => {
@@ -311,21 +311,50 @@ app.get('/api/marketdata/products', async (req, res) => {
     res.status(500).json([]);
   }
 });
+
+// 2-1. 전광판(마켓) 진짜 불러오기: 활성화 제품만 (감자마켓 전광판에서 호출)
+app.get('/api/market/price-board', async (req, res) => {
+  try {
+    const products = await MarketProduct.find({ active: true });
+    // { name, price, qty }
+    res.json({
+      success: true,
+      priceList: products.map(x => ({
+        name: x.name, price: x.price, qty: x.amount
+      }))
+    });
+  } catch (e) {
+    res.json({ success: false, priceList: [] });
+  }
+});
+
+// 2-2. 관리자에서 전광판(마켓) 등록: "중복 제품명"은 덮어쓰기(업데이트), 없으면 새로 추가
 app.post('/api/marketdata/products/bulk', async (req, res) => {
   try {
     const { items } = req.body; // [{name, price, amount}]
     if (!Array.isArray(items)) return res.status(400).json({ error: "배열 필요" });
     // 한 번에 최대 5개까지 등록
-    const created = [];
+    const results = [];
     for (const { name, price, amount } of items.slice(0, 5)) {
       if (!name || !price || !amount) continue;
-      created.push(await MarketProduct.create({ name, price, amount, active: true }));
+      const found = await MarketProduct.findOne({ name });
+      if (found) {
+        // 이미 존재하면 값만 덮어씀
+        found.price = price;
+        found.amount = amount;
+        found.active = true;
+        await found.save();
+        results.push(found);
+      } else {
+        results.push(await MarketProduct.create({ name, price, amount, active: true }));
+      }
     }
-    res.json({ success: true, created });
+    res.json({ success: true, results });
   } catch (e) {
     res.status(500).json({ success: false });
   }
 });
+
 app.put('/api/marketdata/products/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -344,6 +373,42 @@ app.delete('/api/marketdata/products/:id', async (req, res) => {
     res.status(500).json({ success: false });
   }
 });
+
+// 3. 감자마켓 - 내 보관함/판매/교환/구매 기능 (API 경로 예시)
+app.post('/api/market/user-inventory', async (req, res) => {
+  const { kakaoId } = req.body;
+  if (!kakaoId) return res.json({ success: false, message: "kakaoId 필요" });
+  try {
+    const user = await User.findOne({ kakaoId });
+    if (!user) return res.json({ success: false, message: "유저 없음" });
+    res.json({ success: true, products: user.products || {} });
+  } catch (e) {
+    res.json({ success: false, products: {} });
+  }
+});
+
+app.post('/api/market/sell', async (req, res) => {
+  const { kakaoId, product, qty } = req.body;
+  if (!kakaoId || !product || !qty) return res.json({ success: false, message: "필수값 누락" });
+  try {
+    const user = await User.findOne({ kakaoId });
+    if (!user) return res.json({ success: false, message: "유저 없음" });
+    if (!user.products || (user.products[product] || 0) < qty) {
+      return res.json({ success: false, message: "수량 부족" });
+    }
+    const marketProd = await MarketProduct.findOne({ name: product, active: true });
+    if (!marketProd) return res.json({ success: false, message: "판매 불가" });
+    user.products[product] -= qty;
+    user.orcx = (user.orcx || 0) + (marketProd.price * qty);
+    await user.save();
+    // 옵션: 마켓 수량 차감/누적 등 로직 추가 가능
+    res.json({ success: true, left: user.products[product] });
+  } catch (e) {
+    res.json({ success: false, message: "서버 오류" });
+  }
+});
+
+// 교환(예: 감자칩 → 물/거름 등)은 별도 교환 API 사용 (기존 로직 유지)
 // ------[추가 끝]------
 
 // 서버 실행
