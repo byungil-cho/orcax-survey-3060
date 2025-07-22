@@ -229,6 +229,25 @@ app.post('/api/userdata', async (req, res) => {
   }
 });
 
+// [씨앗상점 대응 - v2data 직접 구현! (중복X, 기존 라우터와 병행)]
+app.post('/api/user/v2data', async (req, res) => {
+  const { kakaoId } = req.body;
+  if (!kakaoId) return res.status(400).json({ success: false, message: 'kakaoId is required' });
+  try {
+    const user = await User.findOne({ kakaoId });
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    res.json({
+      user: {
+        orcx: user.orcx ?? 0,
+        seedPotato: user.seedPotato ?? 0,
+        seedBarley: user.seedBarley ?? 0,
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "서버 오류" });
+  }
+});
+
 // 서버 실행
 const PORT = 3060;
 app.listen(PORT, () => {
