@@ -1,4 +1,4 @@
-// server-unified.js - OrcaX 통합 서버 (보유 토큰/씨앗/관리자/마이페이지/출금 모두 동작)
+// server-unified.js - OrcaX 통합 서버 (100% 완전체)
 require('dotenv').config();
 
 const express = require('express');
@@ -23,16 +23,15 @@ const Withdraw = mongoose.models.Withdraw || mongoose.model('Withdraw', new mong
   createdAt: { type: Date, default: Date.now }
 }));
 
-// ------[여기부터 추가: MarketProduct 모델]------
+// ------[마켓 제품 모델]------
 const MarketProduct = mongoose.models.MarketProduct || mongoose.model('MarketProduct', new mongoose.Schema({
   name: String,
   price: Number,
   amount: Number,
   active: { type: Boolean, default: true },
 }));
-// ------[추가 끝]------
 
-// 라우터
+// ------[라우터 연결]------
 const factoryRoutes = require('./routes/factory');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
@@ -45,14 +44,12 @@ const processingRoutes = require('./routes/processing');
 const marketdataRoutes = require('./routes/marketdata');
 const marketRoutes = require('./routes/marketdata');
 
-// 미들웨어
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// API 라우터
 app.use('/api/factory', factoryRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
@@ -65,7 +62,7 @@ app.use('/api/market', marketRoutes);
 app.use('/api/init-user', initUserRoutes);
 app.use('/api/login', loginRoutes);
 
-// Mongo 연결
+// ------[Mongo 연결]------
 const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017/farmgame';
 mongoose.connect(mongoUrl, {
   useNewUrlParser: true,
@@ -76,7 +73,7 @@ mongoose.connect(mongoUrl, {
   console.error('❌ MongoDB 연결 실패:', err.message);
 });
 
-// 세션
+// ------[세션]------
 app.use(
   session({
     secret: 'secret-key',
@@ -85,6 +82,8 @@ app.use(
     store: MongoStore.create({ mongoUrl }),
   })
 );
+
+// ------[주요 API 라우트]------
 
 // 출금 신청
 app.post('/api/withdraw', async (req, res) => {
@@ -282,7 +281,7 @@ app.post('/api/login', async (req, res) => {
   res.json({ success: true, user });
 });
 
-// ------[여기부터 추가: 관리자 마켓/전광판 라우트/실제 전광판 연동]------
+// ------[관리자 마켓/전광판/내보관함/판매 기능]------
 
 // 1. 전체 유저 가공식품 집계 API
 app.get('/api/admin/all-products-quantities', async (req, res) => {
@@ -312,15 +311,17 @@ app.get('/api/marketdata/products', async (req, res) => {
   }
 });
 
-// 2-1. 전광판(마켓) 진짜 불러오기: 활성화 제품만 (감자마켓 전광판에서 호출)
+// 2-1. 전광판(마켓) 실제 불러오기: 활성화 제품만
 app.get('/api/market/price-board', async (req, res) => {
   try {
     const products = await MarketProduct.find({ active: true });
-    // { name, price, qty }
     res.json({
       success: true,
       priceList: products.map(x => ({
-        name: x.name, price: x.price, qty: x.amount
+        name: x.name,
+        price: x.price,
+        amount: x.amount,
+        active: x.active
       }))
     });
   } catch (e) {
@@ -333,13 +334,11 @@ app.post('/api/marketdata/products/bulk', async (req, res) => {
   try {
     const { items } = req.body; // [{name, price, amount}]
     if (!Array.isArray(items)) return res.status(400).json({ error: "배열 필요" });
-    // 한 번에 최대 5개까지 등록
     const results = [];
     for (const { name, price, amount } of items.slice(0, 5)) {
       if (!name || !price || !amount) continue;
       const found = await MarketProduct.findOne({ name });
       if (found) {
-        // 이미 존재하면 값만 덮어씀
         found.price = price;
         found.amount = amount;
         found.active = true;
@@ -374,7 +373,7 @@ app.delete('/api/marketdata/products/:id', async (req, res) => {
   }
 });
 
-// 3. 감자마켓 - 내 보관함/판매/교환/구매 기능 (API 경로 예시)
+// 3. 감자마켓 - 내 보관함/판매/교환/구매 기능
 app.post('/api/market/user-inventory', async (req, res) => {
   const { kakaoId } = req.body;
   if (!kakaoId) return res.json({ success: false, message: "kakaoId 필요" });
@@ -401,7 +400,6 @@ app.post('/api/market/sell', async (req, res) => {
     user.products[product] -= qty;
     user.orcx = (user.orcx || 0) + (marketProd.price * qty);
     await user.save();
-    // 옵션: 마켓 수량 차감/누적 등 로직 추가 가능
     res.json({ success: true, left: user.products[product] });
   } catch (e) {
     res.json({ success: false, message: "서버 오류" });
@@ -409,7 +407,8 @@ app.post('/api/market/sell', async (req, res) => {
 });
 
 // 교환(예: 감자칩 → 물/거름 등)은 별도 교환 API 사용 (기존 로직 유지)
-// ------[추가 끝]------
+
+// ------[끝]------
 
 // 서버 실행
 const PORT = 3060;
