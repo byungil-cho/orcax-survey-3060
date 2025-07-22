@@ -311,10 +311,11 @@ app.get('/api/marketdata/products', async (req, res) => {
   }
 });
 
-// 2-1. 전광판(마켓) 실제 불러오기: 활성화 제품만
+// 2-1. 전광판(마켓) 실제 불러오기: 활성+재고 제품만 (amount > 0)
 app.get('/api/market/price-board', async (req, res) => {
   try {
-    const products = await MarketProduct.find({ active: true });
+    // amount가 1개 이상인 제품만 노출
+    const products = await MarketProduct.find({ active: true, amount: { $gt: 0 } });
     res.json({
       success: true,
       priceList: products.map(x => ({
@@ -415,5 +416,3 @@ const PORT = 3060;
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
 });
-
-module.exports = app;
