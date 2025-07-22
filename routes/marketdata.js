@@ -4,15 +4,16 @@ const router = express.Router();
 const User = require("../models/users");
 const Market = require("../models/markets");
 
-// 1. 전광판 시세(관리자 등록 제품)
-router.get("/price-board", async (req, res) => {
-  try {
-    const priceList = await Market.find({}); // 모든 전광판 제품
-    res.json({ success: true, priceList });
-  } catch (e) {
-    res.json({ success: false, message: "시세 불러오기 실패" });
-  }
-});
+// *** 아래 라우터는 server-unified.js에서 직접 정의하므로 삭제 ***
+// // 1. 전광판 시세(관리자 등록 제품)
+// router.get("/price-board", async (req, res) => {
+//   try {
+//     const priceList = await Market.find({}); // 모든 전광판 제품
+//     res.json({ success: true, priceList });
+//   } catch (e) {
+//     res.json({ success: false, message: "시세 불러오기 실패" });
+//   }
+// });
 
 // 2. 유저 보관함(가공식품 전체, 자원 포함!)
 router.post("/user-inventory", async (req, res) => {
