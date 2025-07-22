@@ -10,7 +10,7 @@ const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const path = require('path');
 
-// [!!] User 모델 명확 선언(중복X, 파일명 정확!) 예시: user.js 사용
+// [!!] User 모델 명확 선언(중복X, 파일명 정확!)
 const User = require('./models/users');
 
 // Withdraw 모델(중복X)
@@ -55,6 +55,7 @@ app.use('/api/processing', processingRoutes);
 app.use('/api/marketdata', marketdataRoutes);
 app.use('/api/market', marketRoutes);
 app.use('/api/init-user', initUserRoutes);
+// *** 로그인 엔드포인트 아래에 명확하게 추가! ***
 app.use('/api/login', loginRoutes);
 
 // Mongo 연결
@@ -245,6 +246,34 @@ app.post('/api/user/v2data', async (req, res) => {
   } catch (err) {
     res.status(500).json({ success: false, message: "서버 오류" });
   }
+});
+
+// [회원가입/로그인 - 반드시 kakaoId 저장 보장!]
+app.post('/api/login', async (req, res) => {
+  const { kakaoId, nickname } = req.body;
+  if (!kakaoId || !nickname) return res.json({ success: false, message: "kakaoId/nickname 필수" });
+
+  let user = await User.findOne({ kakaoId });
+  if (!user) {
+    user = await User.create({
+      kakaoId,
+      nickname,
+      orcx: 10,
+      water: 10,
+      fertilizer: 10,
+      seedPotato: 0,
+      seedBarley: 0,
+      storage: { gamja: 0, bori: 0 },
+      growth: { potato: 0, barley: 0 },
+      products: {},
+    });
+  } else {
+    // 이미 있는 유저도 kakaoId/nickname 보정
+    if (!user.kakaoId) user.kakaoId = kakaoId;
+    if (!user.nickname) user.nickname = nickname;
+    await user.save();
+  }
+  res.json({ success: true, user });
 });
 
 // 서버 실행
