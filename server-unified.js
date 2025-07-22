@@ -23,6 +23,15 @@ const Withdraw = mongoose.models.Withdraw || mongoose.model('Withdraw', new mong
   createdAt: { type: Date, default: Date.now }
 }));
 
+// ------[여기부터 추가: MarketProduct 모델]------
+const MarketProduct = mongoose.models.MarketProduct || mongoose.model('MarketProduct', new mongoose.Schema({
+  name: String,
+  price: Number,
+  amount: Number,
+  active: { type: Boolean, default: true },
+}));
+// ------[추가 끝]------
+
 // 라우터
 const factoryRoutes = require('./routes/factory');
 const authRoutes = require('./routes/auth');
@@ -272,6 +281,70 @@ app.post('/api/login', async (req, res) => {
   }
   res.json({ success: true, user });
 });
+
+// ------[여기부터 추가: 관리자 마켓/전광판 라우트]------
+
+// 1. 전체 유저 가공식품 집계 API
+app.get('/api/admin/all-products-quantities', async (req, res) => {
+  try {
+    const users = await User.find({});
+    const totals = {};
+    users.forEach(user => {
+      if (!user.products) return;
+      for (const [name, qty] of Object.entries(user.products)) {
+        if (!totals[name]) totals[name] = 0;
+        totals[name] += qty;
+      }
+    });
+    res.json(Object.entries(totals).map(([name, total]) => ({ name, total })));
+  } catch (e) {
+    res.status(500).json([]);
+  }
+});
+
+// 2. 전광판(마켓) 등록제품 CRUD
+app.get('/api/marketdata/products', async (req, res) => {
+  try {
+    const products = await MarketProduct.find({});
+    res.json(products);
+  } catch (e) {
+    res.status(500).json([]);
+  }
+});
+app.post('/api/marketdata/products/bulk', async (req, res) => {
+  try {
+    const { items } = req.body; // [{name, price, amount}]
+    if (!Array.isArray(items)) return res.status(400).json({ error: "배열 필요" });
+    // 한 번에 최대 5개까지 등록
+    const created = [];
+    for (const { name, price, amount } of items.slice(0, 5)) {
+      if (!name || !price || !amount) continue;
+      created.push(await MarketProduct.create({ name, price, amount, active: true }));
+    }
+    res.json({ success: true, created });
+  } catch (e) {
+    res.status(500).json({ success: false });
+  }
+});
+app.put('/api/marketdata/products/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const update = req.body;
+    const prod = await MarketProduct.findByIdAndUpdate(id, update, { new: true });
+    res.json(prod);
+  } catch (e) {
+    res.status(500).json({});
+  }
+});
+app.delete('/api/marketdata/products/:id', async (req, res) => {
+  try {
+    await MarketProduct.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false });
+  }
+});
+// ------[추가 끝]------
 
 // 서버 실행
 const PORT = 3060;
