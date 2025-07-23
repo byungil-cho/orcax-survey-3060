@@ -10,7 +10,7 @@ function getDbSeedType(cropType) {
   return cropType;
 }
 
-// 1. 수확 라우터 (운영자 보관소도 reward만큼 증가)
+// 1. 수확 라우터 (운영자 보관소 reward → 1개만 증가로 수정)
 router.post('/harvest', async (req, res) => {
   try {
     const { kakaoId, cropType } = req.body;
@@ -39,11 +39,11 @@ router.post('/harvest', async (req, res) => {
     user.storage[storageField] = (user.storage[storageField] || 0) + reward;
     user.growth[growthField] = 0; // 성장 포인트 초기화
 
-    // 운영자(SeedStock) 보관소에도 수확량만큼 증가
+    // 운영자(SeedStock) 보관소에 씨감자 1개만 증가!
     const dbSeedType = getDbSeedType(cropType);
     const adminStock = await SeedStock.findOneAndUpdate(
       { type: dbSeedType },
-      { $inc: { stock: reward } },
+      { $inc: { stock: 1 } },    // ← 항상 1개만 증가!
       { upsert: true, new: true }
     );
 
