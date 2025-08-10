@@ -1,0 +1,20 @@
+{
+  "name": "옥수수 농장",
+  "short_name": "Corn Farm",
+  "start_url": "corn-farm.html",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#1a1f1a",
+  "icons": [
+    {
+      "src": "img/mark_01.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "img/mark_05.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
