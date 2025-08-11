@@ -68,7 +68,33 @@ const CornSettings = mongoose.models.CornSettings || mongoose.model('CornSetting
 }, { collection: 'corn_settings' }));
 
 // ====== 공통 미들웨어 ======
-app.use(cors()); // 쿠키 인증 안 쓰는 감자/옥수수 기본 호환(*)
+
+// CORS (GitHub Pages + ngrok HTTPS 허용)
+const allowOrigins = [
+  'https://byungil-cho.github.io',
+  'https://byungil-cho.github.io/OrcaX',
+  'http://localhost:3000',
+  'http://localhost:5173'
+];
+app.use(cors({
+  origin(origin, cb){
+    if (!origin) return cb(null, true); // 서버 내부 호출/CLI 허용
+    try {
+      const u = new URL(origin);
+      const ok = allowOrigins.some(o => origin.startsWith(o))
+        || /\.ngrok\.io$/.test(u.hostname)
+        || /\.ngrok-?free\.app$/.test(u.hostname);
+      return cb(null, ok);
+    } catch {
+      return cb(null, false);
+    }
+  },
+  methods: ['GET','POST','PATCH','PUT','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization'],
+  credentials: false
+}));
+app.options('*', cors());
+
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
@@ -108,7 +134,7 @@ app.get('/api/power-status', (req, res) => {
   res.json({ status: mongoReady ? "정상" : "오류", mongo: mongoReady });
 });
 app.get('/api/ping', (req, res) => res.status(200).send('pong'));
-// (추가) 옥수수 프론트 호환용
+// 옥수수/프론트 헬스체크
 app.get('/api/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
 
 // ====== 감자: 출금/유저/마켓(기존) ======
@@ -253,6 +279,45 @@ app.post('/api/userdata', async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ success: false, message: "서버 오류" });
+  }
+});
+
+// ====== (신규) 재고(물/거름) 차감 — 안전 버전 ======
+app.post('/api/user/inventory/use', async (req, res) => {
+  try {
+    const { kakaoId, type, amount } = req.body || {};
+    const amt = Math.max(1, Number(amount || 1));
+    if (!kakaoId || !['water','fertilizer'].includes(type)) {
+      return res.status(400).json({ error:'kakaoId, type(water|fertilizer) 필요' });
+    }
+
+    const user = await User.findOne({ kakaoId });
+    if (!user) return res.status(404).json({ error:'User not found' });
+
+    // 숫자 보정
+    const curWater = Number(user.water ?? 0);
+    const curFerti = Number(user.fertilizer ?? 0);
+    const cur = (type === 'water') ? curWater : curFerti;
+
+    if (cur < amt) {
+      return res.status(400).json({
+        error:'재고 부족',
+        inventory: { water: curWater, fertilizer: curFerti }
+      });
+    }
+
+    // 차감 및 저장
+    if (type === 'water') user.water = curWater - amt;
+    else user.fertilizer = curFerti - amt;
+    await user.save();
+
+    return res.json({
+      ok:true,
+      inventory: { water: Number(user.water ?? 0), fertilizer: Number(user.fertilizer ?? 0) }
+    });
+  } catch (e) {
+    console.error('inventory/use error:', e);
+    res.status(500).json({ error:'server error' });
   }
 });
 
