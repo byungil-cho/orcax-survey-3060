@@ -256,7 +256,7 @@
   }
 
   // 배경: 게이지/시간대 기반 (모바일은 a_ 접두 자동)
-  function pickBg(){
+ function pickBg(){
     const g = S.g|0;
     let file = 'farm_05.png';
     if(g<=29) file='farm_05.png';
@@ -264,6 +264,31 @@
     else if(g<=79) file='farm_09.png';
     else if(g<=94) file='farm_10.png';
     else file='farm_12.png';
+
+    const basePath = 'img/';
+    const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+    let bgPath = basePath + file;
+
+    if(isMobile){
+        const aFile = 'a_' + file;
+        const aPath = basePath + aFile;
+        // a_ 이미지 존재 여부 확인 후 교체
+        fetch(aPath, {method: 'HEAD'})
+            .then(res => {
+                if(res.ok) {
+                    document.getElementById('bg').style.backgroundImage = `url(${aPath})`;
+                } else {
+                    document.getElementById('bg').style.backgroundImage = `url(${bgPath})`;
+                }
+            })
+            .catch(() => {
+                document.getElementById('bg').style.backgroundImage = `url(${bgPath})`;
+            });
+    } else {
+        document.getElementById('bg').style.backgroundImage = `url(${bgPath})`;
+    }
+}
+
 
     // 시간대 오버레이 효과(간단): 저녁/밤엔 어두운 컷 선호 시 여기에 파일 바꾸는 룰 추가 가능
     return img(file);
