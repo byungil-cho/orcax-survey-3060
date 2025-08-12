@@ -1,9 +1,8 @@
 /* js/corn-api.js
    - 카카오 연동 → Mongo 서버 연동(ngrok) → 자원/레벨/게이지/등급/팝콘 로직
-   - 배경 자동 교체 + 미니 성장 이미지
+   - 배경 자동 교체 + 미니 성장 이미지 (모바일 a_ 접두 자동 시도)
    - 팝콘↔거름 1:1 교환(간단거래)
 */
-
 (function(){
   'use strict';
 
@@ -14,11 +13,18 @@
   const toastEl = $('toast');
   function toast(msg){ toastEl.textContent = msg; toastEl.classList.add('show'); setTimeout(()=>toastEl.classList.remove('show'),1400); }
 
-  // 이미지 경로 규칙: 항상 img/파일명, 모바일은 a_ 접두(존재할 때만)
-  function img(file){
-    // 파일이 a_ 시리즈로 존재한다는 전제 하에 모바일은 a_ 접두 사용
-    return `img/${isMobile()? ('a_'+file) : file}`;
+  // 이미지 경로 규칙: 항상 img/파일명, 모바일은 a_ 접두 존재 시 우선
+  const pathBase   = file => `img/${file}`;
+  const pathMobile = file => `img/a_${file}`;
+  function preferMobile(file, cb){
+    if(!isMobile()){ cb(pathBase(file)); return; }
+    const aPath = pathMobile(file);
+    const test = new Image();
+    test.onload  = ()=>cb(aPath);
+    test.onerror = ()=>cb(pathBase(file));
+    test.src = aPath;
   }
+  function setImg(el, file){ preferMobile(file, p=>{ el.src = p; }); }
 
   // 상태(로컬 보조 저장)
   const S = Object.assign({
@@ -30,7 +36,6 @@
     // 인벤토리
     water:0, fertilizer:0, corn:0, popcorn:0, salt:0, sugar:0, orcx:0
   }, safeParse(localStorage.getItem('corn_state')) || {});
-
   function save(){ try{ localStorage.setItem('corn_state', JSON.stringify(S)); }catch(e){} }
   function safeParse(j){ try{ return JSON.parse(j); }catch(e){ return null; } }
 
@@ -57,7 +62,7 @@
     if(!kakaoId || !nickname){
       dom.netDot.classList.remove('ok');
       dom.netTxt.textContent = '로그인 필요';
-      alert('로그인이 필요합니다. (감자 농장/메인에서 로그인)');
+      alert('로그인이 필요합니다. (메인/감자농장에서 로그인)');
       return true;
     }
     return false;
@@ -158,14 +163,14 @@
   async function harvest(){
     if(needLogin()) return;
     if(!(S.phase==='GROW' && S.g>=100)){ toast('아직 수확 단계가 아닙니다'); return; }
-    // 연속일(가정: 서버에 누적/반환 존재하면 사용, 없으면 로컬 S.workStreak++)
+    // 연속일(서버가 주면 대체, 없으면 로컬 누적)
     S.workStreak = (S.workStreak|0) + 1;
     const grade = gradeFromStreak(S.workStreak);
     try{
       const res = await j('/api/corn/harvest', { kakaoId, grade });
       const gain = (res?.gain ?? 0)|0;
       S.corn = (res?.agri?.corn ?? (S.corn + gain))|0;
-      S.gradeInv[grade] = (S.gradeInv[grade]|0) + (gain||1); // 수확 수량 기준으로 누적(미정이면 1)
+      S.gradeInv[grade] = (S.gradeInv[grade]|0) + (gain||1);
       S.phase='STUBBLE'; S.g=0; gainExp(12);
       await loadUser();
       toast(`수확 완료 · 등급 ${grade}`);
@@ -180,7 +185,7 @@
     }
   }
 
-  // 팝콘: 옥수수1 + 소금1 + 설탕1 (30토큰 소모) → 팝콘 결과(또는 토큰 보상) / 확률은 등급 영향
+  // 팝콘: 옥수수1 + 소금1 + 설탕1 + 30토큰 → 팝콘 또는 토큰 보상 (등급 확률 영향)
   function popcornChance(grade){
     return ({A:.9,B:.75,C:.6,D:.4,E:.2,F:.1})[grade] ?? .5;
   }
@@ -191,13 +196,11 @@
     if(S.salt<1 || S.sugar<1){ toast('소금/설탕이 부족합니다(1:1 필요)'); return; }
     if(S.orcx < 30){ toast('토큰이 부족합니다(30)'); return; }
 
-    // 최근 등급(없으면 C 가정)
     const lastGrade = (['A','B','C','D','E','F'].find(g=> (S.gradeInv[g]|0)>0) || 'C');
     const prob = popcornChance(lastGrade);
 
     try{
-      const res = await j('/api/corn/pop', { kakaoId, use:{salt:1,sugar:1}, tokenCost:30, grade:lastGrade });
-      // 서버 결과 반영(있으면): popcorn or token drop
+      await j('/api/corn/pop', { kakaoId, use:{salt:1,sugar:1}, tokenCost:30, grade:lastGrade });
       await loadUser();
       gainExp(2);
       toast('뻥튀기 처리(서버)');
@@ -219,11 +222,10 @@
     if(needLogin()) return;
     if(S.popcorn<1){ toast('팝콘이 부족합니다'); return; }
     try{
-      const res = await j('/api/corn/exchange', { kakaoId, from:'popcorn', to:'fertilizer', qty:1 });
+      await j('/api/corn/exchange', { kakaoId, from:'popcorn', to:'fertilizer', qty:1 });
       await loadUser();
       toast('팝콘→거름 교환(서버)');
     }catch(e){
-      // 폴백
       S.popcorn -= 1; S.fertilizer += 1; renderAll(); save();
       toast('팝콘→거름 교환(로컬)');
     }
@@ -255,50 +257,22 @@
     dom.expText.textContent = `${Math.max(0,Math.min(99,S.exp))}%`;
   }
 
-  // 배경: 게이지/시간대 기반 (모바일은 a_ 접두 자동)
- function pickBg(){
+  // 배경 파일명 결정(성장 게이지 기준)
+  function pickBgFile(){
     const g = S.g|0;
-    let file = 'farm_05.png';
-    if(g<=29) file='farm_05.png';
-    else if(g<=59) file='farm_07.png';
-    else if(g<=79) file='farm_09.png';
-    else if(g<=94) file='farm_10.png';
-    else file='farm_12.png';
-
-    const basePath = 'img/';
-    const isMobile = /Mobi|Android/i.test(navigator.userAgent);
-    let bgPath = basePath + file;
-
-    if(isMobile){
-        const aFile = 'a_' + file;
-        const aPath = basePath + aFile;
-        // a_ 이미지 존재 여부 확인 후 교체
-        fetch(aPath, {method: 'HEAD'})
-            .then(res => {
-                if(res.ok) {
-                    document.getElementById('bg').style.backgroundImage = `url(${aPath})`;
-                } else {
-                    document.getElementById('bg').style.backgroundImage = `url(${bgPath})`;
-                }
-            })
-            .catch(() => {
-                document.getElementById('bg').style.backgroundImage = `url(${bgPath})`;
-            });
-    } else {
-        document.getElementById('bg').style.backgroundImage = `url(${bgPath})`;
-    }
-}
-
-
-    // 시간대 오버레이 효과(간단): 저녁/밤엔 어두운 컷 선호 시 여기에 파일 바꾸는 룰 추가 가능
-    return img(file);
+    if(g<=29) return 'farm_05.png';
+    if(g<=59) return 'farm_07.png';
+    if(g<=79) return 'farm_09.png';
+    if(g<=94) return 'farm_10.png';
+    return 'farm_12.png';
   }
-
-  function applyBg(){ dom.bg.style.backgroundImage = `url('${pickBg()}')`; }
+  function applyBg(){
+    const file = pickBgFile();
+    preferMobile(file, p=>{ dom.bg.style.backgroundImage = `url('${p}')`; });
+  }
 
   function pickMini(){
     const g = S.g|0;
-    // 성장 스냅샷 (기존 리소스 사용)
     if(g<20) return {file:'corn_06_02.png', cap:'발아'};
     if(g<40) return {file:'corn_04_02.png', cap:'유묘'};
     if(g<60) return {file:'corn_02_02.png', cap:'생장'};
@@ -306,10 +280,9 @@
     if(g<95) return {file:'corn_03_03.png', cap:'이삭'};
     return {file:'corn_01_01.png', cap:'수확 직전'};
   }
-
   function renderMini(){
     const row = pickMini();
-    dom.miniImg.src = img(row.file);
+    setImg(dom.miniImg, row.file);
     dom.miniImg.alt = row.cap;
     dom.miniCap.textContent = row.cap;
   }
@@ -337,9 +310,9 @@
     dom.btnHarv.onclick  = harvest;
     dom.btnPop.onclick   = pop;
     dom.btnEx.onclick    = exchangePopToFert;
-    // 주기적 자연 성장/감쇠(선택): 5초마다 물/거름 상태로 g 조정할 때 사용 가능
-    setInterval(()=>{ if(S.phase==='GROW'){ /* 확장시 */ } }, 5000);
-    window.addEventListener('resize', ()=>{ applyBg(); renderMini(); }); // 모바일/PC 전환시 a_ 리소스 반영
+
+    // 창 크기/모바일 전환 시 리소스 다시 적용(a_ 폴백 포함)
+    window.addEventListener('resize', ()=>{ applyBg(); renderMini(); });
   }
 
   /* ====== 부팅 ====== */
