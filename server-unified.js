@@ -97,6 +97,9 @@ app.options('*', cors());
 
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// [ADD] Serve JS assets from /js (for game frontend loading from backend)
+app.use('/js', express.static(path.join(__dirname, 'js')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -131,7 +134,15 @@ app.use(session({
 // ====== 공통/헬스 ======
 app.get('/api/power-status', (req, res) => {
   const mongoReady = mongoose.connection.readyState === 1;
-  res.json({ status: mongoReady ? "정상" : "오류", mongo: mongoReady });
+  res.json({ status: mongoReady ? "정상" : "오류", mongo: mongoReady })
+
+// [ADD] CornTrade model: logs popcorn↔fertilizer exchanges
+const CornTrade = mongoose.models.CornTrade || mongoose.model('CornTrade', new mongoose.Schema({
+  kakaoId: { type: String, index: true },
+  type: { type: String, default: 'popcorn->fertilizer' },
+  qty: { type: Number, default: 1 },
+  createdAt: { type: Date, default: Date.now }
+}, { collection: 'corn_trades' }));
 });
 app.get('/api/ping', (req, res) => res.status(200).send('pong'));
 // 옥수수/프론트 헬스체크
@@ -620,6 +631,65 @@ app.post('/api/corn/pop', async (req, res) => {
     res.status(500).json({ error: 'server error' });
   }
 });
+// [ADD] 팝콘 ↔ 거름 1:1 교환 (기본: popcorn -> fertilizer)
+app.post('/api/corn/exchange', async (req, res) => {
+  try {
+    const { kakaoId, from='popcorn', to='fertilizer', qty=1 } = req.body || {};
+    const q = Number(qty) || 1;
+    if (!kakaoId) return res.status(400).json({ error: 'kakaoId 필요' });
+    if (!(q > 0)) return res.status(400).json({ error: '유효하지 않은 수량' });
+    if (!(from==='popcorn' && to==='fertilizer')) {
+      return res.status(400).json({ error: '현재는 popcorn→fertilizer만 지원' });
+    }
+
+    const user = await User.findOne({ kakaoId });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const corn = await ensureCornDoc(kakaoId);
+    if ((corn.popcorn || 0) < q) return res.status(400).json({ error: '팝콘 부족' });
+
+    // 거래 반영
+    corn.popcorn -= q;
+    user.fertilizer = (user.fertilizer || 0) + q;
+
+    await corn.save();
+    await user.save();
+
+    // 거래 로그
+    await CornTrade.create({ kakaoId, qty: q });
+
+    return res.json({
+      ok: true,
+      food: { popcorn: corn.popcorn || 0 },
+      inventory: { fertilizer: user.fertilizer || 0 }
+    });
+  } catch (e) {
+    console.error('exchange error', e);
+    return res.status(500).json({ error: 'server error' });
+  }
+});
+// [ADD] 유저 경험치/레벨 동기화(선택): 클라이언트가 레벨업 시 서버에도 반영
+app.post('/api/user/exp', async (req, res) => {
+  try {
+    const { kakaoId, expGain=0, level } = req.body || {};
+    if (!kakaoId) return res.status(400).json({ error: 'kakaoId 필요' });
+    const user = await User.findOne({ kakaoId });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // 단순 동기화: level이 클라이언트가 계산한 값보다 낮으면 올림
+    if (typeof level === 'number' && level > (user.level || 1)) user.level = level;
+    // exp는 저장 필드가 있다면 추가(없으면 무시)
+    if (typeof user.exp === 'number') user.exp += Number(expGain)||0;
+
+    await user.save();
+    return res.json({ ok: true, level: user.level || 1, exp: user.exp || 0 });
+  } catch (e) {
+    console.error('user/exp error', e);
+    return res.status(500).json({ error: 'server error' });
+  }
+});
+
+
 
 // ====== 서버 시작 ======
 const PORT = 3060;
