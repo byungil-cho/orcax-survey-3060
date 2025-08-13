@@ -131,29 +131,6 @@ app.use(session({
   store: MongoStore.create({ mongoUrl }),
 }));
 
-// [ADD] serve /js 정적 파일 (corn-api.js 로드용)
-const fs = require('fs');
-
-(function mountJs() {
-  const candidates = [
-    'js',        // 일반 폴더명
-    '제스',       // 한글 폴더로 쓰는 경우
-    'public/js',
-    'assets/js',
-    'frontend/js',
-    '프론트엔드/js'
-  ];
-  for (const rel of candidates) {
-    const abs = path.join(__dirname, rel);
-    if (fs.existsSync(abs)) {
-      app.use('/js', express.static(abs));
-      console.log('[static] /js ->', abs);
-      return;
-    }
-  }
-  console.warn('[static] /js mount 실패: 후보 폴더를 찾지 못했습니다.');
-})();
-
 // ====== 공통/헬스 ======
 app.get('/api/power-status', (req, res) => {
   const mongoReady = mongoose.connection.readyState === 1;
@@ -777,3 +754,4 @@ app.post('/api/corn/harvest', async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
+
