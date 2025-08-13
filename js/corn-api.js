@@ -7,7 +7,7 @@
   'use strict';
 
   /* ===== 환경 ===== */
-  const DEFAULT_API = 'http://localhost:3060';
+  const DEFAULT_API = 'https://climbing-wholly-grouper.jp.ngrok.io';
   const BASE_API = (localStorage.getItem('orcax:BASE_API') || DEFAULT_API).replace(/\/+$/,'');
   const isMobile = () => window.matchMedia('(max-width: 768px)').matches;
 
