@@ -133,7 +133,6 @@ app.use(session({
 
 // [ADD] serve /js 정적 파일 (corn-api.js 로드용)
 const fs = require('fs');
-const path = require('path');
 
 (function mountJs() {
   const candidates = [
