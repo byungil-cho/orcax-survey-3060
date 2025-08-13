@@ -7,7 +7,7 @@
   'use strict';
 
   /* ===== 환경 ===== */
-  const DEFAULT_API = 'https://climbing-wholly-grouper.jp.ngrok.io';
+  const DEFAULT_API = 'http://localhost:3060';
   const BASE_API = (localStorage.getItem('orcax:BASE_API') || DEFAULT_API).replace(/\/+$/,'');
   const isMobile = () => window.matchMedia('(max-width: 768px)').matches;
 
@@ -148,40 +148,8 @@
   function popcornChance(grade){ return ({A:.9,B:.75,C:.6,D:.4,E:.2,F:.1})[grade] ?? .5; }
 
   async function pop(){
-  if(needLogin()) return;
-  if(S.corn<1){ toast('옥수수 없음'); return; }
-  if(!(S.salt>=1 || S.sugar>=1)){ toast('첨가물(소금/설탕) 부족'); return; }
-
-  // 서버 규칙: 가능한 쪽 자동 선택
-  const pref = (S.salt>0) ? 'salt' : (S.sugar>0 ? 'sugar' : null);
-  const lastGrade = (['A','B','C','D','E','F'].find(g=> (S.gradeInv[g]|0)>0) || 'C');
-
-  try{
-    const res = await j('/api/corn/pop', { kakaoId, use: pref, grade: lastGrade });
-    // 서버 응답 반영
-    if(res.agri && typeof res.agri.corn === 'number')    S.corn    = res.agri.corn|0;
-    if(res.food && typeof res.food.popcorn === 'number') S.popcorn = res.food.popcorn|0;
-    if(res.additives){
-      if(typeof res.additives.salt  === 'number') S.salt  = res.additives.salt|0;
-      if(typeof res.additives.sugar === 'number') S.sugar = res.additives.sugar|0;
-    }
-    if(res.wallet && typeof res.wallet.orcx === 'number') S.orcx = res.wallet.orcx|0;
-
-    gainExp(2);
-    renderAll(); save();
-    toast(res.result === 'popcorn' ? '🍿 팝콘 획득' : '🪙 토큰 획득');
-  }catch(e){
-    // 오프라인/실패 시 로컬 시뮬
-    S.corn--;
-    if(S.salt>0) S.salt--; else if(S.sugar>0) S.sugar--;
-    // 60% 확률 팝콘(1~2), 40% 토큰(1/2/3/5)
-    if(Math.random() < 0.6){ S.popcorn += [1,2][Math.floor(Math.random()*2)]; }
-    else{ S.orcx += [1,2,3,5][Math.floor(Math.random()*4)]; }
-    gainExp(2);
-    renderAll(); save();
-    toast('오프라인 처리');
-  }
-}
+    if(needLogin()) return;
+    if(S.corn<1){ toast('옥수수 없음'); return; }
     if(S.salt<1 || S.sugar<1){ toast('소금/설탕 1:1 필요'); return; }
     if(S.orcx<30){ toast('토큰 30 필요'); return; }
     const lastGrade = (['A','B','C','D','E','F'].find(g=> (S.gradeInv[g]|0)>0) || 'C');
@@ -262,7 +230,7 @@
     dom.r.orcx .textContent=S.orcx|0;
 
     dom.btnHarv.disabled = !(S.phase==='GROW' && S.g>=100);
-    dom.btnPop.disabled = !(S.corn>=1 && (S.salt>=1 || S.sugar>=1));
+    dom.btnPop .disabled = !(S.corn>=1 && S.salt>=1 && S.sugar>=1 && S.orcx>=30);
   }
 
   function renderGauge(){
