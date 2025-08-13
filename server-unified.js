@@ -696,3 +696,61 @@ const PORT = 3060;
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
 });
+
+
+
+// ===== C O R N   A P I   R O U T E S =====
+
+// Get user corn data
+app.get('/api/corn/userdata', async (req, res) => {
+  try {
+    const userId = req.user && req.user.id ? req.user.id : null;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const data = await db.collection('corn').findOne({ userId });
+    res.json(data || {});
+  } catch (err) {
+    console.error('Error fetching corn userdata:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Plant corn
+app.post('/api/corn/plant', async (req, res) => {
+  try {
+    const userId = req.user && req.user.id ? req.user.id : null;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { fieldId, seedType } = req.body;
+    const update = { $set: { [`fields.${fieldId}`]: { seedType, plantedAt: new Date() } } };
+    await db.collection('corn').updateOne({ userId }, update, { upsert: true });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error planting corn:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Harvest corn
+app.post('/api/corn/harvest', async (req, res) => {
+  try {
+    const userId = req.user && req.user.id ? req.user.id : null;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { fieldId } = req.body;
+    const userData = await db.collection('corn').findOne({ userId });
+    if (!userData || !userData.fields || !userData.fields[fieldId]) {
+      return res.status(400).json({ error: 'No crop to harvest' });
+    }
+
+    const harvested = userData.fields[fieldId];
+    const update = { $unset: { [`fields.${fieldId}`]: "" } };
+    await db.collection('corn').updateOne({ userId }, update);
+
+    res.json({ success: true, harvested });
+  } catch (err) {
+    console.error('Error harvesting corn:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
