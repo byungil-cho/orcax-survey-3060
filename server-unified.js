@@ -172,12 +172,14 @@ app.get('/api/userdata/all', async (req, res) => {
       kakaoId: u.kakaoId,
       isConnected: true,
       orcx: Number(u.orcx || 0),
-      water: Number(u.water ?? u.resources?.water ?? u.inventory?.water || 0),
-      fertilizer: Number(u.fertilizer ?? u.resources?.fertilizer ?? u.inventory?.fertilizer || 0),
-      potatoCount: Number(u.storage?.gamja ?? u.potato || 0),
-      barleyCount: Number(u.storage?.bori  ?? u.barley || 0),
-      seedPotato: Number(u.seedPotato ?? u.seed?.potato ?? u.inventory?.seedPotato || 0),
-      seedBarley: Number(u.seedBarley ?? u.seed?.barley  ?? u.inventory?.seedBarley || 0),
+      // ⬇⬇⬇ [FIX] ?? + || 혼용 제거 → 전부 ?? 0 (0 유효값 유지)
+      water: Number(u.water ?? u.resources?.water ?? u.inventory?.water ?? 0),
+      fertilizer: Number(u.fertilizer ?? u.resources?.fertilizer ?? u.inventory?.fertilizer ?? 0),
+      potatoCount: Number(u.storage?.gamja ?? u.potato ?? 0),
+      barleyCount: Number(u.storage?.bori  ?? u.barley ?? 0),
+      seedPotato: Number(u.seedPotato ?? u.seed?.potato ?? u.inventory?.seedPotato ?? 0),
+      seedBarley: Number(u.seedBarley ?? u.seed?.barley  ?? u.inventory?.seedBarley ?? 0),
+      // ⬆⬆⬆
     }));
     res.json(list);
   } catch {
@@ -442,7 +444,7 @@ app.post('/api/corn/plant', async (req, res) => {
 app.post('/api/corn/harvest', async (req, res) => {
   try {
     const { kakaoId } = req.body || {};
-    if (!kakaoId) return res.status(400).json({ error: 'kakaoId 필요' });
+    if (!kakaoId) return res.status(400).json({ error: 'কkakaoId 필요' });
 
     const CornData = mongoose.models.CornData || mongoose.model('CornData');
     const corn = await CornData.findOne({ kakaoId }) || await CornData.create({ kakaoId });
