@@ -136,3 +136,31 @@ module.exports = function makeCornRouter(db) {
 
   return router;
 };
+
+
+/* ===== [ADD][SAFE] client-side path normalizer for BASE_API & fetch ===== */
+(function () {
+  try {
+    // 1) BASE_API를 '/api' 1회 붙은 형태로 정규화
+    var raw = localStorage.getItem('orcax:BASE_API');
+    if (raw) {
+      var trimmed = String(raw).replace(/\/+$/,'');          // 끝 슬래시 제거
+      var baseNoApi = trimmed.replace(/\/api\/?$/i,'');      // 뒤의 /api 제거
+      var normalized = baseNoApi + '/api';                   // 단 한 번만 /api 부착
+      if (normalized !== raw) {
+        localStorage.setItem('orcax:BASE_API', normalized);
+      }
+    }
+
+    // 2) 혹시 코드 어딘가에서 '/api/api/' 를 만들면 자동 교정
+    var __fetch = window.fetch;
+    window.fetch = function (url, opts) {
+      if (typeof url === 'string') {
+        url = url.replace(/\/api\/api\//gi, '/api/');        // 중복 api 제거
+      }
+      return __fetch.call(this, url, opts);
+    };
+  } catch (e) {
+    // no-op
+  }
+})();
