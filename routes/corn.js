@@ -17,68 +17,66 @@ module.exports = function makeCornRouter(db) {
     return base;
   }
 
-  // === 1) 요약 (프론트가 처음 불러오는 엔드포인트) ===
-  async function summaryHandler(req, res) {
-    try{
-      const { kakaoId } = req.body || {};
-      if (!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
-
-      const [u, c] = await Promise.all([ getUser(kakaoId), ensureCorn(kakaoId) ]);
-      if (!u) return res.status(404).json({ ok:false, error:'user not found' });
-
-      const user = {
-        kakaoId,
-        nickname: u.nickname,
-        level: n(u.level),
-        profile: { exp: n(u.exp) },
-        wallet: { orcx: n(u.orcx) },
-        inventory: { water: n(u.water), fertilizer: n(u.fertilizer) },
-        additives: { salt: n(c.additives?.salt), sugar: n(c.additives?.sugar) },
-        seeds: n(c.seeds),
-        agri: {
-          corn: n(c.corn),
-          popcorn: n(c.popcorn),
-          phase: c.phase || 'IDLE',
-          g: n(c.g),
-          gradeInv: c.gradeInv || {}
-        }
-      };
-      res.json({ ok:true, user });
-    }catch(e){ res.status(500).json({ ok:false, error:String(e) }); }
+  async function summaryHandler(req, res){
+    const { kakaoId } = req.body || req.query || {};
+    if (!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
+    const [u, c] = await Promise.all([ getUser(kakaoId), ensureCorn(kakaoId) ]);
+    return res.json({
+      ok:true,
+      wallet: { orcx: n(u?.orcx) },
+      agri: { corn: n(c?.corn), seeds: n(c?.seeds) },
+      food: { popcorn: n(c?.popcorn) },
+      additives: { salt: n(c?.additives?.salt), sugar: n(c?.additives?.sugar) },
+      phase: c?.phase || 'IDLE',
+      g: n(c?.g),
+      gradeInv: c?.gradeInv || {}
+    });
   }
 
-  router.post('/summary', summaryHandler);
-  // 프론트가 여러 후보를 때리니 전부 같은 핸들러로 연결
-  router.post('/data',    summaryHandler);
-  router.post('/status',  summaryHandler);
-  router.post('/get',     summaryHandler);
+  // === 1) 상태 조회 ===
+  router.get('/summary', summaryHandler);
 
-  // === 2) 씨앗: 구매/심기 ===
-  // op:'buy'  -> users.orcx 차감 + corn_data.seeds 증가
-  // op:'plant'-> corn_data.seeds 감소 + phase/g 초기화
-  router.post('/seed', async (req, res) => {
+  // === 2) 씨앗 구매 ===
+  router.post('/buy-seed', async (req, res) => {
     try{
-      const { kakaoId, op, seed='corn', qty=1, tokenCost=100 } = req.body || {};
-      if (!kakaoId || !op) return res.status(400).json({ ok:false, error:'kakaoId/op required' });
+      const { kakaoId, qty=1, price=30 } = req.body || {};
+      if (!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
+      const need = Math.max(1, Number(qty)) * Math.max(1, Number(price));
+      const u = await getUser(kakaoId);
+      if (n(u.orcx) < need) return res.status(400).json({ ok:false, error:'not enough token' });
 
-      const [u, c] = await Promise.all([ getUser(kakaoId), ensureCorn(kakaoId) ]);
-      if (!u) return res.status(404).json({ ok:false, error:'user not found' });
-
-      if (op === 'buy'){
-        if (n(u.orcx) < tokenCost) return res.status(400).json({ ok:false, error:'not enough token' });
-        await Users.updateOne({ kakaoId }, { $inc:{ orcx: -tokenCost } });
-        await Corn.updateOne({ kakaoId }, { $inc:{ seeds: qty } });
-      } else if (op === 'plant'){
-        if (n(c.seeds) < qty) return res.status(400).json({ ok:false, error:'no seeds' });
-        await Corn.updateOne({ kakaoId }, { $inc:{ seeds: -qty }, $set:{ phase:'GROW', g:0 } });
-      } else {
-        return res.status(400).json({ ok:false, error:'unknown op' });
-      }
+      await Users.updateOne({ kakaoId }, { $inc:{ orcx: -need } });
+      const c = await ensureCorn(kakaoId);
+      await Corn.updateOne({ kakaoId }, { $inc:{ seeds: +Math.max(1, Number(qty)) } });
       return summaryHandler(req, res);
     }catch(e){ res.status(500).json({ ok:false, error:String(e) }); }
   });
 
-  // === 3) 수확 ===
+  // === 3) 심기/성장/수확 ===
+  router.post('/plant', async (req, res) => {
+    try{
+      const { kakaoId, grade='C' } = req.body || {};
+      if (!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
+
+      const c = await ensureCorn(kakaoId);
+      if (n(c.seeds) < 1) return res.status(400).json({ ok:false, error:'no seed' });
+      await Corn.updateOne({ kakaoId }, { $inc:{ seeds:-1 }, $set:{ phase:'GROW', g:0 } });
+      return summaryHandler(req, res);
+    }catch(e){ res.status(500).json({ ok:false, error:String(e) }); }
+  });
+
+  router.post('/grow', async (req, res) => {
+    try{
+      const { kakaoId, step=5 } = req.body || {};
+      if (!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
+      const c = await ensureCorn(kakaoId);
+      if (c.phase !== 'GROW') return res.status(400).json({ ok:false, error:'not growing' });
+      const next = Math.min(100, n(c.g) + Math.max(1, Number(step)));
+      await Corn.updateOne({ kakaoId }, { $set:{ g: next }});
+      return summaryHandler(req, res);
+    }catch(e){ res.status(500).json({ ok:false, error:String(e) }); }
+  });
+
   router.post('/harvest', async (req, res) => {
     try{
       const { kakaoId, grade='C' } = req.body || {};
@@ -119,8 +117,8 @@ module.exports = function makeCornRouter(db) {
     }catch(e){ res.status(500).json({ ok:false, error:String(e) }); }
   });
 
-  // === 5) 팝콘 -> 거름 교환 ===
-  router.post('/exchange/pop-to-fert', async (req, res) => {
+  // === 5) 팝콘 → 거름 1:1 교환 ===
+  router.post('/exchange', async (req, res) => {
     try{
       const { kakaoId, qty=1 } = req.body || {};
       if (!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
