@@ -61,7 +61,7 @@ const processingRoutes = require('./routes/processing');
 const marketdataRoutes = require('./routes/marketdata');
 const marketRoutes = require('./routes/marketdata');
 const seedPriceRoutes = require('./routes/seed-price');
-// ⚠️ corn 라우터는 DB 연결 이후 장착)
+// corn 라우터는 DB 연결 이후 장착
 
 // ====== 라우터 장착(기존) ======
 app.use('/api/factory', factoryRoutes);
@@ -104,7 +104,7 @@ app.get('/api/power-status', (req, res) => {
   res.json({ status: mongoReady ? "정상" : "오류", mongo: mongoReady });
 });
 
-// [GLOBAL] CornTrade model: logs popcorn↔fertilizer exchanges
+// [GLOBAL] CornTrade (팝콘↔비료 교환 로그)
 const CornTrade = mongoose.models.CornTrade || mongoose.model('CornTrade', new mongoose.Schema({
   kakaoId: { type: String, index: true },
   type: { type: String, default: 'popcorn->fertilizer' },
@@ -162,9 +162,7 @@ app.get('/api/user/profile/:nickname', async (req, res) => {
   }
 });
 
-// [ADD] /api/userdata (감자 대시보드가 호출하는 구버전 호환 엔드포인트)
-// - query 또는 body로 kakaoId 또는 nickname을 받습니다.
-// - 대시보드가 기대하는 키 이름까지 포함해서 반환합니다.
+// ====== [FIXED] 구버전 호환 /api/userdata (필드 명칭/경로 통합) ======
 app.all('/api/userdata', async (req, res) => {
   try {
     const kakaoId = req.query.kakaoId || req.body?.kakaoId || null;
@@ -174,8 +172,8 @@ app.all('/api/userdata', async (req, res) => {
     if (kakaoId) user = await User.findOne({ kakaoId });
     else if (nickname) user = await User.findOne({ nickname });
 
+    // 없을 때도 동일 구조 보장
     if (!user) {
-      // 없을 때도 구조 유지
       return res.json({
         success: true,
         kakaoId: kakaoId || null,
@@ -188,28 +186,28 @@ app.all('/api/userdata', async (req, res) => {
       });
     }
 
-    const potato = user.storage?.gamja || 0;
-    const barley = user.storage?.bori || 0;
+    // ── 다양한 과거 스키마 경로를 모두 흡수해서 숫자로 통일 ──
+    const water = n(user.water ?? user.resources?.water ?? user.inventory?.water ?? 0);
+    const fertilizer = n(user.fertilizer ?? user.resources?.fertilizer ?? user.inventory?.fertilizer ?? 0);
+    const seedPotato = n(user.seedPotato ?? user.seed?.potato ?? user.inventory?.seedPotato ?? 0);
+    const seedBarley = n(user.seedBarley ?? user.seed?.barley ?? user.inventory?.seedBarley ?? 0);
+    const potato = n(user.storage?.gamja ?? user.potato ?? 0);
+    const barley = n(user.storage?.bori ?? user.barley ?? 0);
+    const orcx = n(user.orcx);
 
     return res.json({
       success: true,
-      kakaoId: user.kakaoId || kakaoId || null,
-      nickname: user.nickname || nickname || null,
-      orcx: user.orcx || 0,
-      water: user.water || 0,
-      fertilizer: user.fertilizer || 0,
+      kakaoId: user.kakaoId ?? kakaoId ?? null,
+      nickname: user.nickname ?? nickname ?? null,
+      orcx, water, fertilizer,
       potato, barley,
-      seedPotato: user.seedPotato || 0,
-      seedBarley: user.seedBarley || 0,
+      seedPotato, seedBarley,
+      // 과거 프론트 호환용 중첩 키도 같이 제공
       storage: { gamja: potato, bori: barley },
       user: {
-        kakaoId: user.kakaoId || null,
-        nickname: user.nickname || null,
-        orcx: user.orcx || 0,
-        water: user.water || 0,
-        fertilizer: user.fertilizer || 0,
-        seedPotato: user.seedPotato || 0,
-        seedBarley: user.seedBarley || 0,
+        kakaoId: user.kakaoId ?? null,
+        nickname: user.nickname ?? null,
+        orcx, water, fertilizer, seedPotato, seedBarley,
         storage: { gamja: potato, bori: barley }
       }
     });
@@ -265,7 +263,7 @@ app.patch('/api/corn/priceboard', async (req, res) => {
   }
 });
 
-// ====== (신규) 옥수수: 구매/심기/수확/뻥튀기 ======
+// ====== 옥수수: 구매/심기/수확/뻥튀기 & 교환 ======
 app.post('/api/corn/buy-additive', async (req, res) => {
   try {
     const { kakaoId, item, qty } = req.body || {};
@@ -302,7 +300,6 @@ app.post('/api/corn/buy-additive', async (req, res) => {
   }
 });
 
-// [ADD] 팝콘 ↔ 거름 1:1 교환 (기본: popcorn -> fertilizer)
 app.post('/api/corn/exchange', async (req, res) => {
   try {
     const { kakaoId, qty: rawQty, dir } = req.body || {};
@@ -315,7 +312,6 @@ app.post('/api/corn/exchange', async (req, res) => {
     const corn = await CornData.findOne({ kakaoId });
     if (!corn) return res.status(404).json({ error: 'corn not found' });
 
-    // 기본 경로: 팝콘 -> 거름
     if (dir === 'fertilizer->popcorn') {
       if (n(user.fertilizer) < qty) return res.status(400).json({ error: 'no fertilizer' });
       user.fertilizer = (user.fertilizer || 0) - qty;
@@ -338,8 +334,6 @@ app.post('/api/corn/exchange', async (req, res) => {
     res.status(500).json({ error: 'server error' });
   }
 });
-
-// (이하 기존 감자/보리/시장 등 라우트들 그대로 유지)
 
 // ====== 서버 시작 ======
 const PORT = process.env.PORT || 3060;
