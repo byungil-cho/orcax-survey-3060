@@ -61,7 +61,7 @@ const processingRoutes = require('./routes/processing');
 const marketdataRoutes = require('./routes/marketdata');
 const marketRoutes = require('./routes/marketdata');
 const seedPriceRoutes = require('./routes/seed-price');
-// ⚠️ 변경) corn 라우터는 DB 연결 이후 장착
+// ⚠️ corn 라우터는 DB 연결 이후 장착)
 
 // ====== 라우터 장착(기존) ======
 app.use('/api/factory', factoryRoutes);
@@ -76,7 +76,6 @@ app.use('/api/market', marketRoutes);
 app.use('/api/init-user', initUserRoutes);
 app.use('/api/login', loginRoutes);
 app.use('/api/seed', seedPriceRoutes);
-// (⚠️ 변경) 여기서 corn 라우터를 장착하지 않음
 
 // ====== Mongo 연결 ======
 const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017/farmgame';
@@ -160,6 +159,62 @@ app.get('/api/user/profile/:nickname', async (req, res) => {
     });
   } catch (e) {
     res.status(500).json({ error: "서버 오류" });
+  }
+});
+
+// [ADD] /api/userdata (감자 대시보드가 호출하는 구버전 호환 엔드포인트)
+// - query 또는 body로 kakaoId 또는 nickname을 받습니다.
+// - 대시보드가 기대하는 키 이름까지 포함해서 반환합니다.
+app.all('/api/userdata', async (req, res) => {
+  try {
+    const kakaoId = req.query.kakaoId || req.body?.kakaoId || null;
+    const nickname = req.query.nickname || req.body?.nickname || null;
+
+    let user = null;
+    if (kakaoId) user = await User.findOne({ kakaoId });
+    else if (nickname) user = await User.findOne({ nickname });
+
+    if (!user) {
+      // 없을 때도 구조 유지
+      return res.json({
+        success: true,
+        kakaoId: kakaoId || null,
+        nickname: nickname || null,
+        orcx: 0, water: 0, fertilizer: 0,
+        potato: 0, barley: 0,
+        seedPotato: 0, seedBarley: 0,
+        storage: { gamja: 0, bori: 0 },
+        user: { orcx: 0, water: 0, fertilizer: 0, seedPotato: 0, seedBarley: 0, storage: { gamja: 0, bori: 0 } }
+      });
+    }
+
+    const potato = user.storage?.gamja || 0;
+    const barley = user.storage?.bori || 0;
+
+    return res.json({
+      success: true,
+      kakaoId: user.kakaoId || kakaoId || null,
+      nickname: user.nickname || nickname || null,
+      orcx: user.orcx || 0,
+      water: user.water || 0,
+      fertilizer: user.fertilizer || 0,
+      potato, barley,
+      seedPotato: user.seedPotato || 0,
+      seedBarley: user.seedBarley || 0,
+      storage: { gamja: potato, bori: barley },
+      user: {
+        kakaoId: user.kakaoId || null,
+        nickname: user.nickname || null,
+        orcx: user.orcx || 0,
+        water: user.water || 0,
+        fertilizer: user.fertilizer || 0,
+        seedPotato: user.seedPotato || 0,
+        seedBarley: user.seedBarley || 0,
+        storage: { gamja: potato, bori: barley }
+      }
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'server error' });
   }
 });
 
