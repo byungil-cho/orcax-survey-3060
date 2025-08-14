@@ -42,6 +42,7 @@ const processingRoutes = require('./routes/processing');
 const marketdataRoutes = require('./routes/marketdata');
 const marketRoutes = require('./routes/marketdata');
 const seedPriceRoutes = require('./routes/seed-price');
+const cornRouter = require('./routes/corn')(db);
 
 // ====== (신규) 옥수수 전용 컬렉션 ======
 const CornData = mongoose.models.CornData || mongoose.model('CornData', new mongoose.Schema({
@@ -116,6 +117,7 @@ app.use('/api/market', marketRoutes);
 app.use('/api/init-user', initUserRoutes);
 app.use('/api/login', loginRoutes);
 app.use('/api/seed', seedPriceRoutes);
+app.use('/api/corn', cornRouter);
 
 // ====== Mongo 연결 ======
 const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017/farmgame';
