@@ -619,10 +619,13 @@ app.post('/api/corn/pop', async (req, res) => {
     await user.save();
     await corn.save();
 
-    res.json({
+        res.json({
       result, qty,
       wallet: { orcx: user.orcx || 0 },
       foo
+    });
+  } // ← 함수 블록 닫기
+
 // [ADD] helpers for corn summary
 const __n = v => (typeof v === 'number' && Number.isFinite(v)) ? v : Number(v || 0) || 0;
 async function __ensureCornDoc(kakaoId) {
@@ -632,7 +635,6 @@ async function __ensureCornDoc(kakaoId) {
   doc.corn = __n(doc.corn); doc.popcorn = __n(doc.popcorn); doc.seeds = __n(doc.seeds);
   return doc;
 }
-
 // [ADD] GET /api/corn/summary - 한 번에 옥수수/첨가물/팝콘 + 기본 자원 제공
 app.get('/api/corn/summary', async (req, res) => {
   try {
