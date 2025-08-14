@@ -624,9 +624,7 @@ app.post('/api/corn/pop', async (req, res) => {
       wallet: { orcx: user.orcx || 0 },
       foo
     });
-  } // ← 함수 블록 닫기
-
-// [ADD] helpers for corn summary
+ // [ADD] helpers for corn summary
 const __n = v => (typeof v === 'number' && Number.isFinite(v)) ? v : Number(v || 0) || 0;
 async function __ensureCornDoc(kakaoId) {
   let doc = await (mongoose.models.CornData || mongoose.model('CornData')).findOne({ kakaoId });
