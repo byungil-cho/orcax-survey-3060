@@ -1,81 +1,60 @@
-/**
- * buy-routes.js
- * - 프런트에서 /api/store/buy -> /api/shop/buy -> /api/buy 순으로 폴백 호출
- * - 여기서는 세 경로를 모두 받는다 (충돌 없이 추가만)
- * - 기존 서버 유틸(getUser, saveUser) 주입 방식으로 안전 장착
- */
-module.exports = function(app, deps = {}) {
-  const getUser = deps.getUser || dummyGetUser;
-  const saveUser = deps.saveUser || dummySaveUser;
+// server-unified.js
 
-  // 가격표
-  const PRICES = { seed:100, salt:10, sugar:20 };
+const express = require('express');
+const cors = require('cors');
+const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
+const session = require('express-session');
+require('dotenv').config();
 
-  // 내부 처리
-  async function applyPurchase(user, items){
-    const seed  = Number(items.seed  || 0);
-    const salt  = Number(items.salt  || 0);
-    const sugar = Number(items.sugar || 0);
+const app = express();
+const PORT = process.env.PORT || 3060;
 
-    const total = (seed*PRICES.seed) + (salt*PRICES.salt) + (sugar*PRICES.sugar);
-    if(total <= 0){
-      return { ok:false, reason:'EMPTY' };
-    }
-    if((user.token ?? 0) < total){
-      return { ok:false, reason:'NOT_ENOUGH_TOKEN' };
-    }
+// 미들웨어
+app.use(cors());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(session({
+    secret: 'orcax_secret',
+    resave: false,
+    saveUninitialized: true
+}));
 
-    user.token -= total;
-    user.inventory = user.inventory || {};
-    user.inventory.seed  = (user.inventory.seed  || 0) + seed;
-    user.inventory.salt  = (user.inventory.salt  || 0) + salt;
-    user.inventory.sugar = (user.inventory.sugar || 0) + sugar;
+// MongoDB 연결
+mongoose.connect(process.env.MONGODB_URL, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+}).then(() => console.log('✅ MongoDB 연결 성공'))
+  .catch(err => console.error('❌ MongoDB 연결 실패:', err));
 
-    await saveUser(user);
-    return { ok:true, token:user.token, inventory:user.inventory };
-  }
+// API 라우트 불러오기
+const loginRoutes = require('./api/login');
+const farmRoutes = require('./api/farm');
+const marketRoutes = require('./api/market');
+const processingRoutes = require('./api/processing');
+const purchaseRoutes = require('./api/purchase');
+const seedBankRoutes = require('./api/seedBank');
 
-  async function handler(req, res){
-    try{
-      const uid = (req.user && (req.user.id || req.user._id)) || req.body.userId || 'guest';
-      const user = await getUser(uid);
-      if(!user) return res.status(401).json({ ok:false, reason:'NO_USER' });
+// 🔹 추가: buy-routes.js 연결
+const buyRoutes = require('./routes/buy-routes');
 
-      const items = req.body.items || {};
-      const result = await applyPurchase(user, items);
-      if(!result.ok){
-        if(result.reason === 'NOT_ENOUGH_TOKEN') return res.status(400).json(result);
-        return res.status(400).json(result);
-      }
+// 라우터 적용
+app.use('/api/login', loginRoutes);
+app.use('/api/farm', farmRoutes);
+app.use('/api/market', marketRoutes);
+app.use('/api/processing', processingRoutes);
+app.use('/api/purchase', purchaseRoutes);
+app.use('/api/seedBank', seedBankRoutes);
 
-      // 프런트에서 바로 상단 바 갱신이 가능하도록 최소 요약 포함
-      const summary = {
-        ok:true,
-        token: result.token,
-        inventory: result.inventory,
-      };
-      return res.json(summary);
-    }catch(e){
-      console.error('[BUY]', e);
-      res.status(500).json({ ok:false, reason:'SERVER', detail:String(e) });
-    }
-  }
+// 🔹 buy-routes.js API 엔드포인트 적용
+app.use('/api/buy', buyRoutes);
 
-  // 세 경로 모두 지원(기존 프론트 어떤 걸 쓰더라도 404 안 나게)
-  app.post('/api/store/buy', handler);
-  app.post('/api/shop/buy', handler);
-  app.post('/api/buy',       handler);
-};
+// 서버 상태 체크
+app.get('/', (req, res) => {
+    res.send({ status: 'OK', db: mongoose.connection.readyState === 1 });
+});
 
-/* ====== 스텁 (getUser/saveUser가 없을 때 임시 보관용) ====== */
-/* 실제 프로젝트에서는 DB에서 불러오고 저장하세요. */
-const _mem = new Map();
-async function dummyGetUser(uid){
-  if(!_mem.has(uid)){
-    _mem.set(uid, { id:uid, token: 52000, inventory: { seed:0, salt:0, sugar:0 } });
-  }
-  return _mem.get(uid);
-}
-async function dummySaveUser(user){
-  _mem.set(user.id || user._id || 'guest', user);
-}
+// 서버 시작
+app.listen(PORT, () => {
+    console.log(`🚀 Server is running on port ${PORT}`);
+});
