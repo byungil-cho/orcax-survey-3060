@@ -43,6 +43,9 @@ const marketdataRoutes = require('./routes/marketdata');
 const marketRoutes = require('./routes/marketdata');
 const seedPriceRoutes = require('./routes/seed-price');
 
+const buyRoutes = require('./buy-routes');
+buyRoutes(app, { getUser, saveUser });
+
 // ====== (신규) 옥수수 전용 컬렉션 ======
 const CornData = mongoose.models.CornData || mongoose.model('CornData', new mongoose.Schema({
   kakaoId: { type: String, index: true, unique: true },
@@ -837,3 +840,4 @@ if (!app.locals.__orcax_added_corn_grow) {
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
 });
+
