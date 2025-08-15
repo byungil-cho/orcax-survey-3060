@@ -1,53 +1,19 @@
 // public/js/corn.js
-(function () {
+(function(){
   const BASE = '/api/corn';
 
-  async function req(url, opt) {
-    const res = await fetch(url, {
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      ...opt,
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
+  async function req(url, opt){
+    const res = await fetch(url, { headers:{'Content-Type':'application/json'}, credentials:'include', ...opt });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok || data.ok===false) throw new Error(data.error || `HTTP ${res.status}`);
     return data;
   }
 
-  async function upsert(kakaoId, nickname = '') {
-    return req(`${BASE}/upsert`, {
-      method: 'POST',
-      body: JSON.stringify({ kakaoId, nickname }),
-    });
-  }
+  const upsert  = (kakaoId, nickname='') => req(`${BASE}/upsert`, { method:'POST', body:JSON.stringify({ kakaoId, nickname }) });
+  const status  = (kakaoId) => req(`${BASE}/status?`+new URLSearchParams({ kakaoId }));
+  const overview= (kakaoId) => req(`${BASE}/overview?`+new URLSearchParams({ kakaoId }));
+  const update  = (kakaoId, { inc={}, set={} }={}) => req(`${BASE}/update`, { method:'POST', body:JSON.stringify({ kakaoId, inc, set }) });
+  const resetAdditives = (kakaoId) => req(`${BASE}/reset-additives`, { method:'POST', body:JSON.stringify({ kakaoId }) });
 
-  async function status(kakaoId) {
-    const q = new URLSearchParams({ kakaoId }).toString();
-    return req(`${BASE}/status?${q}`);
-  }
-
-  async function overview(kakaoId) {
-    const q = new URLSearchParams({ kakaoId }).toString();
-    return req(`${BASE}/overview?${q}`);
-  }
-
-  // inc: { 'seedCorn': 1, 'additives.salt': -1, 'corn': 3 }
-  // set: { nickname: '고래잡이선장' } (옵션)
-  async function update(kakaoId, { inc = {}, set = {} } = {}) {
-    return req(`${BASE}/update`, {
-      method: 'POST',
-      body: JSON.stringify({ kakaoId, inc, set }),
-    });
-  }
-
-  async function resetAdditives(kakaoId) {
-    return req(`${BASE}/reset-additives`, {
-      method: 'POST',
-      body: JSON.stringify({ kakaoId }),
-    });
-  }
-
-  // 전역 노출 (기존 코드 건드리지 않고 필요할 때만 호출)
-  window.CornAPI = {
-    upsert, status, overview, update, resetAdditives
-  };
+  window.CornAPI = { upsert, status, overview, update, resetAdditives };
 })();
