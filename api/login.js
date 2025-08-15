@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 require('dotenv').config();
 
 const userdataRouter = require('./userdata'); // 브리지(아래 2번 파일)
-const User = require('./models/User');       // 주인님 기존 경로 유지
+const User = require('../models/User');       // 주인님 기존 경로 유지
 
 // 미들웨어 (라우터 한정)
 router.use(express.json());
