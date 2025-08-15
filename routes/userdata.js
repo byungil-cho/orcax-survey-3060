@@ -1,41 +1,106 @@
+// routes/processing.js
 const express = require('express');
 const router = express.Router();
 const User = require('../models/users');
+const userdata = require('../routes/userdata');
 
-router.post('/', async (req, res) => {
+// 1. 유저 인벤토리/제품 전체 반환
+router.post('/get-inventory', async (req, res) => {
   try {
-    // 프론트에서 body: { kakaoId }로 보내므로 반드시 kakaoId로 받을 것!
     const { kakaoId } = req.body;
-    if (!kakaoId) {
-      return res.json({ success: false, message: "no kakaoId" });
+    const user = await User.findOne({ kakaoId });
+    if(!user) return res.json({ success:false, message:'유저 없음' });
+    res.json({ 
+      success:true, 
+      user: {
+        nickname: user.nickname,
+        orcx: user.orcx,
+        water: user.water,
+        fertilizer: user.fertilizer,
+        seedPotato: user.seedPotato,
+        seedBarley: user.seedBarley,
+        storage: user.storage,
+        products: user.products || {}
+      }
+    });
+  } catch(e) {
+    res.json({ success:false, message:'DB 오류' });
+  }
+});
+
+// 2. 가공공장: 가공시도 전체 로그 및 조건별 콘솔 진입 추가!
+router.post('/make-product', async (req, res) => {
+  try {
+    console.log("🛠️ [가공시도 req.body]:", req.body); // 요청값 전체 출력
+
+    const { kakaoId, material, product } = req.body;
+
+    if(!kakaoId) { 
+      console.log("⛔ 카카오ID 없음");
+      return res.json({ success:false, message:'유저 없음' }); 
+    }
+
+    if(!product || product.length < 2) {
+      console.log("⛔ 제품명 오류:", product);
+      return res.json({ success:false, message:'제품명 오류' }); 
     }
 
     const user = await User.findOne({ kakaoId });
-    if (!user) {
-      return res.json({ success: false, message: "user not found" });
+    if(!user) {
+      console.log("⛔ DB에 유저 없음");
+      return res.json({ success:false, message:'유저 없음' });
     }
 
-    // 값 변환 및 반환: 감자와 1:1 구조 동일
-    res.json({
-      success: true,
-      user: {
-        nickname: user.nickname ?? "",
-        orcx: user.orcx ?? 0,
-        water: user.water ?? 0,
-        fertilizer: user.fertilizer ?? 0,
-        seedBarley: user.seedBarley ?? 0,
-        seedPotato: user.seedPotato ?? 0,
-        growth: user.growth || { potato: 0, barley: 0 },
-        storage: user.storage || { gamja: 0, bori: 0 },
-        // 실제 바인딩용 값
-        barley: user.storage?.bori ?? 0,      // 보리 수량
-        bori: user.storage?.bori ?? 0,        // 보리 수량 (별칭)
-        potato: user.storage?.gamja ?? 0,     // 감자 수량 (혹시 필요하면)
+    // 감자/보리 자원 체크
+    if(material === 'potato' && (user.storage?.gamja||0)<1) {
+      console.log("⛔ 감자 부족!");
+      return res.json({ success:false, message:'감자 부족!' });
+    }
+    if(material === 'barley' && (user.storage?.bori||0)<1) {
+      console.log("⛔ 보리 부족!");
+      return res.json({ success:false, message:'보리 부족!' });
+    }
+
+    // 자원 차감
+    if(material === 'potato') user.storage.gamja -= 1;
+    if(material === 'barley') user.storage.bori -= 1;
+
+    // products 강제 생성 및 깊은 복사 저장!
+    if(!user.products || typeof user.products !== 'object') user.products = {};
+    let newProducts = { ...user.products };
+    newProducts[product] = (newProducts[product]||0) + 1;
+    user.products = newProducts;
+    user.markModified('products');
+
+    await user.save();
+
+    // 저장 후 실제 반영 확인용 로그
+    const check = await User.findOne({ kakaoId });
+    console.log("✅ 저장 후 products:", check.products);
+
+    res.json({ success:true });
+  } catch(e){
+    console.log("🔥 [서버 오류]:", e);
+    res.json({ success:false, message:'서버 오류' });
+  }
+});
+
+// 3. 관리자: 전체 제품명+수량 집계 (모든 유저 products 합산)
+router.get('/admin/all-products', async (req, res) => {
+  try {
+    const all = await User.find({}, { products:1 });
+    const counter = {};
+    all.forEach(u=>{
+      if(u.products){
+        Object.entries(u.products).forEach(([k,v])=>{
+          counter[k] = (counter[k]||0)+v;
+        });
       }
     });
-  } catch (err) {
-    console.error("서버 오류:", err);
-    res.status(500).json({ success: false, message: err.message });
+    const list = Object.entries(counter).map(([k,v])=>({ name:k, count:v }));
+    res.json({ success:true, list });
+  } catch(e){
+    res.json({ success:false, message:'집계 오류' });
   }
 });
 
