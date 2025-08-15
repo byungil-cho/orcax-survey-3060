@@ -55,7 +55,11 @@ const CornData = mongoose.models.CornData || mongoose.model('CornData', new mong
     sugar: { type: Number, default: 0 }
   },
   // 씨옥수수(씨앗)
-  seeds: { type: Number, default: 0 }
+  seeds: { type: Number, default: 0 },
+  // ▼ [ADD] 성장 상태(비파괴 추가)
+  phase: { type: String, default: 'IDLE' },     // IDLE | GROW | STUBBLE
+  g: { type: Number, default: 0 },              // 0~100
+  plantedAt: { type: Date }                     // 파종 시각
 }, { collection: 'corn_data' }));
 
 const CornSettings = mongoose.models.CornSettings || mongoose.model('CornSettings', new mongoose.Schema({
@@ -153,7 +157,7 @@ app.post('/api/withdraw', async (req, res) => {
 
 app.post('/api/user/update-token', async (req, res) => {
   const { kakaoId, orcx } = req.body;
-  if (!kakaoId) return res.json({ success: false, message: '카카오ID 필요' });
+  if (!kakaoId) return res.json({ success: false, message: 'kakaoId 필요' });
   try {
     const user = await User.findOneAndUpdate({ kakaoId }, { orcx }, { new: true });
     if (!user) return res.json({ success: false, message: '유저 없음' });
@@ -241,6 +245,10 @@ app.get('/api/user/profile/:nickname', async (req, res) => {
 async function ensureCornDoc(kakaoId) {
   let doc = await CornData.findOne({ kakaoId });
   if (!doc) doc = await CornData.create({ kakaoId });
+  // ▼ [ADD] 기본값 보정(안전)
+  if (!doc.phase) doc.phase = 'IDLE';
+  if (typeof doc.g !== 'number') doc.g = 0;
+  if (!doc.additives) doc.additives = { salt:0, sugar:0 };
   return doc;
 }
 
@@ -481,7 +489,7 @@ app.patch('/api/corn/priceboard', async (req, res) => {
   }
 });
 
-// ====== (신규) 옥수수: 구매/심기/수확/뻥튀기 ======
+// ====== (기존) 옥수수: 구매/심기/수확/뻥튀기 + [보강] ======
 app.post('/api/corn/buy-additive', async (req, res) => {
   try {
     const { kakaoId, item, qty } = req.body || {};
@@ -524,21 +532,28 @@ app.post('/api/corn/buy-additive', async (req, res) => {
   }
 });
 
-// 씨앗 심기(씨앗 1개 차감)
+// 씨앗 심기(씨앗 1개 차감) + [ADD] 성장 시작 세팅
 app.post('/api/corn/plant', async (req, res) => {
   try {
     const { kakaoId } = req.body || {};
     if (!kakaoId) return res.status(400).json({ error: 'kakaoId 필요' });
     const corn = await ensureCornDoc(kakaoId);
     if ((corn.seeds || 0) < 1) return res.status(400).json({ error: '씨앗 부족' });
-    corn.seeds -= 1;
+
+    corn.seeds = (corn.seeds || 0) - 1;
+    // ▼ [ADD] 성장 시작
+    corn.phase = 'GROW';
+    corn.g = 0;
+    corn.plantedAt = new Date();
+
     await corn.save();
-    res.json({ ok: true, seeds: corn.seeds || 0 });
+    res.json({ ok: true, seeds: corn.seeds || 0, phase: corn.phase, g: corn.g, plantedAt: corn.plantedAt });
   } catch (e) {
     res.status(500).json({ error: 'server error' });
   }
 });
 
+// 수확 + [ADD] 상태 리셋(STUBBLE)
 app.post('/api/corn/harvest', async (req, res) => {
   try {
     const { kakaoId } = req.body || {};
@@ -548,17 +563,25 @@ app.post('/api/corn/harvest', async (req, res) => {
     // 간단 로직: 5~8개 수확
     const gain = 5 + Math.floor(Math.random() * 4);
     corn.corn = (corn.corn || 0) + gain;
+
+    // ▼ [ADD] 수확 후 휴경
+    corn.phase = 'STUBBLE';
+    corn.g = 0;
+
     await corn.save();
 
     res.json({
       gain,
-      agri: { corn: corn.corn || 0 }
+      agri: { corn: corn.corn || 0 },
+      phase: corn.phase,
+      g: corn.g
     });
   } catch (e) {
     res.status(500).json({ error: 'server error' });
   }
 });
 
+// 팝콘/토큰 드롭 (기존)
 app.post('/api/corn/pop', async (req, res) => {
   try {
     const { kakaoId, use } = req.body || {};
@@ -595,7 +618,7 @@ app.post('/api/corn/pop', async (req, res) => {
       qty = rnd(POP_DROP);
       corn.popcorn = (corn.popcorn || 0) + qty;
 
-      // 마켓과 호환 위해 user.products.popcorn도 올려줌
+      // 마켓 호환
       user.products = user.products || {};
       user.products.popcorn = (user.products.popcorn || 0) + qty;
 
@@ -621,14 +644,13 @@ app.post('/api/corn/pop', async (req, res) => {
   }
 });
 
-// ====== 서버 시작 ======
+// ====== 서버 시작 포트 ======
 const PORT = 3060;
 
 /* ===== [ADD][SAFE] OrcaX corn/userdata compatibility additions (no base edits) ===== */
 
 /** 1) 사전 정규화 미들웨어: seeds → seed, query→body (userdata) */
 try {
-  // POST /api/corn/buy-additive 에서 item=seeds 로 와도 처리되도록
   app.use('/api/corn/buy-additive', express.json(), (req, res, next) => {
     try {
       if (req.method === 'POST' && req.body && req.body.item === 'seeds') req.body.item = 'seed';
@@ -636,7 +658,6 @@ try {
     next();
   });
 
-  // GET/POST /api/userdata 호출 시 kakaoId/nickname 이 query로 와도 body에 채워서 기존 코드가 그대로 동작
   app.use('/api/userdata', express.json(), (req, res, next) => {
     try {
       if (req.method === 'GET' || req.method === 'POST') {
@@ -661,7 +682,11 @@ try {
     corn:     { type: Number, default: 0 },
     popcorn:  { type: Number, default: 0 },
     seeds:    { type: Number, default: 0 },
-    additives:{ salt: { type: Number, default: 0 }, sugar: { type: Number, default: 0 } }
+    additives:{ salt: { type: Number, default: 0 }, sugar: { type: Number, default: 0 } },
+    // ▼ [ADD] 하위 호환을 위한 필드 재선언(이미 상단 스키마에 존재)
+    phase:    { type: String, default: 'IDLE' },
+    g:        { type: Number, default: 0 },
+    plantedAt:{ type: Date }
   }, { collection: 'corn_data' }));
 } catch { __CornModel = mongoose.models.CornData; }
 
@@ -669,6 +694,8 @@ async function __ensureCornDoc(kakaoId) {
   let doc = await __CornModel.findOne({ kakaoId });
   if (!doc) doc = await __CornModel.create({ kakaoId });
   if (!doc.additives) doc.additives = { salt:0, sugar:0 };
+  if (!doc.phase) doc.phase = 'IDLE';
+  if (typeof doc.g !== 'number') doc.g = 0;
   return doc;
 }
 
@@ -704,7 +731,11 @@ if (!app.locals.__orcax_added_get_userdata) {
           // corn 영역도 함께 내려줌 (프론트 보강)
           agri:      { corn: __ORCAX_n(corn.corn),   seedCorn: __ORCAX_n(corn.seeds) },
           additives: { salt: __ORCAX_n(corn.additives && corn.additives.salt), sugar: __ORCAX_n(corn.additives && corn.additives.sugar) },
-          food:      { popcorn: __ORCAX_n(corn.popcorn) }
+          food:      { popcorn: __ORCAX_n(corn.popcorn) },
+          // ▼ [ADD] 상태 노출
+          phase: corn.phase || 'IDLE',
+          g: __ORCAX_n(corn.g),
+          plantedAt: corn.plantedAt || null
         }
       });
     } catch (e) {
@@ -732,7 +763,11 @@ if (!app.locals.__orcax_added_corn_summary) {
         inventory: { water: __ORCAX_n(user.water), fertilizer: __ORCAX_n(user.fertilizer) },
         agri:      { corn: __ORCAX_n(corn.corn), seeds: __ORCAX_n(corn.seeds) },
         additives: { salt: __ORCAX_n(corn.additives && corn.additives.salt), sugar: __ORCAX_n(corn.additives && corn.additives.sugar) },
-        food:      { popcorn: __ORCAX_n(corn.popcorn) }
+        food:      { popcorn: __ORCAX_n(corn.popcorn) },
+        // ▼ [ADD] 상태 노출
+        phase: corn.phase || 'IDLE',
+        g: __ORCAX_n(corn.g),
+        plantedAt: corn.plantedAt || null
       });
     } catch (e) {
       res.status(500).json({ ok:false, error:'server error' });
@@ -774,6 +809,26 @@ if (!app.locals.__orcax_added_corn_exchange) {
       });
     } catch (e) {
       res.status(500).json({ error:'server error' });
+    }
+  });
+}
+
+/** 6) [NEW] POST /api/corn/grow – 물/거름에 의한 성장 (추가만) */
+if (!app.locals.__orcax_added_corn_grow) {
+  app.locals.__orcax_added_corn_grow = true;
+  app.post('/api/corn/grow', async (req, res) => {
+    try {
+      const { kakaoId, step } = req.body || {};
+      if (!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
+      const inc = Math.max(1, Number(step || 5)); // 물=5, 거름=7 (프론트 측과 합)
+      const corn = await __ensureCornDoc(kakaoId);
+      if ((corn.phase || 'IDLE') !== 'GROW') return res.status(400).json({ ok:false, error:'not growing' });
+      const cur = Number(corn.g || 0);
+      corn.g = Math.min(100, cur + inc);
+      await corn.save();
+      res.json({ ok:true, phase: corn.phase, g: corn.g });
+    } catch (e) {
+      res.status(500).json({ ok:false, error:'server error' });
     }
   });
 }
