@@ -47,10 +47,7 @@ const CornData = require('./models/CornData'); // ★추가
 const buyRoutes = require('./buy-routes');
 buyRoutes(app, { getUser, saveUser });
 
-  // 옥수수/팝콘 수량
-  corn: { type: Number, default: 0 },
-  popcorn: { type: Number, default: 0 },
-  // 첨가물
+   // 첨가물
   additives: {
     salt:  { type: Number, default: 0 },
     sugar: { type: Number, default: 0 }
@@ -839,6 +836,7 @@ if (!app.locals.__orcax_added_corn_grow) {
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
 });
+
 
 
 
