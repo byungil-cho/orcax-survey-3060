@@ -777,6 +777,32 @@ if (!app.locals.__orcax_added_corn_exchange) {
     }
   });
 }
+/** 6) POST /api/corn/grow – 프론트 진행바 갱신용(추가만, DB 비침투) */
+if (!app.locals.__orcax_added_corn_grow) {
+  app.locals.__orcax_added_corn_grow = true;
+  app.post('/api/corn/grow', async (req, res) => {
+    try {
+      const { kakaoId, step } = req.body || {};
+      if (!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
+      // 기존 스키마는 g/phase 필드가 없으므로, DB는 건드리지 않고 응답만 반환(무해).
+      const inc = Math.max(1, Number(step || 5));
+      return res.json({ ok:true, gIncreasedBy: inc });
+    } catch (e) {
+      return res.status(500).json({ ok:false, error:'server error' });
+    }
+  });
+}
+
+/** 7) GET /api/corn/status – summary 별칭(추가만) */
+if (!app.locals.__orcax_added_corn_status_alias) {
+  app.locals.__orcax_added_corn_status_alias = true;
+  app.get('/api/corn/status', async (req, res) => {
+    // 이미 구현된 /api/corn/summary 로 위임 (기존 코드 재사용, 무해)
+    req.url = '/api/corn/summary' + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '');
+    app._router.handle(req, res, () => res.status(404).end());
+  });
+}
+
 /* ===== [/ADD] =============================================================== */
 
 app.listen(PORT, () => {
