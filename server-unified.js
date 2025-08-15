@@ -107,7 +107,8 @@ app.use('/api/init-user', initUserRoutes);
 app.use('/api/login', loginRoutes);
 app.use('/api/seed', seedPriceRoutes);
 app.use('/api/corn', cornRoutes); // ✅
-
+app.use('/api/corn', require('./routes/corn'));
+app.use('/api',       require('./api/login'));
 /* ====== Mongo 연결 ====== */
 const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017/farmgame';
 mongoose.connect(mongoUrl, { useNewUrlParser: true, useUnifiedTopology: true })
@@ -528,3 +529,4 @@ const PORT = 3060;
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
 });
+
