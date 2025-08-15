@@ -1,3 +1,4 @@
+// models/CornData.js
 const mongoose = require('mongoose');
 
 const CornDataSchema = new mongoose.Schema({
