@@ -42,10 +42,22 @@ const processingRoutes = require('./routes/processing');
 const marketdataRoutes = require('./routes/marketdata');
 const marketRoutes = require('./routes/marketdata');
 const seedPriceRoutes = require('./routes/seed-price');
-const CornData = require('./models/CornData'); // ★추가
 
 const buyRoutes = require('./buy-routes');
 buyRoutes(app, { getUser, saveUser });
+
+   // 첨가물
+  additives: {
+    salt:  { type: Number, default: 0 },
+    sugar: { type: Number, default: 0 }
+  },
+  // 씨옥수수(씨앗)
+  seeds: { type: Number, default: 0 },
+  // ▼ [ADD] 성장 상태(비파괴 추가)
+  phase: { type: String, default: 'IDLE' },     // IDLE | GROW | STUBBLE
+  g: { type: Number, default: 0 },              // 0~100
+  plantedAt: { type: Date }                     // 파종 시각
+}, { collection: 'corn_data' }));
 
 const CornSettings = mongoose.models.CornSettings || mongoose.model('CornSettings', new mongoose.Schema({
   priceboard: {
@@ -823,9 +835,3 @@ if (!app.locals.__orcax_added_corn_grow) {
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
 });
-
-
-
-
-
-
