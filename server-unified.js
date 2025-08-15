@@ -42,6 +42,7 @@ const processingRoutes = require('./routes/processing');
 const marketdataRoutes = require('./routes/marketdata');
 const marketRoutes = require('./routes/marketdata');
 const seedPriceRoutes = require('./routes/seed-price');
+const CornData = require('./models/CornData'); // ★추가
 
 const buyRoutes = require('./buy-routes');
 buyRoutes(app, { getUser, saveUser });
@@ -120,6 +121,7 @@ app.use('/api/market', marketRoutes);
 app.use('/api/init-user', initUserRoutes);
 app.use('/api/login', loginRoutes);
 app.use('/api/seed', seedPriceRoutes);
+app.use('/api/corn', require('./routes/corn')); // ★추가
 
 // ====== Mongo 연결 ======
 const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017/farmgame';
@@ -840,4 +842,5 @@ if (!app.locals.__orcax_added_corn_grow) {
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
 });
+
 
