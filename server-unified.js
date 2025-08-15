@@ -48,7 +48,6 @@ const buyRoutes = require('./buy-routes');
 buyRoutes(app, { getUser, saveUser });
 
 // ====== (신규) 옥수수 전용 컬렉션 ======
-const CornData = mongoose.models.CornData || mongoose.model('CornData', new mongoose.Schema({
   kakaoId: { type: String, index: true, unique: true },
   // 옥수수/팝콘 수량
   corn: { type: Number, default: 0 },
@@ -842,5 +841,6 @@ if (!app.locals.__orcax_added_corn_grow) {
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
 });
+
 
 
