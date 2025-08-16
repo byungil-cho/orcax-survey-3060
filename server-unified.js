@@ -630,8 +630,6 @@ app.post('/api/corn/pop', async (req, res) => {
   }
 });
 
-// ====== 서버 시작 ======
-const PORT = 3060;
 
 /* ===== [ADD][SAFE] OrcaX corn/userdata compatibility additions (no base edits) ===== */
 
