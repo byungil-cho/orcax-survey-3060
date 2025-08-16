@@ -803,142 +803,118 @@ if (!app.locals.__orcax_added_corn_status_alias) {
   });
 }
 
-/* =============================================================
-   [CORN ATTACH BLOCK] — 추가만 함 (기존 코드/라인 변경/삭제 없음)
-   - 목적: 옥수수 보조 API/유틸 제공 (중복 방지 가드 포함)
-   - 주의: 기존 /api/corn/* 라우트가 있으면 그게 먼저 응답하고 끝납니다.
-============================================================= */
+/* =========================================================
+   CORN ATTACH BLOCK (ADD-ONLY)
+   - Keeps existing potato/barley/user code untouched
+   - Adds corn models and routes under /api/corn/*
+========================================================= */
+if (!app.locals.__CORN_ATTACHED__) {
+  app.locals.__CORN_ATTACHED__ = true;
+  const mongoose_ = require('mongoose');
 
-try {
-  // 숫자 안전 변환
-  const __cN = (v => (Number.isFinite(Number(v)) ? Number(v) : 0));
+  const User = mongoose_.models.User || mongoose_.model('User', new mongoose_.Schema({
+    kakaoId: { type: String, index: true, unique: true },
+    nickname: { type: String, default: '' },
+    orcx: { type: Number, default: 0 },
+    inventory: { water: { type: Number, default: 0 }, fertilizer: { type: Number, default: 0 } }
+  }, { collection: 'users', timestamps: true }));
 
-  // 기존 Corn 모델이 있으면 재사용, 없으면 'seeds'까지 포함한 호환 스키마로 생성
-  let __CornCompat = null;
-  try {
-    __CornCompat = mongoose.models.CornData;
-  } catch {}
-  if (!__CornCompat) {
-    try {
-      __CornCompat = mongoose.model('CornData', new mongoose.Schema({
-        kakaoId:  { type: String, index: true, unique: true },
-        corn:     { type: Number, default: 0 },
-        popcorn:  { type: Number, default: 0 },
-        seed:     { type: Number, default: 0 },   // 단수
-        seeds:    { type: Number, default: 0 },   // 복수(구버전 호환)
-        additives:{ salt: { type: Number, default: 0 }, sugar: { type: Number, default: 0 } }
-      }, { collection: 'corn_data' }));
-    } catch (e) {
-      __CornCompat = mongoose.models.CornData;
+  const CornSettings = mongoose_.models.CornSettings || mongoose_.model('CornSettings', new mongoose_.Schema({
+    seed:  { type: Number, default: 100 },
+    salt:  { type: Number, default: 10 },
+    sugar: { type: Number, default: 20 }
+  }, { collection: 'corn_settings', timestamps: true }));
+
+  const CornData = mongoose_.models.CornData || mongoose_.model('CornData', new mongoose_.Schema({
+    kakaoId: { type: String, index: true, unique: true },
+    nickname: { type: String, default: '' },
+    seed: { type: Number, default: 0 },
+    seeds:{ type: Number, default: 0 },
+    corn: { type: Number, default: 0 },
+    popcorn: { type: Number, default: 0 },
+    additives: { salt:{ type: Number, default: 0 }, sugar:{ type: Number, default: 0 } },
+    phase: { type: String, default: 'IDLE' },
+    g: { type: Number, default: 0 },
+    plantedAt: { type: Date }
+  }, { collection: 'corn_data', timestamps: true }));
+
+  const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+
+  async function ensureCornDoc(kakaoId, nickname='') {
+    if (!kakaoId) throw new Error('kakaoId required');
+    let corn = await CornData.findOne({ kakaoId });
+    if (!corn) {
+      corn = await CornData.create({ kakaoId, nickname, seed:0, seeds:0, corn:0, popcorn:0, phase:'IDLE', g:0, additives:{ salt:0, sugar:0 } });
     }
+    if ((corn.seed||0)!==(corn.seeds||0)) { corn.seeds=corn.seed=corn.seed||corn.seeds||0; await corn.save(); }
+    return corn;
   }
 
-  async function __ensureCornCompat(kakaoId) {
-    let doc = await __CornCompat.findOne({ kakaoId });
-    if (!doc) doc = await __CornCompat.create({ kakaoId });
-    // seed / seeds 동기화 (추가 로직, 기존 필드 손상 없음)
-    let dirty = false;
-    const s  = __cN(doc.seed);
-    const ss = __cN(doc.seeds);
-    if (s && !ss) { doc.seeds = s; dirty = true; }
-    if (ss && !s) { doc.seed  = ss; dirty = true; }
-    if (dirty) await doc.save();
-    if (!doc.additives) { doc.additives = { salt:0, sugar:0 }; await doc.save(); }
-    return doc;
-  }
+  app.use('/api/corn', (req,_res,next)=>{
+    if (req.body) {
+      if (req.body.item==='seeds') req.body.item='seed';
+      if (req.body.type==='seeds') req.body.type='seed';
+    }
+    next();
+  });
 
-  // --- 1) /api/corn/debug-snapshot : 현재 corn/user 스냅샷 조회 (추가 전용)
-  if (!app.locals.__corn_attach_debug_snapshot) {
-    app.locals.__corn_attach_debug_snapshot = true;
-    app.get('/api/corn/debug-snapshot', async (req, res) => {
-      try {
-        const kakaoId = (req.query && req.query.kakaoId) || (req.body && req.body.kakaoId);
-        if (!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
-        const [user, corn] = await Promise.all([
-          User.findOne({ kakaoId }),
-          __ensureCornCompat(kakaoId)
-        ]);
-        return res.json({
-          ok: true,
-          user: user ? {
-            nickname: user.nickname,
-            orcx: __cN(user.orcx),
-            water: __cN(user.water),
-            fertilizer: __cN(user.fertilizer),
-            storage: user.storage || {},
-            products: user.products || {}
-          } : null,
-          corn: corn ? {
-            corn: __cN(corn.corn),
-            popcorn: __cN(corn.popcorn),
-            seed: __cN(corn.seed),
-            seeds: __cN(corn.seeds),
-            additives: {
-              salt: __cN(corn.additives && corn.additives.salt),
-              sugar: __cN(corn.additives && corn.additives.sugar)
-            }
-          } : null
-        });
-      } catch (e) {
-        res.status(500).json({ ok:false, error:'server error' });
-      }
-    });
-  }
+  app.get('/api/corn/priceboard', async (_req,res)=>{
+    try{
+      const s = await CornSettings.findOne({}).lean();
+      res.json({ price: { seed:Number(s?.seed ?? 100), salt:Number(s?.salt ?? 10), sugar:Number(s?.sugar ?? 20) } });
+    }catch(e){ console.error('priceboard', e); res.status(500).json({ error:'가격 조회 실패' });}
+  });
 
-  // --- 2) /api/corn/seed-sync : seed↔seeds 동기화 트리거(필요시 수동 실행)
-  if (!app.locals.__corn_attach_seed_sync) {
-    app.locals.__corn_attach_seed_sync = true;
-    app.post('/api/corn/seed-sync', async (req, res) => {
-      try {
-        const kakaoId = (req.body && req.body.kakaoId) || (req.query && req.query.kakaoId);
-        if (!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
-        const corn = await __ensureCornCompat(kakaoId);
-        return res.json({
-          ok:true,
-          seed: __cN(corn.seed),
-          seeds: __cN(corn.seeds)
-        });
-      } catch (e) {
-        res.status(500).json({ ok:false, error:'server error' });
-      }
-    });
-  }
+  app.post('/api/corn/buy-additive', async (req,res)=>{
+    try{
+      const { kakaoId, item, qty, amount } = req.body || {};
+      const it = String(item||'').toLowerCase();
+      const q = Math.max(1, Number(qty ?? amount ?? 1));
+      if (!kakaoId || !['seed','salt','sugar'].includes(it)) return res.status(400).json({ error:'kakaoId, item(seed|salt|sugar) 필요' });
 
-  // --- 3) /api/corn/ping : corn 전용 핑 (추가 전용)
-  if (!app.locals.__corn_attach_ping) {
-    app.locals.__corn_attach_ping = true;
-    app.get('/api/corn/ping', (_req, res) => res.json({ ok:true, ts: Date.now() }));
-  }
+      const [user, corn, s] = await Promise.all([
+        User.findOne({ kakaoId }),
+        ensureCornDoc(kakaoId),
+        CornSettings.findOne({}).lean().catch(()=>null)
+      ]);
+      if (!user) return res.status(404).json({ error:'유저 없음' });
 
-  // --- 4) /api/corn/priceboard (alias) : 기존이 있더라도 안전 별칭 제공
-  if (!app.locals.__corn_attach_priceboard_alias) {
-    app.locals.__corn_attach_priceboard_alias = true;
-    app.get('/api/corn/price-board', (req, res, next) => {
-      // 이미 선언된 /api/corn/priceboard 가 먼저 처리되므로,
-      // 이 별칭은 미처리 시에만 next() → 404 방지용
-      req.url = '/api/corn/priceboard' + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '');
-      app._router.handle(req, res, () => res.status(404).end());
-    });
-  }
+      const price = { seed:Number(s?.seed??100), salt:Number(s?.salt??10), sugar:Number(s?.sugar??20) }[it];
+      const cost = price * q;
+      if ((user.orcx||0) < cost) return res.status(400).json({ error:'토큰 부족' });
 
-  // --- 5) seeds → seed 입력 정규화 (buy-additive 전용, 추가만)
-  if (!app.locals.__corn_attach_seeds_mapper) {
-    app.locals.__corn_attach_seeds_mapper = true;
-    app.use('/api/corn/buy-additive', express.json(), (req, _res, next) => {
-      try {
-        if (req.method === 'POST' && req.body) {
-          if (req.body.item === 'seeds') req.body.item = 'seed';
-          if (req.body.type === 'seeds') req.body.type = 'seed';
-        }
-      } catch {}
-      next();
-    });
-  }
+      user.orcx = (user.orcx||0) - cost;
+      if (it==='seed') { corn.seed = (corn.seed||0) + q; corn.seeds = corn.seed; }
+      if (it==='salt')  corn.additives.salt  = (corn.additives.salt||0) + q;
+      if (it==='sugar') corn.additives.sugar = (corn.additives.sugar||0) + q;
 
-} catch (e) {
-  // attach block 오류는 앱 전체에 영향 주지 않도록 무시
-  console.error('[CORN ATTACH] init error:', e && e.message);
+      await user.save(); await corn.save();
+      res.json({ success:true, wallet:{ orcx:user.orcx||0 }, agri:{ seed:corn.seed||0, seeds:corn.seeds||0 }, additives: corn.additives });
+    }catch(e){ console.error('buy-additive', e); res.status(500).json({ error:'구매 실패' });}
+  });
+
+  app.get('/api/corn/summary', async (req,res)=>{
+    try{
+      const { kakaoId } = req.query || {};
+      const corn = await ensureCornDoc(kakaoId);
+      res.json({ phase:corn.phase, g:corn.g, plantedAt: corn.plantedAt, agri:{ seed:corn.seed||0, seeds:corn.seeds||0, corn:corn.corn||0 }, food:{ popcorn:corn.popcorn||0 }, additives: corn.additives });
+    }catch(e){ console.error('summary', e); res.status(500).json({ error:'요약 실패' });}
+  });
+
+  app.get('/api/corn/debug-snapshot', async (req,res)=>{
+    try{
+      const { kakaoId } = req.query || {};
+      const [user, corn, settings] = await Promise.all([
+        kakaoId ? User.findOne({ kakaoId }).lean() : null,
+        kakaoId ? CornData.findOne({ kakaoId }).lean() : null,
+        CornSettings.findOne({}).lean()
+      ]);
+      res.json({ user, corn, settings });
+    }catch(e){ console.error('snapshot', e); res.status(500).json({ error:'snapshot 실패' });}
+  });
 }
+
+
 
 
 
