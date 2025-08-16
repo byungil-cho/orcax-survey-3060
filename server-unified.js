@@ -16,7 +16,7 @@ app.use(express.json({ limit: '512kb' }));
 app.use(morgan('dev'));
 
 // ====== Mongo 연결 ======
-const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/farm';
+const MONGO_URI = process.env.MONGO_URL || process.env.MONGODB_URL || 'mongodb://127.0.0.1:27017/farm';
 mongoose.set('strictQuery', true);
 mongoose.connection.on('error', (e) => console.error('[mongo] error:', e.message));
 mongoose.connection.once('open', () => console.log('[mongo] connected'));
@@ -673,6 +673,7 @@ module.exports = app;
     console.error('[CORN-ATTACH] attach failed', e);
   }
 })();
+
 
 
 
