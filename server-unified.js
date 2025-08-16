@@ -55,7 +55,7 @@ const CornData = mongoose.models.CornData || mongoose.model('CornData', new mong
     sugar: { type: Number, default: 0 }
   },
   // 씨옥수수(씨앗)
-  seeds: { type: Number, default: 0 }
+  seed: { type: Number, default: 0 }
 }, { collection: 'corn_data' }));
 
 const CornSettings = mongoose.models.CornSettings || mongoose.model('CornSettings', new mongoose.Schema({
