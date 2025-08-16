@@ -42,6 +42,11 @@ const processingRoutes = require('./routes/processing');
 const marketdataRoutes = require('./routes/marketdata');
 const marketRoutes = require('./routes/marketdata');
 const seedPriceRoutes = require('./routes/seed-price');
+/* ===== PORT ATTACH (ADD-ONLY) =====
+   - Ensure default port 3060 without changing existing lines.
+   - If process.env.PORT is unset, set to '3060' so any later `const PORT = process.env.PORT || 3000` picks 3060.
+*/
+if (!process.env.PORT) { process.env.PORT = '3060'; }
 
 // ====== (신규) 옥수수 전용 컬렉션 ======
 const CornData = mongoose.models.CornData || mongoose.model('CornData', new mongoose.Schema({
@@ -806,20 +811,16 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     app._router.handle(req, res, () => res.status(404).end());
   });
 }
-
-/* =========================================================
-   CORN ROUTER ATTACH (ADD-ONLY)
-   - Do NOT modify existing lines. This block only attaches a corn router.
-   - It will safely no-op if the router cannot be found.
-========================================================= */
-;(function attachCornRouter(appRef){
+/* ===== CORN ROUTER ATTACH (ADD-ONLY) =====
+   - Attach external corn router at /api/corn without touching existing routers.
+   - Resolves several common paths; warns if not found.
+*/
+(function attachCornRouter(appRef){
   try {
-    if (!appRef) return;
-    appRef.locals = appRef.locals || {};
+    if (!appRef.locals) appRef.locals = {};
     if (appRef.locals.__CORN_ROUTER_ATTACHED__) return;
-    appRef.locals.__CORN_ROUTER_ATTACHED__ = true;
-
-    const candidates = [
+    const path = require('path');
+    const tryPaths = [
       './routes/corn',
       './routes/corn.js',
       './router/corn',
@@ -827,23 +828,31 @@ if (!app.locals.__orcax_added_corn_status_alias) {
       './routers/corn',
       './src/routes/corn'
     ];
-    let cornRouter = null, lastErr = null;
-    for (const c of candidates) {
-      try { cornRouter = require(c); if (cornRouter) { console.log('🌽 corn router module resolved:', c); break; } }
-      catch (e) { lastErr = e; }
+    let mod = null, resolved = null, errLast = null;
+    for (const p of tryPaths) {
+      try {
+        resolved = p;
+        mod = require(p);
+        break;
+      } catch (e) { errLast = e; mod = null; resolved = null; }
     }
-    if (!cornRouter) {
-      console.warn('[CORN-ATTACH] corn router module not found. Last error:', (lastErr && lastErr.message));
+    if (!mod) {
+      console.warn('[CORN-ATTACH] corn router module not found. Tried:', tryPaths.join(', '));
+      if (errLast) console.warn('[CORN-ATTACH] last error:', errLast.message);
       return;
     }
-    // mount
+    const cornRouter = (mod.default || mod);
+    if (typeof cornRouter !== 'function') {
+      console.warn('[CORN-ATTACH] router module does not export a function/router');
+      return;
+    }
     appRef.use('/api/corn', cornRouter);
+    appRef.locals.__CORN_ROUTER_ATTACHED__ = true;
     console.log('🌽 corn router attached at /api/corn');
   } catch (e) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
-})(typeof app !== 'undefined' ? app : undefined);
-// =========================================================
+})(app);
 
 
 
