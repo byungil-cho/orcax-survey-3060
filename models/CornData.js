@@ -5,7 +5,7 @@ const CornDataSchema = new mongoose.Schema(
   {
     kakaoId:   { type: String, required: true, index: true, unique: true },
     nickname:  { type: String, default: '' },
-    seeds:     { type: Number, default: 0 },
+    seed:     { type: Number, default: 0 },
     corn:      { type: Number, default: 0 },
     popcorn:   { type: Number, default: 0 },
     additives: { salt: { type: Number, default: 0 }, sugar: { type: Number, default: 0 } },
