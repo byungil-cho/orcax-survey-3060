@@ -44,7 +44,7 @@ const marketRoutes = require('./routes/marketdata');
 const seedPriceRoutes = require('./routes/seed-price');
 /* ===== PORT ATTACH (ADD-ONLY) =====
    - Ensure default port 3060 without changing existing lines.
-   - If process.env.PORT is unset, set to '3060' so any later `const PORT = process.env.PORT || 3000` picks 3060.
+   - If process.env.PORT is unset, set to '3060' so any later `const PORT = process.env.PORT || ` picks 3060.
 */
 if (!process.env.PORT) { process.env.PORT = '3060'; }
 
@@ -78,7 +78,7 @@ const CornSettings = mongoose.models.CornSettings || mongoose.model('CornSetting
 const allowOrigins = [
   'https://byungil-cho.github.io',
   'https://byungil-cho.github.io/OrcaX',
-  'http://localhost:3000',
+  'http://localhost:3060',
   'http://localhost:5173'
 ];
 app.use(cors({
@@ -853,14 +853,3 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
-
-
-
-
-
-
-
-
-
-
-
