@@ -824,7 +824,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
       './router/corn',
       './api/corn',
       './routers/corn',
-      './src/routes/corn'
+      './routes/corn'
     ];
     let mod = null, resolved = null, errLast = null;
     for (const p of tryPaths) {
