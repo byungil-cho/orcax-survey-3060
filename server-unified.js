@@ -42,6 +42,7 @@ const processingRoutes = require('./routes/processing');
 const marketdataRoutes = require('./routes/marketdata');
 const marketRoutes = require('./routes/marketdata');
 const seedPriceRoutes = require('./routes/seed-price');
+const cornRoutes = require('./routes/corn');
 /* ===== PORT ATTACH (ADD-ONLY) =====
    - Ensure default port 3060 without changing existing lines.
    - If process.env.PORT is unset, set to '3060' so any later `const PORT = process.env.PORT || ` picks 3060.
@@ -118,7 +119,7 @@ app.use('/api/market', marketRoutes);
 app.use('/api/init-user', initUserRoutes);
 app.use('/api/login', loginRoutes);
 app.use('/api/seed', seedPriceRoutes);
-
+app.use('/api/corn', cornRoutes);
 // ====== Mongo 연결 ======
 const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017/farmgame';
 mongoose.connect(mongoUrl, { useNewUrlParser: true, useUnifiedTopology: true })
@@ -824,7 +825,11 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     // 후보 경로 (필요한 것만)
     const tryPaths = [
       './routes/corn',
-      './routes/corn.js'
+      './routes/corn.js',
+      './router/corn',
+      './api/corn',
+      './routers/corn',
+      './routes/corn'
     ];
 
     let mod = null, resolved = null, errLast = null;
