@@ -811,37 +811,58 @@ if (!app.locals.__orcax_added_corn_status_alias) {
 }
 /* ===== CORN ROUTER ATTACH (ADD-ONLY) =====
    - Attach external corn router at /api/corn without touching existing routers.
-   - Resolves several common paths; warns if not found.
+   - Resolves only specific paths; warns if not found.
 */
-(function attachCornRouter(appRef){
+(function attachCornRouter(appRef) {
   try {
+    // 안전장치: locals 객체 준비
     if (!appRef.locals) appRef.locals = {};
+
+    // 이미 붙였다면 중복 방지
     if (appRef.locals.__CORN_ROUTER_ATTACHED__) return;
-    const path = require('path');
+
+    // 후보 경로 (필요한 것만)
     const tryPaths = [
       './routes/corn',
-      './routes/corn.js',
-     ];
+      './routes/corn.js'
+    ];
+
     let mod = null, resolved = null, errLast = null;
+
+    // 순서대로 모듈 로드 시도
     for (const p of tryPaths) {
       try {
         resolved = p;
-        mod = require(p);
+        mod = require(p); // << 여기서 corn.js 불러옴
         break;
-      } catch (e) { errLast = e; mod = null; resolved = null; }
+      } catch (e) {
+        errLast = e;
+        mod = null;
+        resolved = null;
+      }
     }
+
+    // 모듈을 못 찾았을 때 경고
     if (!mod) {
       console.warn('[CORN-ATTACH] corn router module not found. Tried:', tryPaths.join(', '));
       if (errLast) console.warn('[CORN-ATTACH] last error:', errLast.message);
       return;
     }
+
+    // default export 혹은 module.exports를 가져옴
     const cornRouter = (mod.default || mod);
+
     if (typeof cornRouter !== 'function') {
       console.warn('[CORN-ATTACH] router module does not export a function/router');
       return;
     }
+
+    // 실제 경로 등록
     appRef.use('/api/corn', cornRouter);
+
+    // 중복 등록 방지 플래그
     appRef.locals.__CORN_ROUTER_ATTACHED__ = true;
+
     console.log('🌽 corn router attached at /api/corn');
   } catch (e) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
