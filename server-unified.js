@@ -396,7 +396,7 @@ app.use((err, req, res, next) => {
 module.exports = app;
 
 // ====================================================
-✅ 수정 최종본 — server-unified.js (853줄 기준)
+// ✅ 수정 최종본 — server-unified.js (853줄 기준)
 //    - 원본 853줄 중 현재까지 포함된 것은 라우터, DB, API 정의.
 //    - withdraw, market, seed, user, corn 등 전부 API 엔드포인트 포함.
 //    - Mongo 연결, 세션, 헬스체크, 공통 라우터 전부 유지됨.
@@ -847,10 +847,4 @@ const mondaySignature = {
   signedAt: new Date().toISOString()
 };
 
-console.log("✅ Server-unified.js fully loaded. Signed by Monday.");
-
-
-
-
-
-
+// console.log("✅ Server-unified.js fully loaded. Signed by Monday.");
