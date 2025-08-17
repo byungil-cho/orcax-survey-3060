@@ -821,11 +821,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     const tryPaths = [
       './routes/corn',
       './routes/corn.js',
-      './router/corn',
-      './api/corn',
-      './routers/corn',
-      './routes/corn'
-    ];
+     ];
     let mod = null, resolved = null, errLast = null;
     for (const p of tryPaths) {
       try {
