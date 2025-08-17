@@ -1,94 +1,33 @@
+// routes/corn.js
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
-const CornData = require('../models/CornData');
 
-async function getUserBasics(kakaoId) {
-  const users = mongoose.connection.collection('users');
-  const u = (await users.findOne({ kakaoId: String(kakaoId) })) || {};
-  const inv = u.inventory || {};
-  const wallet = u.wallet || {};
-  return {
-    water:      Number(u.water ?? inv.water ?? 0),
-    fertilizer: Number(u.fertilizer ?? inv.fertilizer ?? 0),
-    tokens:     Number(u.orcx ?? wallet.tokens ?? 0),
-    nickname:   u.nickname || u.name || ''
-  };
-}
-async function ensureCorn(kakaoId, nickname='') {
-  return CornData.findOneAndUpdate(
-    { kakaoId: String(kakaoId) },
-    { $setOnInsert: { kakaoId: String(kakaoId), nickname } },
-    { new: true, upsert: true }
-  );
-}
+// === CornData 모델 (중복 컴파일 방지) ===
+const CornDataSchema = new mongoose.Schema({
+  kakaoId: { type: String, index: true },
+  seeds: { type: Number, default: 0 },
+  popcorn: { type: Number, default: 0 },
+  fertilizer: { type: Number, default: 0 },
+}, { timestamps: true });
 
-router.post('/upsert', async (req, res) => {
+// 이미 컴파일돼 있으면 재사용, 없으면 생성
+const CornData = mongoose.models.CornData || mongoose.model('CornData', CornDataSchema);
+
+// === 라우트 ===
+// 헬스체크
+router.get('/__health', (req, res) => res.json({ ok: true }));
+
+// 유저 프로필 조회/자동생성 예시
+router.get('/profile/:kakaoId', async (req, res) => {
   try {
-    const { kakaoId, nickname='' } = req.body || {};
-    if (!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
-    const doc = await ensureCorn(kakaoId, nickname);
-    res.json({ ok:true, data:doc });
-  } catch (e) { res.status(500).json({ ok:false, error:e.message }); }
-});
-
-router.get('/status', async (req, res) => {
-  try {
-    const { kakaoId } = req.query || {};
-    if (!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
-    const doc = await CornData.findOne({ kakaoId: String(kakaoId) });
-    res.json({ ok:true, data: doc || null });
-  } catch (e) { res.status(500).json({ ok:false, error:e.message }); }
-});
-
-router.get('/overview', async (req, res) => {
-  try {
-    const { kakaoId } = req.query || {};
-    if (!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
-    const [corn, basics] = await Promise.all([
-      CornData.findOne({ kakaoId: String(kakaoId) }),
-      getUserBasics(kakaoId),
-    ]);
-    res.json({ ok:true, data:{ corn, basics }});
-  } catch (e) { res.status(500).json({ ok:false, error:e.message }); }
-});
-
-const INC_ALLOWED = new Set(['seeds','corn','popcorn','additives.salt','additives.sugar','g']);
-router.post('/update', async (req, res) => {
-  try {
-    const { kakaoId, inc = {}, set = {} } = req.body || {};
-    if (!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
-
-    const $inc = {};
-    for (const [k,v] of Object.entries(inc)) {
-      if (INC_ALLOWED.has(k) && Number(v)) $inc[k] = Number(v);
-    }
-    const $set = {};
-    if (typeof set.nickname === 'string') $set.nickname = set.nickname;
-    if (typeof set.phase === 'string')    $set.phase = set.phase;
-    if (!Object.keys($inc).length && !Object.keys($set).length)
-      return res.status(400).json({ ok:false, error:'no valid fields' });
-
-    const doc = await CornData.findOneAndUpdate(
-      { kakaoId: String(kakaoId) },
-      { ...(Object.keys($inc).length?{ $inc }:{}), ...(Object.keys($set).length?{ $set }:{}) },
-      { new: true, upsert: true }
-    );
-    res.json({ ok:true, data: doc });
-  } catch (e) { res.status(500).json({ ok:false, error:e.message }); }
-});
-
-router.post('/reset-additives', async (req, res) => {
-  try {
-    const { kakaoId } = req.body || {};
-    if (!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
-    const doc = await CornData.findOneAndUpdate(
-      { kakaoId: String(kakaoId) },
-      { $set: { additives: { salt:0, sugar:0 } } },
-      { new: true, upsert: true }
-    );
-    res.json({ ok:true, data:doc });
-  } catch (e) { res.status(500).json({ ok:false, error:e.message }); }
+    const { kakaoId } = req.params;
+    let doc = await CornData.findOne({ kakaoId });
+    if (!doc) doc = await CornData.create({ kakaoId });
+    res.json(doc);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 module.exports = router;
