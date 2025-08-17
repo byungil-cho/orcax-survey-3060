@@ -824,12 +824,12 @@ if (!app.locals.__orcax_added_corn_status_alias) {
 
     // 후보 경로 (필요한 것만)
     const tryPaths = [
-      ' /routes/corn',
-      ' /routes/corn.js',
-      ' /router/corn',
-      ' /api/corn',
-      ' /routers/corn',
-      ' /routes/corn'
+      ' routes/corn',
+      ' routes/corn.js',
+      ' router/corn',
+      ' api/corn',
+      ' routers/corn',
+      ' routes/corn'
     ];
 
     let mod = null, resolved = null, errLast = null;
