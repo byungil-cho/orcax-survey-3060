@@ -129,6 +129,15 @@ const PORT = process.env.PORT || 3060;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
+// === [ADD-ONLY] CORN 라우터 연결 (기존 코드 절대 수정X) ===
+const path = require('path');
+const cornRouter = require(path.join(__dirname, 'routes', 'corn.js')); // <- 경로만 실제 위치에 맞추세요
+if (!app.locals) app.locals = {};
+if (!app.locals.__CORN_ATTACHED__) {
+  app.use('/api/corn', cornRouter);      // 미들웨어들 뒤, 404 핸들러 앞에 위치
+  app.locals.__CORN_ATTACHED__ = true;
+  console.log('[CORN] mounted at /api/corn');
+}
 
 // ====== 세션 (감자에서 사용) ======
 app.use(session({
