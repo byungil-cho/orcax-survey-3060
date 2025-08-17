@@ -42,7 +42,6 @@ const processingRoutes = require('./routes/processing');
 const marketdataRoutes = require('./routes/marketdata');
 const marketRoutes = require('./routes/marketdata');
 const seedPriceRoutes = require('./routes/seed-price');
-const cornRoutes = require('./routes/corn');
 /* ===== PORT ATTACH (ADD-ONLY) =====
    - Ensure default port 3060 without changing existing lines.
    - If process.env.PORT is unset, set to '3060' so any later `const PORT = process.env.PORT || ` picks 3060.
@@ -119,7 +118,7 @@ app.use('/api/market', marketRoutes);
 app.use('/api/init-user', initUserRoutes);
 app.use('/api/login', loginRoutes);
 app.use('/api/seed', seedPriceRoutes);
-app.use('/api/corn', cornRoutes);
+
 // ====== Mongo 연결 ======
 const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017/farmgame';
 mongoose.connect(mongoUrl, { useNewUrlParser: true, useUnifiedTopology: true })
@@ -129,15 +128,6 @@ const PORT = process.env.PORT || 3060;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
-// === [ADD-ONLY] CORN 라우터 연결 (기존 코드 절대 수정X) ===
-const path = require('path');
-const cornRouter = require(path.join(__dirname, 'routes', 'corn.js')); // <- 경로만 실제 위치에 맞추세요
-if (!app.locals) app.locals = {};
-if (!app.locals.__CORN_ATTACHED__) {
-  app.use('/api/corn', cornRouter);      // 미들웨어들 뒤, 404 핸들러 앞에 위치
-  app.locals.__CORN_ATTACHED__ = true;
-  console.log('[CORN] mounted at /api/corn');
-}
 
 // ====== 세션 (감자에서 사용) ======
 app.use(session({
@@ -291,7 +281,7 @@ app.post('/api/userdata', async (req, res) => {
         barley: user.storage?.bori ?? 0,
         growth: user.growth ?? {},
         // (추가) 옥수수/첨가물/팝콘/씨앗
-        agri: { corn: corn.corn ?? 0, seedCorn: corn.seeds ?? 0 },
+        agri: { corn: corn.corn ?? 0, seedCorn: (corn.seeds ?? 0) + (corn.seed ?? 0) },
         additives: { salt: corn.additives?.salt ?? 0, sugar: corn.additives?.sugar ?? 0 },
         food: { popcorn: corn.popcorn ?? 0 }
       }
@@ -503,11 +493,16 @@ app.patch('/api/corn/priceboard', async (req, res) => {
 // ====== (신규) 옥수수: 구매/심기/수확/뻥튀기 ======
 app.post('/api/corn/buy-additive', async (req, res) => {
   try {
-    const { kakaoId, item, qty } = req.body || {};
-    const q = Math.max(1, Number(qty || 1));
-    if (!kakaoId || !['salt','sugar','seed'].includes(item)) {
-      return res.status(400).json({ error: 'kakaoId, item(salt|sugar|seed) 필요' });
-    }
+    const { kakaoId } = req.body || {};
+    let { item, type, qty, amount } = req.body || {};
+    item = item || type; // alias 허용
+    const q = Math.max(1, Number(qty ?? amount ?? 1));
+    if (!kakaoId || !item) return res.status(400).json({ error: 'kakaoId,item 필요' });
+
+    // item 표준화
+    if (item === 'seeds') item = 'seed';
+    if (!['salt','sugar','seed'].includes(item)) return res.status(400).json({ error: 'unknown item' });
+
     const user = await User.findOne({ kakaoId });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
@@ -515,44 +510,43 @@ app.post('/api/corn/buy-additive', async (req, res) => {
     const unit  = item === 'salt' ? price.salt : item === 'sugar' ? price.sugar : price.seed;
     const need  = unit * q;
 
-    if ((user.orcx || 0) < need) return res.status(400).json({ error: '토큰 부족' });
+    if ((user.orcx || 0) < need) return res.status(402).json({ error: '토큰 부족' });
 
-    const corn = await ensureCornDoc(kakaoId);
-    // 차감/가산
+    // 차감
     user.orcx = (user.orcx || 0) - need;
 
+    // corn_data 증가
+    const corn = await ensureCornDoc(kakaoId);
     if (item === 'seed') {
-      corn.seeds = (corn.seeds || 0) + q;
-      await user.save();
-      await corn.save();
-      return res.json({
-        wallet: { orcx: user.orcx || 0 },
-        seeds: corn.seeds || 0
-      });
+      corn.seed = (corn.seed || 0) + q;             // ★ 최상위 seed 증가
     } else {
+      corn.additives = corn.additives || {};
       corn.additives[item] = (corn.additives[item] || 0) + q;
-      await user.save();
-      await corn.save();
-      return res.json({
-        wallet: { orcx: user.orcx || 0 },
-        additives: { salt: corn.additives.salt || 0, sugar: corn.additives.sugar || 0 }
-      });
     }
+
+    await user.save();
+    await corn.save();
+
+    // 200 OK + 최신 상태 반환 (프런트는 2xx면 성공 처리)
+    return res.json({
+      ok: true,
+      wallet: { orcx: user.orcx || 0 },
+      agri: { seeds: (corn.seed || 0) },           // 합산 없이 단일 필드
+      additives: { salt: (corn.additives?.salt || 0), sugar: (corn.additives?.sugar || 0) }
+    });
   } catch (e) {
+    console.error('[buy-additive]', e);
     res.status(500).json({ error: 'server error' });
   }
-});
-
-// 씨앗 심기(씨앗 1개 차감)
-app.post('/api/corn/plant', async (req, res) => {
+});app.post('/api/corn/plant', async (req, res) => {
   try {
     const { kakaoId } = req.body || {};
     if (!kakaoId) return res.status(400).json({ error: 'kakaoId 필요' });
     const corn = await ensureCornDoc(kakaoId);
-    if ((corn.seeds || 0) < 1) return res.status(400).json({ error: '씨앗 부족' });
-    corn.seeds -= 1;
+    if ((corn.seed || 0) < 1) return res.status(400).json({ error: '씨앗 부족' });
+    corn.seed -= 1;
     await corn.save();
-    res.json({ ok: true, seeds: corn.seeds || 0 });
+    res.json({ ok: true, seeds: corn.seed || 0 });
   } catch (e) {
     res.status(500).json({ error: 'server error' });
   }
@@ -719,7 +713,7 @@ if (!app.locals.__orcax_added_get_userdata) {
           barley: __ORCAX_n(user.storage && user.storage.bori),
           growth: user.growth || {},
           // corn 영역도 함께 내려줌 (프론트 보강)
-          agri:      { corn: __ORCAX_n(corn.corn),   seedCorn: __ORCAX_n(corn.seeds) },
+          agri:      { corn: __ORCAX_n(corn.corn),   seedCorn: __ORCAX_n((corn.seeds || 0) + (corn.seed || 0)) },
           additives: { salt: __ORCAX_n(corn.additives && corn.additives.salt), sugar: __ORCAX_n(corn.additives && corn.additives.sugar) },
           food:      { popcorn: __ORCAX_n(corn.popcorn) }
         }
@@ -747,7 +741,7 @@ if (!app.locals.__orcax_added_corn_summary) {
         ok: true,
         wallet:    { orcx: __ORCAX_n(user.orcx) },
         inventory: { water: __ORCAX_n(user.water), fertilizer: __ORCAX_n(user.fertilizer) },
-        agri:      { corn: __ORCAX_n(corn.corn), seeds: __ORCAX_n(corn.seeds) },
+        agri:      { corn: __ORCAX_n(corn.corn), seeds: __ORCAX_n((corn.seeds || 0) + (corn.seed || 0)) },
         additives: { salt: __ORCAX_n(corn.additives && corn.additives.salt), sugar: __ORCAX_n(corn.additives && corn.additives.sugar) },
         food:      { popcorn: __ORCAX_n(corn.popcorn) }
       });
@@ -821,62 +815,42 @@ if (!app.locals.__orcax_added_corn_status_alias) {
 }
 /* ===== CORN ROUTER ATTACH (ADD-ONLY) =====
    - Attach external corn router at /api/corn without touching existing routers.
-   - Resolves only specific paths; warns if not found.
+   - Resolves several common paths; warns if not found.
 */
-(function attachCornRouter(appRef) {
+(function attachCornRouter(appRef){
   try {
-    // 안전장치: locals 객체 준비
     if (!appRef.locals) appRef.locals = {};
-
-    // 이미 붙였다면 중복 방지
     if (appRef.locals.__CORN_ROUTER_ATTACHED__) return;
-
-    // 후보 경로 (필요한 것만)
+    const path = require('path');
     const tryPaths = [
-      ' ./routes/corn',
-      ' ./routes/corn.js',
-      ' ./router/corn',
-      ' ./api/corn',
-      ' ./routers/corn',
-      ' ./routes/corn'
+      './routes/corn',
+      './routes/corn.js',
+      './router/corn',
+      './api/corn',
+      './routers/corn',
+      './routes/corn'
     ];
 
     let mod = null, resolved = null, errLast = null;
-
-    // 순서대로 모듈 로드 시도
     for (const p of tryPaths) {
       try {
         resolved = p;
-        mod = require(p); // << 여기서 corn.js 불러옴
+        mod = require(p);
         break;
-      } catch (e) {
-        errLast = e;
-        mod = null;
-        resolved = null;
-      }
+      } catch (e) { errLast = e; mod = null; resolved = null; }
     }
-
-    // 모듈을 못 찾았을 때 경고
     if (!mod) {
       console.warn('[CORN-ATTACH] corn router module not found. Tried:', tryPaths.join(', '));
       if (errLast) console.warn('[CORN-ATTACH] last error:', errLast.message);
       return;
     }
-
-    // default export 혹은 module.exports를 가져옴
     const cornRouter = (mod.default || mod);
-
     if (typeof cornRouter !== 'function') {
       console.warn('[CORN-ATTACH] router module does not export a function/router');
       return;
     }
-
-    // 실제 경로 등록
     appRef.use('/api/corn', cornRouter);
-
-    // 중복 등록 방지 플래그
     appRef.locals.__CORN_ROUTER_ATTACHED__ = true;
-
     console.log('🌽 corn router attached at /api/corn');
   } catch (e) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
