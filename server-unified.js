@@ -1,41 +1,35 @@
+// server-unified.js
 import express from "express";
 import mongoose from "mongoose";
-import bodyParser from "body-parser";
 import cors from "cors";
 
-// ✅ 라우터 import
-// (감자/보리 라우터는 파일이 준비 안되어 있으면 주석 처리 가능)
-import cornRouter from "./routes/corn-routes.js";
-// import potatoRouter from "./routes/potato.js";
-// import barleyRouter from "./routes/barley.js";
+// 라우터 불러오기
+import cornRoutes from "./routes/corn-routes.js";
+// 👉 필요하면 potato, barley 같은 라우터도 여기 추가
+// import potatoRoutes from "./routes/potato-routes.js";
+// import barleyRoutes from "./routes/barley-routes.js";
 
 const app = express();
-const PORT = 3060; // ✅ 주인님이 말씀하신 포트
+const PORT = 3060;
 
-// ===== 미들웨어 =====
+// ===== 미들웨어 설정 =====
 app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.json());
+
+// ===== 라우터 연결 =====
+app.use("/api/corn", cornRoutes);
+// app.use("/api/potato", potatoRoutes);
+// app.use("/api/barley", barleyRoutes);
 
 // ===== MongoDB 연결 =====
-// 실제 주소는 주인님 환경에 맞게 수정하세요.
-mongoose
-  .connect("mongodb://localhost:27017/farmgame", {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+const MONGO_URI = "mongodb://localhost:27017/farm";
+
+mongoose.connect(MONGO_URI)
   .then(() => console.log("✅ MongoDB 연결 성공"))
-  .catch((err) => console.error("❌ MongoDB 연결 실패:", err));
-
-// ===== 라우터 등록 =====
-// app.use("/api/potato", potatoRouter);
-// app.use("/api/barley", barleyRouter);
-app.use("/api/corn", cornRouter);
-
-// ===== 기본 라우트 =====
-app.get("/", (req, res) => {
-  res.send("🌽 FarmGame 서버 실행 중 (Potato/Barley/Corn)");
-});
+  .catch((err) => {
+    console.error("❌ MongoDB 연결 실패:", err);
+    process.exit(1); // 연결 실패 시 프로세스 종료
+  });
 
 // ===== 서버 실행 =====
 app.listen(PORT, () => {
