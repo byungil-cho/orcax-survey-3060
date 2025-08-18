@@ -3,38 +3,42 @@ import mongoose from "mongoose";
 import bodyParser from "body-parser";
 import cors from "cors";
 
-import potatoRouter from "./routes/potato.js";
-import barleyRouter from "./routes/barley.js";
-
-// ✅ Corn Engine 전용 라우터 불러오기
+// ✅ 라우터 import
+// (감자/보리 라우터는 파일이 준비 안되어 있으면 주석 처리 가능)
 import cornRouter from "./routes/corn-routes.js";
+// import potatoRouter from "./routes/potato.js";
+// import barleyRouter from "./routes/barley.js";
 
 const app = express();
+const PORT = 3060; // ✅ 주인님이 말씀하신 포트
+
+// ===== 미들웨어 =====
 app.use(cors());
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
-// ===== DB 연결 =====
-mongoose.connect("mongodb://127.0.0.1:27017/farm", {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
+// ===== MongoDB 연결 =====
+// 실제 주소는 주인님 환경에 맞게 수정하세요.
+mongoose
+  .connect("mongodb://localhost:27017/farmgame", {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => console.log("✅ MongoDB 연결 성공"))
+  .catch((err) => console.error("❌ MongoDB 연결 실패:", err));
 
-// ===== 기존 라우터 =====
-app.use("/api/potato", potatoRouter);
-app.use("/api/barley", barleyRouter);
-
-// 🚨 기존 옥수수 라우터 (간단 버전) 주석 처리 or 제거
-// app.post("/api/corn/plant", ...)
-// app.post("/api/corn/harvest", ...)
-// app.post("/api/corn/pop", ...)
-// app.post("/api/corn/exchange", ...)
-
-// ===== Corn Engine 5.0 라우터 연결 =====
+// ===== 라우터 등록 =====
+// app.use("/api/potato", potatoRouter);
+// app.use("/api/barley", barleyRouter);
 app.use("/api/corn", cornRouter);
 
-// ===== 서버 시작 =====
-const PORT = 3060;  // ✅ 감자/보리/옥수수 통합 서버
+// ===== 기본 라우트 =====
+app.get("/", (req, res) => {
+  res.send("🌽 FarmGame 서버 실행 중 (Potato/Barley/Corn)");
+});
+
+// ===== 서버 실행 =====
 app.listen(PORT, () => {
-  console.log(`🚀 Farm 서버 실행 중: http://localhost:${PORT}`);
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
 
