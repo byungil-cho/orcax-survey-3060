@@ -3,6 +3,9 @@ import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 
+import adminRoutes from "./routes/admin-routes.js";
+app.use("/api/admin", adminRoutes);
+
 // 라우터 불러오기
 import cornRoutes from "./routes/corn-routes.js";
 // 👉 필요하면 potato, barley 같은 라우터도 여기 추가
