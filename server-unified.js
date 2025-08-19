@@ -56,6 +56,52 @@ app.get('/api/diag/health', (_req, res) => {
   const ok = mongoose.connection.readyState === 1;
   res.json({ ok, dbName: mongoose.connection.name, mongoHost: mongoose.connection.host });
 });
+// ===== [ADD] 공통 유틸 + ID 변형 대응 =====
+function get(o, p, d) { try { return p.split('.').reduce((x,k)=>x?.[k], o) ?? d; } catch { return d; } }
+function pickSeeds(obj) {
+  const v = get(obj, 'data.agri.seeds', get(obj, 'data.agri.seed', obj?.seeds ?? obj?.seed));
+  const n = Number(v); return Number.isFinite(n) ? n : 0;
+}
+function idOr(kid) {
+  const n = Number(kid); const maybe = Number.isFinite(n) ? n : -1;
+  return { $or: [
+    { kakaoId: kid }, { kakaoId: String(kid) }, { kakaoId: maybe },
+    { kakao_id: kid }, { kakao_id: String(kid) }, { kakao_id: maybe },
+    { userId:  kid }, { userId:  String(kid) }, { userId:  maybe },
+  ]};
+}
+
+// ===== [ADD] 프리플라이트(OPTIONS) 처리 – Express5 호환(정규식 사용) =====
+app.options(/.*/, cors({ origin: true, credentials: true }));
+
+// ===== [ADD] 옥수수 씨앗/요약 핸들러(서버가 경로 alias 모두 수용) =====
+async function seedHandler(req, res) {
+  try {
+    const cd = await mongoose.connection.collection('corn_data')
+      .findOne(idOr(req.params.kakaoId), { projection: { data:1, seeds:1, seed:1 } });
+    return res.json({ ok: true, seeds: pickSeeds(cd || {}) });
+  } catch (e) { return res.status(500).json({ ok:false, error: e.message }); }
+}
+async function summaryHandler(req, res) {
+  try {
+    const q = idOr(req.params.kakaoId);
+    const u  = await mongoose.connection.collection('users')
+                .findOne(q, { projection: { 'inventory.water':1, 'inventory.fertilizer':1 }});
+    const cd = await mongoose.connection.collection('corn_data')
+                .findOne(q, { projection: { data:1, seeds:1, seed:1 }});
+    return res.json({
+      ok: true,
+      water: Number(u?.inventory?.water ?? 0),
+      fertilizer: Number(u?.inventory?.fertilizer ?? 0),
+      seeds: pickSeeds(cd || {})
+    });
+  } catch (e) { return res.status(500).json({ ok:false, error: e.message }); }
+}
+
+// ===== [ADD] 경로 alias 다 받기 (감자농장과 동일 패턴도 커버) =====
+app.get(['/api/corn/seed/:kakaoId','/api/seed/:kakaoId','/corn/seed/:kakaoId','/seed/:kakaoId'], seedHandler);
+app.get(['/api/corn/summary/:kakaoId','/api/summary/:kakaoId','/corn/summary/:kakaoId','/summary/:kakaoId'], summaryHandler);
+
 
 /* ===== 라우터 부착 ===== */
 try {
