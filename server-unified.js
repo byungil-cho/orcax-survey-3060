@@ -1,14 +1,13 @@
-const app = express();
-
 'use strict';
 
 require('dotenv').config();
-const express = require('express');
-const mongoose = require('mongoose');
-// server-unified.js 상단부(Express 생성 후)에 추가 1줄
-const cors = require('cors');
-app.use(cors({ origin: ['https://byungil-cho.github.io'], credentials: true }));
 
+const express = require('express');
+const cors = require('cors');
+const mongoose = require('mongoose');
+
+const app = express(); // ✅ app을 가장 먼저 생성
+app.use(cors({ origin: ['https://byungil-cho.github.io'], credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -47,11 +46,10 @@ mongoose.connection.on('error', (err) => {
   console.error('[MongoDB] error:', err.message);
 });
 
-
 /* =========================
    진단(health) 엔드포인트
    ========================= */
-app.get('/api/diag/health', (req, res) => {
+app.get('/api/diag/health', (_req, res) => {
   const ok = mongoose.connection.readyState === 1;
   res.json({
     ok,
