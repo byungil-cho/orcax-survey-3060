@@ -5,12 +5,15 @@ require('dotenv').config();
 const express  = require('express');
 const cors     = require('cors');
 const mongoose = require('mongoose');
+const ALLOW = 'https://byungil-cho.github.io';
 
 /* ===== 앱 생성 (※ app 먼저 만들고 use 호출) ===== */
 const app = express();
 app.use(cors({ origin: true, credentials: true })); // 프런트(GitHub Pages 등)에서 호출 허용
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(require('cors')({ origin: ALLOW, credentials: true }));   // ← 정해진 오리진만 허용 + 쿠키 허용
+app.options('*', require('cors')({ origin: ALLOW, credentials: true })); // ← 프리플라이트
 
 /* ===== Mongo 연결 (farm → farmgame 강제 교정) ===== */
 const DEFAULT_DB = 'farmgame';
