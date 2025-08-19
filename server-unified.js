@@ -127,11 +127,11 @@ async function summaryHandler(req, res){
 /* 필수 경로 */
 app.get('/api/corn/seed/:kakaoId',    seedHandler);
 app.get('/api/corn/summary/:kakaoId', summaryHandler);
-/* 과거/다른 클라이언트 호환 alias (원치 않으면 아래 4줄 삭제해도 무방) */
+/* 과거/다른 클라이언트 호환 alias */
 app.get(['/api/seed/:kakaoId','/seed/:kakaoId','/corn/seed/:kakaoId'], seedHandler);
 app.get(['/api/summary/:kakaoId','/summary/:kakaoId','/corn/summary/:kakaoId'], summaryHandler);
 
-/* 기존 corn 라우터가 따로 있다면 유지 부착(없으면 경고만) */
+/* 기존 corn 라우터 */
 try {
   const cornRouter = require('./routes/corn');
   app.use('/api/corn', cornRouter);
