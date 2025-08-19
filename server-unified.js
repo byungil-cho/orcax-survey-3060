@@ -1,49 +1,35 @@
 'use strict';
 require('dotenv').config();
 
-/* =========================
-   의존성
-   ========================= */
+/* ========== deps ========== */
 const express  = require('express');
 const cors     = require('cors');
 const mongoose = require('mongoose');
 
-/* =========================
-   앱 & 미들웨어
-   ========================= */
+/* ========== app & mw ========== */
 const app = express();
 
-/* CORS: GitHub Pages(고정) + 필요시 환경변수(CORS_ORIGINS)로 추가 허용
-   - credentials:true를 쓰므로 와일드카드(*) 금지
-   - 쉼표 구분 예: CORS_ORIGINS="https://byungil-cho.github.io,https://cook.example.com"
-*/
+// GitHub Pages 고정 + 필요시 환경변수 CORS_ORIGINS로 추가
 const ALLOW_ORIGINS = (process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map(s => s.trim()).filter(Boolean)
   : ['https://byungil-cho.github.io']
 );
 app.use(cors({
   origin(origin, cb){
-    if (!origin) return cb(null, true);                  // 서버-서버/로컬 curl 허용
+    if (!origin) return cb(null, true);                 // 서버-서버/테스트 허용
     if (ALLOW_ORIGINS.includes(origin)) return cb(null, true);
     return cb(null, false);
   },
   credentials: true
 }));
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-/* =========================
-   MongoDB 연결 (MONGODB_URL만 사용)
-   - /farm 이 들어와도 자동으로 /farmgame 로 강제
-   ========================= */
+/* ========== Mongo ========== */
+// 반드시 MONGODB_URL만 사용(다른 키 안 씀). 없으면 로컬 기본값으로만 조용히 동작.
 const DEFAULT_DB = 'farmgame';
-
-if (!process.env.MONGODB_URL) {
-  console.error('❌ 환경변수 MONGODB_URL 이 설정되어 있지 않습니다.');
-  process.exit(1);
-}
-const RAW_URI = process.env.MONGODB_URL.trim();
+const RAW_ENV = (process.env.MONGODB_URL || '').trim();
+const RAW_URI = RAW_ENV || `mongodb://127.0.0.1:27017/${DEFAULT_DB}`;
 
 function forceDb(uri, name) {
   if (uri.startsWith('mongodb+srv://')) {
@@ -56,25 +42,25 @@ function pickDbName(uri) {
     const u = new URL(uri);
     const nm = (u.pathname || '').replace(/^\//, '') || DEFAULT_DB;
     return nm === 'farm' ? DEFAULT_DB : nm;
-  } catch {
-    return DEFAULT_DB;
-  }
+  } catch { return DEFAULT_DB; }
 }
 
-let dbName  = pickDbName(RAW_URI);
-const MONGO = forceDb(RAW_URI, dbName);
+let dbName = pickDbName(RAW_URI);
+const MONGO_URI = forceDb(RAW_URI, dbName);
 
 mongoose.set('strictQuery', true);
-mongoose.connect(MONGO, { dbName })
-  .then(() => console.log(`✅ [MongoDB] connected ${mongoose.connection.host}/${mongoose.connection.name}`))
+mongoose.connect(MONGO_URI, { dbName })
+  .then(() => {
+    const host = mongoose.connection.host;
+    const name = mongoose.connection.name;
+    console.log(`✅ [MongoDB] connected ${host}/${name}`);
+  })
   .catch(err => {
     console.error('❌ [MongoDB] connect error:', err.message);
     process.exit(1);
   });
 
-/* =========================
-   유틸 (스키마/키 변형 흡수)
-   ========================= */
+/* ========== utils ========== */
 function get(o, p, d){ try { return p.split('.').reduce((x,k)=>x?.[k], o) ?? d; } catch { return d; } }
 function pickSeeds(obj){
   const v = get(obj, 'data.agri.seeds', get(obj, 'data.agri.seed', obj?.seeds ?? obj?.seed));
@@ -89,18 +75,14 @@ function idOr(kid){
   ]};
 }
 
-/* =========================
-   루트/헬스 (백지 방지 + 상태 확인)
-   ========================= */
+/* ========== health ========== */
 app.get('/', (_req, res) => res.type('text').send('API OK'));
 app.get('/api/diag/health', (_req, res) => {
   const ok = mongoose.connection.readyState === 1;
   res.json({ ok, dbName: mongoose.connection.name, mongoHost: mongoose.connection.host });
 });
 
-/* =========================
-   옥수수 API (필수 2개 + 과거 alias 수용)
-   ========================= */
+/* ========== corn APIs ========== */
 async function seedHandler(req, res){
   try {
     const cd = await mongoose.connection.collection('corn_data')
@@ -127,11 +109,11 @@ async function summaryHandler(req, res){
 /* 필수 경로 */
 app.get('/api/corn/seed/:kakaoId',    seedHandler);
 app.get('/api/corn/summary/:kakaoId', summaryHandler);
-/* 과거/다른 클라이언트 호환 alias */
+/* 호환 alias */
 app.get(['/api/seed/:kakaoId','/seed/:kakaoId','/corn/seed/:kakaoId'], seedHandler);
 app.get(['/api/summary/:kakaoId','/summary/:kakaoId','/corn/summary/:kakaoId'], summaryHandler);
 
-/* 기존 corn 라우터 */
+/* 기존 라우터 부착(있으면) */
 try {
   const cornRouter = require('./routes/corn');
   app.use('/api/corn', cornRouter);
@@ -139,17 +121,13 @@ try {
   console.warn('[warn] routes/corn.js 미부착(없으면 정상):', e.message);
 }
 
-/* =========================
-   공통 핸들러
-   ========================= */
+/* ========== fallbacks ========== */
 app.use((req, res) => res.status(404).json({ ok:false, error:'Not Found', path:req.originalUrl }));
 app.use((err, req, res, _next) => {
   console.error('[ERR]', err);
   res.status(500).json({ ok:false, error: err.message || 'Server Error' });
 });
 
-/* =========================
-   서버 시작 (무조건 3060 고정)
-   ========================= */
+/* ========== start (3060 고정) ========== */
 const PORT = 3060;
 app.listen(PORT, () => console.log(`🚀 [Server] listening on :${PORT}`));
