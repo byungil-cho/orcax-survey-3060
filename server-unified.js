@@ -5,15 +5,19 @@ require('dotenv').config();
 const express  = require('express');
 const cors     = require('cors');
 const mongoose = require('mongoose');
+
+/* ===== CORS 허용 오리진 ===== */
 const ALLOW = 'https://byungil-cho.github.io';
 
-/* ===== 앱 생성 (※ app 먼저 만들고 use 호출) ===== */
+/* ===== 앱 생성 ===== */
 const app = express();
-app.use(cors({ origin: true, credentials: true })); // 프런트(GitHub Pages 등)에서 호출 허용
+
+/* ---- CORS: 단일 설정만 사용(프리플라이트 포함) ----
+   ※ app.options('*', ...) 는 Express 5에서 path-to-regexp 에러를 유발하므로 제거 */
+app.use(cors({ origin: ALLOW, credentials: true }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(require('cors')({ origin: ALLOW, credentials: true }));   // ← 정해진 오리진만 허용 + 쿠키 허용
-app.options('*', require('cors')({ origin: ALLOW, credentials: true })); // ← 프리플라이트
 
 /* ===== Mongo 연결 (farm → farmgame 강제 교정) ===== */
 const DEFAULT_DB = 'farmgame';
@@ -55,7 +59,7 @@ app.get('/api/diag/health', (_req, res) => {
 
 /* ===== 라우터 부착 ===== */
 try {
-  const cornRouter = require('./routes/corn');        // 기존 파일 그대로 사용
+  const cornRouter = require('./routes/corn'); // 기존 파일 그대로 사용
   app.use('/api/corn', cornRouter);
 } catch (e) {
   console.warn('[warn] routes/corn.js 미부착:', e.message);
