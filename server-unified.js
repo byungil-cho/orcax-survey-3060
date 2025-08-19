@@ -3,6 +3,10 @@
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
+// server-unified.js 상단부(Express 생성 후)에 추가 1줄
+const cors = require('cors');
+app.use(cors({ origin: ['https://byungil-cho.github.io'], credentials: true }));
+
 
 const app = express();
 app.use(express.json());
@@ -42,6 +46,7 @@ mongoose.connection.on('connected', () => {
 mongoose.connection.on('error', (err) => {
   console.error('[MongoDB] error:', err.message);
 });
+
 
 /* =========================
    진단(health) 엔드포인트
