@@ -8,6 +8,8 @@ const mongoose = require('mongoose');
 
 const app = express(); // ✅ app을 가장 먼저 생성
 app.use(cors({ origin: ['https://byungil-cho.github.io'], credentials: true }));
+app.use(express.static('public'));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
