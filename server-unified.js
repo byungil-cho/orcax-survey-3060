@@ -1,70 +1,85 @@
-// ====== 기본 모듈 ======
-import express from "express";
-import mongoose from "mongoose";
-import cors from "cors";
+'use strict';
 
-// ====== 라우터 ======
-import adminRoutes from "./routes/admin-routes.js";
-import cornRoutes from "./routes/corn-routes.js";
-// 필요한 경우 추가
-// import potatoRoutes from "./routes/potato-routes.js";
-// import barleyRoutes from "./routes/barley-routes.js";
+require('dotenv').config();
+const express = require('express');
+const mongoose = require('mongoose');
 
-// ====== 엔진 모듈 ======
-import cornEngine from "./engtes/engine.js";
-import harvest from "./engtes/harvest.js";
-import reward from "./engtes/reward.js";
-import growth from "./engtes/growth.js";
-import level from "./engtes/level.js";
-import status from "./engtes/status.js";
-import popcorn from "./engtes/popcorn.js";
-import resources from "./engtes/resources.js";
-import gauge from "./engtes/gauge.js";
-import adminEngine from "./engtes/admin.js";
-
-// ====== 앱 설정 ======
 const app = express();
-const PORT = 3060;
-
-app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// ====== 정적 HTML 파일 서빙 ======
-app.use(express.static("public"));
+/* =========================
+   Mongo 연결 (farm → farmgame 강제)
+   ========================= */
+const DEFAULT_DB = 'farmgame';
+const RAW_URI = (process.env.MONGODB_URL || `mongodb://127.0.0.1:27017/${DEFAULT_DB}`).trim();
 
-// ====== 라우터 연결 ======
-app.use("/api/admin", adminRoutes);
-app.use("/api/corn", cornRoutes);
-// app.use("/api/potato", potatoRoutes);
-// app.use("/api/barley", barleyRoutes);
-
-// ====== MongoDB 연결 ======
-const MONGO_URI = "mongodb://localhost:27017/farm";
-mongoose.connect(MONGO_URI)
-  .then(() => console.log("✅ MongoDB 연결 성공"))
-  .catch((err) => {
-    console.error("❌ MongoDB 연결 실패:", err);
-    process.exit(1);
-  });
-
-// ====== 엔진 초기화 ======
-try {
-  cornEngine.init?.();
-  harvest.init?.();
-  reward.init?.();
-  growth.init?.();
-  level.init?.();
-  status.init?.();
-  popcorn.init?.();
-  resources.init?.();
-  gauge.init?.();
-  adminEngine.init?.();
-  console.log("✅ 엔진 모듈 초기화 완료");
-} catch (err) {
-  console.error("⚠️ 엔진 초기화 중 오류:", err);
+function forceDb(uri, name) {
+  // mongodb+srv와 일반 URI 모두 지원, 쿼리스트링은 그대로 유지
+  if (uri.startsWith('mongodb+srv://')) {
+    return uri.replace(/^(mongodb\+srv:\/\/[^/]+)\/?([^?]*)/, `$1/${name}`);
+  }
+  return uri.replace(/^(mongodb:\/\/[^/]+)\/?([^?]*)/, `$1/${name}`);
+}
+function pickDbName(uri) {
+  try {
+    const u = new URL(uri);
+    const nm = (u.pathname || '').replace(/^\//, '') || DEFAULT_DB;
+    return nm === 'farm' ? DEFAULT_DB : nm; // farm → farmgame
+  } catch {
+    return DEFAULT_DB;
+  }
 }
 
-// ====== 서버 실행 ======
+let dbName = pickDbName(RAW_URI);
+const MONGO_URI = forceDb(RAW_URI, dbName);
+
+mongoose.set('strictQuery', true);
+mongoose.connect(MONGO_URI, { dbName, serverSelectionTimeoutMS: 8000 });
+mongoose.connection.on('connected', () => {
+  console.log(`[MongoDB] connected ${mongoose.connection.host}/${mongoose.connection.name}`);
+});
+mongoose.connection.on('error', (err) => {
+  console.error('[MongoDB] error:', err.message);
+});
+
+/* =========================
+   진단(health) 엔드포인트
+   ========================= */
+app.get('/api/diag/health', (req, res) => {
+  const ok = mongoose.connection.readyState === 1;
+  res.json({
+    ok,
+    dbName: mongoose.connection.name,
+    mongoHost: mongoose.connection.host,
+  });
+});
+
+/* =========================
+   라우터 부착
+   ========================= */
+try {
+  const cornRouter = require('./routes/corn');
+  app.use('/api/corn', cornRouter);
+} catch (e) {
+  console.warn('[warn] routes/corn.js 미존재 또는 오류로 미부착:', e.message);
+}
+
+/* =========================
+   기본 404 / 에러 핸들러
+   ========================= */
+app.use((req, res, next) => {
+  res.status(404).json({ ok: false, error: 'Not Found' });
+});
+app.use((err, req, res, next) => {
+  console.error('[ERR]', err);
+  res.status(500).json({ ok: false, error: err.message || 'Server Error' });
+});
+
+/* =========================
+   서버 시작
+   ========================= */
+const PORT = Number(process.env.PORT || 3060);
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`[Server] listening on :${PORT}`);
 });
