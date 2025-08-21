@@ -42,6 +42,31 @@ app.post("/api/login", async (req, res) => {
   res.json(user);
 });
 
+// 자원/농장 정보 통합 조회
+app.get("/api/cornfarm", async (req, res) => {
+  if (!req.session.user) return res.status(401).json({ error: "Not logged in" });
+  const nickname = req.session.user.nickname;
+  const user = await db.collection("users").findOne({ nickname });
+  const farm = await db.collection("corn_data").findOne({ nickname });
+  res.json({ ...user, ...farm });
+});
+
+// 구매 처리
+app.post("/api/buy", async (req,res)=>{
+  if(!req.session.user) return res.status(401).json({ error:"Not logged in" });
+  const { item, cost } = req.body;
+  const nickname = req.session.user.nickname;
+
+  const user = await db.collection("users").findOne({ nickname });
+  if(user.token < cost) return res.status(400).json({ error:"토큰 부족" });
+
+  await db.collection("users").updateOne(
+    { nickname },
+    { $inc: { token: -cost, [item]: 1 } }
+  );
+  res.json({ success:true });
+});
+
 // ---------------- 유저 정보 불러오기 ----------------
 app.get("/api/userdata", async (req, res) => {
   const nickname = req.query.nickname;
@@ -78,6 +103,7 @@ app.post("/api/update", async (req, res) => {
 
 // ---------------- 서버 실행 ----------------
 app.listen(3060, () => console.log("🚀 Server running on port 3060"));
+
 
 
 
