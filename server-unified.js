@@ -50,6 +50,40 @@ app.get("/api/corn/status/:kakaoId", async (req, res) => {
   if (!corn) return res.status(404).json({ error: "Corn farm not found" });
   res.json(corn);
 });
+// 사용자 데이터 불러오기 API
+app.get("/api/userData", async (req, res) => {
+  try {
+    // 로그인된 사용자 id는 세션/토큰에서 가져온다고 가정
+    // 지금은 테스트용으로 고정 userId
+    const userId = req.query.userId || "testUser";
+
+    const user = await db.collection("users").findOne({ userId });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // corn_data도 같이 묶어서 보냄
+    const cornData = await db.collection("corn_data").findOne({ userId });
+
+    res.json({
+      nickname: user.nickname || "농장주",
+      level: user.level || 1,
+      resources: {
+        water: user.water || 0,
+        fertilizer: user.fertilizer || 0,
+        token: user.token || 0,
+        cornSeed: cornData?.cornSeed || 0,
+        salt: cornData?.salt || 0,
+        sugar: cornData?.sugar || 0,
+        popcorn: cornData?.popcorn || 0
+      }
+    });
+  } catch (err) {
+    console.error("Error fetching userData", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 
 // 구매 API
 app.post("/api/corn/buy", async (req, res) => {
@@ -102,5 +136,6 @@ const PORT = 3060;
 app.listen(PORT, () => {
   console.log(`🚀 [Server] listening on :${PORT}`);
 });
+
 
 
