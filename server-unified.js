@@ -1,108 +1,63 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const { MongoClient } = require("mongodb");
-const cors = require("cors");
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const session = require('express-session');
+require('dotenv').config();
 
 const app = express();
-app.use(bodyParser.json());
-app.use(cors());
+app.use(express.json());
 
-const uri = "mongodb://127.0.0.1:27017";
-const client = new MongoClient(uri);
-let db;
+// ✅ CORS (깃허브 페이지에서 요청 가능하도록 설정)
+app.use(cors({
+  origin: 'https://byungil-cho.github.io',
+  credentials: true
+}));
 
-async function connectDB() {
-  await client.connect();
-  db = client.db("farmgame");
-  console.log("✅ MongoDB Connected");
-}
-connectDB();
+// ✅ 세션 (로그인 상태 유지용)
+app.use(session({
+  secret: 'mysecret',
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: false } // https면 true
+}));
 
-// ---------------- 로그인 / 유저 초기화 ----------------
-app.post("/api/login", async (req, res) => {
-  const { nickname } = req.body;
-  let user = await db.collection("users").findOne({ nickname });
+// ✅ MongoDB 연결
+mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
 
+const UserSchema = new mongoose.Schema({
+  username: String,
+  water: { type: Number, default: 0 },
+  fertilizer: { type: Number, default: 0 },
+  corn: { type: Number, default: 0 }
+});
+const User = mongoose.model('User', UserSchema);
+
+// ✅ 로그인
+app.post('/api/login', async (req, res) => {
+  const { username } = req.body;
+  let user = await User.findOne({ username });
   if (!user) {
-    user = {
-      nickname,
-      level: 1,
-      water: 0,
-      fertilizer: 0,
-      token: 0,
-      seed: 0,
-      salt: 0,
-      sugar: 0,
-      popcorn: 0,
-      season: "winter",
-      growthStage: "seed"
-    };
-    await db.collection("users").insertOne(user);
+    user = new User({ username });
+    await user.save();
   }
+  req.session.username = username;
+  res.json({ success: true, user });
+});
+
+// ✅ 유저 자원 불러오기
+app.get('/api/corn/summary/:username', async (req, res) => {
+  const { username } = req.params;
+  const user = await User.findOne({ username });
+  if (!user) return res.status(404).json({ error: 'User not found' });
   res.json(user);
 });
 
-// 자원/농장 정보 통합 조회
-app.get("/api/cornfarm", async (req, res) => {
-  if (!req.session.user) return res.status(401).json({ error: "Not logged in" });
-  const nickname = req.session.user.nickname;
-  const user = await db.collection("users").findOne({ nickname });
-  const farm = await db.collection("corn_data").findOne({ nickname });
-  res.json({ ...user, ...farm });
-});
+// ✅ 테스트용
+app.get('/', (req, res) => res.send("Server is running!"));
 
-// 구매 처리
-app.post("/api/buy", async (req,res)=>{
-  if(!req.session.user) return res.status(401).json({ error:"Not logged in" });
-  const { item, cost } = req.body;
-  const nickname = req.session.user.nickname;
+app.listen(3060, () => console.log("Server running on port 3060"));
 
-  const user = await db.collection("users").findOne({ nickname });
-  if(user.token < cost) return res.status(400).json({ error:"토큰 부족" });
 
-  await db.collection("users").updateOne(
-    { nickname },
-    { $inc: { token: -cost, [item]: 1 } }
-  );
-  res.json({ success:true });
-});
-
-// ---------------- 유저 정보 불러오기 ----------------
-app.get("/api/userdata", async (req, res) => {
-  const nickname = req.query.nickname;
-  const user = await db.collection("users").findOne({ nickname });
-  if (!user) return res.status(404).json({ error: "User not found" });
-  res.json(user);
-});
-
-// ---------------- 옥수수 농장 요약 ----------------
-app.get("/api/corn/summary/:nickname", async (req, res) => {
-  const { nickname } = req.params;
-  const corn = await db.collection("corn_data").findOne({ nickname });
-  if (!corn) {
-    return res.json({
-      nickname,
-      season: "winter",
-      growthStage: "seed",
-      progress: 0
-    });
-  }
-  res.json(corn);
-});
-
-// ---------------- 자원 업데이트 ----------------
-app.post("/api/update", async (req, res) => {
-  const { nickname, field, value } = req.body;
-  await db.collection("users").updateOne(
-    { nickname },
-    { $inc: { [field]: value } }
-  );
-  const user = await db.collection("users").findOne({ nickname });
-  res.json(user);
-});
-
-// ---------------- 서버 실행 ----------------
-app.listen(3060, () => console.log("🚀 Server running on port 3060"));
 
 
 
