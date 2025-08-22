@@ -123,19 +123,27 @@ app.get("/__routes", (_req, res) => {
       }
       return { user:u, corn:c };
     }
-    const initHandler = async (req, res) => {
-      // 기존 라우트가 있으면 그 라우트가 먼저 처리됨(여긴 도달 안함)
-      try {
-        const kakaoId  = req.body?.kakaoId || req.query?.kakaoId;
-        const nickname = req.body?.nickname || req.query?.nickname || "";
-        if (!kakaoId) return res.status(400).json({ success:false, message:"kakaoId 필요" });
-        const data = await ensureAll(kakaoId, nickname);
-        res.json({ success:true, ...data });
-      } catch (e) {
-        console.error("/api/init-user shim error:", e);
-        res.status(500).json({ success:false });
-      }
-    };
+   const initHandler = async (req, res) => {
+  try {
+    const kakaoId  = req.body?.kakaoId || req.query?.kakaoId;
+    const nickname = req.body?.nickname || req.query?.nickname || "";
+    if (!kakaoId) {
+      // 로그인 전 초기 진입: 200으로 "로그인 필요"만 알려줌 (프론트가 에러 없이 처리 가능)
+      return res.json({
+        success: false,
+        needLogin: true,
+        message: "로그인 필요",
+        user: null,
+        corn: null
+      });
+    }
+    const data = await ensureAll(kakaoId, nickname);
+    res.json({ success:true, ...data });
+  } catch (e) {
+    console.error("/api/init-user shim error:", e);
+    res.status(500).json({ success:false });
+  }
+};
     app.get ("/api/init-user", initHandler);
     app.post("/api/init-user", initHandler);
 
@@ -308,5 +316,6 @@ function routeExists(pathname, method = "get") {
 process.on("unhandledRejection", (e) => console.error("UNHANDLED:", e));
 process.on("uncaughtException",  (e) => console.error("UNCAUGHT :", e));
 process.on("SIGINT", async () => { try { await client?.close(); } catch {} process.exit(0); });
+
 
 
