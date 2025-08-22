@@ -760,7 +760,7 @@ if (!app.locals.__ORCAX_CORN_MISC__) {
    - 외부 엔진 모듈이 있으면 /api/corn 으로 장착
    - 없더라도 내장 엔진(기본 로직)으로 동일 경로 제공
 =============================================================================*/
-const express = require('express');
+//const express = require('express'); 주석처리 이중 작성
 
 // 1) corn 전용 컬렉션 (없으면 생성)
 const CornData = mongoose.models.CornData || mongoose.model('CornData', new mongoose.Schema({
@@ -1027,6 +1027,7 @@ app.post('/api/userdata', async (req,res,next)=>{
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
