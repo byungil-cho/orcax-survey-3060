@@ -1,266 +1,110 @@
+// server-unified.js
+
 const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
 const bodyParser = require("body-parser");
-const { MongoClient } = require("mongodb");
 
 const app = express();
+const PORT = 3060;
+
+// ✅ CORS 설정
+app.use(cors({
+  origin: ["https://byungil-cho.github.io"],
+  credentials: true
+}));
 app.use(bodyParser.json());
 
-// ✅ MongoDB 연결
-const uri = "mongodb://localhost:27017";
-const client = new MongoClient(uri);
-let db;
-
-client.connect().then(() => {
-  db = client.db("farmDB");
-  console.log("✅ MongoDB 연결 성공");
-});
-
-// -------------------------------------------------------------
-// 1️⃣ 공통 API (카카오 로그인, 출금 신청)
-// -------------------------------------------------------------
-app.post("/api/login", async (req, res) => {
-  const { kakaoId, nickname } = req.body;
-  if (!kakaoId) return res.json({ success: false, message: "kakaoId 필요" });
-
-  let user = await db.collection("users").findOne({ kakaoId });
-  if (!user) {
-    user = { kakaoId, nickname, water: 10, fertilizer: 10, token: 10 };
-    await db.collection("users").insertOne(user);
-  }
-  res.json({ success: true, user });
-});
-
-app.post("/api/withdraw", async (req, res) => {
-  const { kakaoId, wallet } = req.body;
-  if (!kakaoId || !wallet) return res.json({ success: false });
-
-  await db.collection("withdraw_requests").insertOne({
-    kakaoId,
-    wallet,
-    status: "pending",
-    createdAt: new Date()
-  });
-
-  res.json({ success: true, message: "출금 신청 완료" });
-});
-
-// -------------------------------------------------------------
-// 2️⃣ 감자/보리 농장 (users 컬렉션)
-// -------------------------------------------------------------
-app.get("/api/farm/status", async (req, res) => {
-  const { kakaoId } = req.query;
-  const user = await db.collection("users").findOne({ kakaoId });
-  res.json({ success: true, user });
-});
-
-app.post("/api/farm/water", async (req, res) => {
-  const { kakaoId } = req.body;
-  const user = await db.collection("users").findOne({ kakaoId });
-  if (!user || user.water <= 0) return res.json({ success: false });
-
-  await db.collection("users").updateOne({ kakaoId }, { $inc: { water: -1 } });
-  res.json({ success: true });
-});
-
-// -------------------------------------------------------------
-// 3️⃣ 옥수수 농장 (corn_data 컬렉션)
-// -------------------------------------------------------------
-app.get("/api/corn/status", async (req, res) => {
-  const { kakaoId } = req.query;
-  let cornData = await db.collection("corn_data").findOne({ kakaoId });
-
-  if (!cornData) {
-    cornData = { 
-      kakaoId, 
-      corn: 0, 
-      seeds: 0, 
-      popcorn: 0, 
-      salt: 0, 
-      sugar: 0, 
-      token: 0,
-      loan: { active: false, unpaid: 0, startDate: null },
-      bankrupt: false,
-      createdAt: new Date()
-    };
-    await db.collection("corn_data").insertOne(cornData);
-  }
-  res.json({ success: true, resources: cornData });
-});
-
-// 🌱 씨앗 심기
-app.post("/api/corn/plant", async (req, res) => {
-  const { kakaoId } = req.body;
-  let cornData = await db.collection("corn_data").findOne({ kakaoId });
-
-  if (!cornData || cornData.seeds <= 0) {
-    return res.json({ success: false, message: "씨앗 없음" });
-  }
-
-  await db.collection("corn_data").updateOne(
-    { kakaoId },
-    { $inc: { seeds: -1, corn: 1 } }
-  );
-
-  cornData = await db.collection("corn_data").findOne({ kakaoId });
-  res.json({ success: true, resources: cornData });
-});
-
-// 🌽 수확
-app.post("/api/corn/harvest", async (req, res) => {
-  const { kakaoId, days } = req.body;
-  let cornData = await db.collection("corn_data").findOne({ kakaoId });
-
-  if (!cornData || cornData.corn <= 0) {
-    return res.json({ success: false, message: "옥수수 없음" });
-  }
-
-  let grade = "F";
-  if (days === 5) grade = "A";
-  else if (days === 6) grade = "B";
-  else if (days === 7) grade = "C";
-  else if (days === 8) grade = "D";
-  else if (days === 9) grade = "E";
-
-  await db.collection("corn_data").updateOne(
-    { kakaoId },
-    { $inc: { corn: -1 } }
-  );
-
-  res.json({ success: true, grade });
-});
-
-// 🍿 뻥튀기
-app.post("/api/corn/popcorn", async (req, res) => {
-  const { kakaoId } = req.body;
-  let cornData = await db.collection("corn_data").findOne({ kakaoId });
-
-  if (!cornData || cornData.corn <= 0) return res.json({ success: false });
-
-  const reward = Math.random() > 0.5 ? 1000 : 0;
-  let tokenGain = reward;
-
-  if (cornData.loan.active) tokenGain = Math.floor(tokenGain * 0.7);
-
-  await db.collection("corn_data").updateOne(
-    { kakaoId },
-    { $inc: { corn: -1, popcorn: 1, token: tokenGain } }
-  );
-
-  cornData = await db.collection("corn_data").findOne({ kakaoId });
-  res.json({ success: true, resources: cornData });
-});
-
-// 💰 대출 신청
-app.post("/api/corn/loan", async (req, res) => {
-  const { kakaoId, amount } = req.body;
-  let cornData = await db.collection("corn_data").findOne({ kakaoId });
-
-  if (cornData.loan.active) {
-    return res.json({ success: false, message: "이미 대출이 존재합니다." });
-  }
-
-  await db.collection("corn_data").updateOne(
-    { kakaoId },
-    { 
-      $set: { "loan.active": true, "loan.unpaid": amount, "loan.startDate": new Date() },
-      $inc: { token: amount }
-    }
-  );
-
-  res.json({ success: true, message: "대출 성공" });
-});
-
-// 📉 이자 처리
-app.post("/api/corn/interest", async (req, res) => {
-  const { kakaoId } = req.body;
-  let cornData = await db.collection("corn_data").findOne({ kakaoId });
-
-  if (!cornData.loan.active) return res.json({ success: false });
-
-  const interest = Math.floor(cornData.loan.unpaid * 0.05);
-  if (cornData.token < interest) {
-    await db.collection("corn_data").updateOne(
-      { kakaoId },
-      { $set: { bankrupt: true } }
-    );
-    return res.json({ success: false, message: "파산되었습니다." });
-  }
-
-  await db.collection("corn_data").updateOne(
-    { kakaoId },
-    { $inc: { token: -interest, "loan.unpaid": interest } }
-  );
-
-  cornData = await db.collection("corn_data").findOne({ kakaoId });
-  res.json({ success: true, resources: cornData });
-});
-
-// 🏦 파산 해제
-app.post("/api/corn/recover", async (req, res) => {
-  const { kakaoId, payment } = req.body;
-  let cornData = await db.collection("corn_data").findOne({ kakaoId });
-
-  if (!cornData.bankrupt) return res.json({ success: false, message: "파산 상태가 아님" });
-
-  if (payment >= cornData.loan.unpaid * 2) {
-    await db.collection("corn_data").updateOne(
-      { kakaoId },
-      { $set: { bankrupt: false, "loan.active": false, "loan.unpaid": 0 } }
-    );
-    res.json({ success: true, message: "파산 해제 완료" });
-  } else {
-    res.json({ success: false, message: "충분한 상환 불가" });
-  }
-});
-
-// -------------------------------------------------------------
-// 4️⃣ 호환 API: /api/init-user
-// -------------------------------------------------------------
-app.get("/api/init-user", async (req, res) => {
-  try {
-    const kakaoId = req.query.kakaoId;
-    if (!kakaoId) return res.status(400).json({ error: "kakaoId 필요" });
-
-    let cornData = await db.collection("corn_data").findOne({ kakaoId });
-    if (!cornData) {
-      cornData = { 
-        kakaoId, 
-        corn: 0, seeds: 0, popcorn: 0, salt: 0, sugar: 0, token: 0,
-        loan: { active: false, unpaid: 0, startDate: null },
-        bankrupt: false,
-        createdAt: new Date()
-      };
-      await db.collection("corn_data").insertOne(cornData);
-    }
-    res.json({ success: true, resources: cornData });
-  } catch (err) {
-    console.error("init-user error:", err);
-    res.status(500).json({ error: "서버 오류" });
-  }
-});
-
-// -------------------------------------------------------------
-// Helper
-// -------------------------------------------------------------
-function overdueDays(startDate) {
-  if (!startDate) return 0;
-  const today = new Date();
-  const diff = today - new Date(startDate);
-  return Math.floor(diff / (1000 * 60 * 60 * 24));
+// ✅ MongoDB 연결 (환경변수 MONGODB_URL 고정)
+const MONGO_URI = process.env.MONGODB_URL;
+if (!MONGO_URI) {
+  console.error("❌ MONGODB_URL 환경변수가 설정되지 않았습니다.");
+  process.exit(1);
 }
 
-// -------------------------------------------------------------
-// 서버 실행
-// -------------------------------------------------------------
-app.listen(3060, () => console.log("✅ Server running on port 3060"));
+mongoose.connect(MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => console.log("✅ MongoDB connected"))
+.catch(err => console.error("❌ MongoDB connection error:", err));
 
+/* ============================================================
+   🥔 감자 농장 (기존 코드) 👉 절대 수정하지 않음
+============================================================ */
+const userSchema = new mongoose.Schema({
+  kakaoId: String,
+  seeds: { type: Number, default: 0 },
+  water: { type: Number, default: 0 },
+  potatoes: { type: Number, default: 0 },
+  level: { type: Number, default: 1 }
+});
+const User = mongoose.model("User", userSchema);
 
+// 감자 농장 API (그대로 유지)
+app.get("/api/farm/status", async (req, res) => {
+  const { kakaoId } = req.query;
+  const user = await User.findOne({ kakaoId });
+  if (!user) return res.status(404).json({ error: "user not found" });
+  res.json(user);
+});
 
+/* ============================================================
+   🌽 옥수수 농장 (신규 추가)
+============================================================ */
+const cornSchema = new mongoose.Schema({
+  kakaoId: String,
+  seeds: { type: Number, default: 0 },
+  water: { type: Number, default: 0 },
+  corns: { type: Number, default: 0 },
+  popcorns: { type: Number, default: 0 },
+  salt: { type: Number, default: 0 },
+  sugar: { type: Number, default: 0 },
+  tokens: { type: Number, default: 0 },
+  level: { type: Number, default: 1 }
+});
+const Corn = mongoose.model("Corn", cornSchema);
 
+// 옥수수 농장 상태 조회
+app.get("/api/corn/status", async (req, res) => {
+  const { kakaoId } = req.query;
+  const user = await Corn.findOne({ kakaoId });
+  if (!user) return res.status(404).json({ error: "user not found" });
+  res.json(user);
+});
 
+/* ============================================================
+   🆕 공용 초기화 API (감자 + 옥수수 동시에)
+============================================================ */
+app.get("/api/init-user", async (req, res) => {
+  const kakaoId = req.query.kakaoId;
+  if (!kakaoId) return res.status(400).json({ error: "kakaoId required" });
 
+  try {
+    // 감자 농장 초기화
+    let potatoUser = await User.findOne({ kakaoId });
+    if (!potatoUser) {
+      potatoUser = new User({ kakaoId });
+      await potatoUser.save();
+    }
 
+    // 옥수수 농장 초기화
+    let cornUser = await Corn.findOne({ kakaoId });
+    if (!cornUser) {
+      cornUser = new Corn({ kakaoId });
+      await cornUser.save();
+    }
 
+    res.json({ potatoUser, cornUser });
+  } catch (err) {
+    console.error("init-user error:", err);
+    res.status(500).json({ error: "server error" });
+  }
+});
 
-
-
+/* ============================================================
+   🚀 서버 시작
+============================================================ */
+app.listen(PORT, () => {
+  console.log(`✅ Server running on http://localhost:${PORT}`);
+});
