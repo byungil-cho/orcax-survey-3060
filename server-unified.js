@@ -7,8 +7,7 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 
 // ===== 모델 =====
-// ✅ 요청사항: users → cornData 로만 교체
-const User = require("./models/cornData");          // 감자/보리 대신 cornData를 사용
+const User = require("./models/users");              // 감자/보리
 const Withdraw = require("./models/withdraw");       // 출금
 const MarketProduct = require("./models/marketProduct"); 
 const CornData = require("./models/cornData");       // 옥수수 전용
@@ -263,3 +262,5 @@ mongoose
     app.listen(PORT, () => console.log(`Unified server running on port ${PORT}`));
   })
   .catch((err) => console.error("MongoDB connection error:", err));
+
+
