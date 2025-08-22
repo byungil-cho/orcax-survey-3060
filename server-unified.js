@@ -1,8 +1,10 @@
-// server-unified.js — 통합 서버 (감자 유지 + 옥수수 동작)
-// - CORS(자격증명 허용, 특정 오리진)
+// server-unified.js — 통합 서버 (감자 먼저, 옥수수는 그 위에)
+// - CORS: 특정 오리진 + credentials 허용
 // - 캐시 비활성화(304 방지)
-// - /api/login /api/init-user /api/userdata 호환(shim) + 응답 평탄화(legacy 호환)
-// - 이미 올린 corn 모듈 자동 로드(/api/corn)
+// - 감자 호환(shim): /api/login /api/init-user /api/userdata
+//   * 응답 평탄화: 최상위에 kakaoId/water/fertilizer/tokens + gamja/bori 포함
+//   * 감자 별칭 경로도 제공: /api/gamja/*
+// - 옥수수 모듈 자동 로드(/api/corn)
 
 const express = require("express");
 const cors = require("cors");
@@ -13,7 +15,7 @@ const path = require("path");
 
 const app = express();
 
-/* ===== CORS: 특정 오리진만 허용 + credentials 허용 ===== */
+/* ===== CORS: 특정 오리진만 허용 + credentials ===== */
 const ALLOWED_ORIGINS = [
   "https://byungil-cho.github.io",
   /\.ngrok\.io$/, // 임의의 ngrok 도메인
@@ -21,7 +23,7 @@ const ALLOWED_ORIGINS = [
 app.use(
   cors({
     origin(origin, cb) {
-      if (!origin) return cb(null, true); // 서버 내부/로컬 호출
+      if (!origin) return cb(null, true); // 서버 내부/로컬
       const ok = ALLOWED_ORIGINS.some((rule) =>
         rule instanceof RegExp ? rule.test(origin) : rule === origin
       );
@@ -33,7 +35,7 @@ app.use(
   })
 );
 
-/* ===== 캐시 비활성화(304 방지) ===== */
+/* ===== 캐시 금지(304 방지) ===== */
 app.set("etag", false);
 app.use((req, res, next) => {
   res.set("Cache-Control", "no-store");
@@ -85,30 +87,35 @@ app.get("/__routes", (_req, res) => {
     app.locals.db = db;
     console.log(`✅ MongoDB connected: ${MONGO_URI}/${DB_NAME}`);
 
-    /* ----------------------------------------------------------------
-       1) 감자(users) 기존 라우트가 있으면 그대로 장착, 없으면 스킵
-       ---------------------------------------------------------------- */
-    safeMount("/api/login", "./routes/login"); // POST /api/login
-    safeMount("/api/userdata", "./routes/userdata"); // POST /api/userdata
+    /* ================================================================
+       감자(users) — 기존 라우트가 있으면 그대로 사용, 없으면 shim 장착
+       ================================================================ */
+    safeMount("/api/login", "./routes/login");       // POST
+    safeMount("/api/userdata", "./routes/userdata"); // POST
 
-    /* ----------------------------------------------------------------
-       2) 호환(shim) 엔드포인트 — 프론트가 지금 부르는 경로를 404 없이 살림
-          (기존 라우트 파일이 있으면 그것이 우선. 없을 때만 이게 동작)
-       ---------------------------------------------------------------- */
     const usersCol = () => db.collection("users");
-    const cornCol = () => db.collection("corn_data");
+    const cornCol  = () => db.collection("corn_data");
 
-    // /api/login (POST)
-    app.post("/api/login", async (req, res, next) => {
-      // 기존 라우트가 이미 붙어 있으면 다음 미들웨어로 패스
-      if (routeExists("/api/login", "post")) return next();
+    // 공통 응답 평탄화 도우미(감자)
+    const flattenUser = (u) => ({
+      success: true,
+      user: u,                              // 전체 객체
+      kakaoId: u.kakaoId,                   // 평탄화(구형 호환)
+      nickname: u.nickname,
+      water: u.water,
+      fertilizer: u.fertilizer,
+      tokens: u.tokens,
+      storage: u.storage,
+      gamja: u.storage?.gamja ?? 0,         // ✅ 감자/보리 최상위 제공
+      bori:  u.storage?.bori  ?? 0,
+    });
+
+    // login shim
+    const loginHandler = async (req, res) => {
       try {
         const { kakaoId, nickname } = req.body || {};
         if (!kakaoId)
-          return res
-            .status(400)
-            .json({ success: false, message: "kakaoId 필요" });
-
+          return res.status(400).json({ success: false, message: "kakaoId 필요" });
         let u = await usersCol().findOne({ kakaoId });
         if (!u) {
           u = {
@@ -123,24 +130,14 @@ app.get("/__routes", (_req, res) => {
           };
           await usersCol().insertOne(u);
         }
-        // 응답 평탄화(legacy 호환)
-        res.json({
-          success: true,
-          user: u,
-          kakaoId: u.kakaoId,
-          nickname: u.nickname,
-          water: u.water,
-          fertilizer: u.fertilizer,
-          tokens: u.tokens,
-          storage: u.storage,
-        });
+        res.json(flattenUser(u));
       } catch (e) {
         console.error("/api/login shim error:", e);
         res.status(500).json({ success: false });
       }
-    });
+    };
 
-    // /api/init-user (GET/POST): users + corn_data 동시 보장
+    // init-user shim (감자 + 옥수수 동시 보장, 로그인 전이면 needLogin)
     async function ensureAll(kakaoId, nickname = "") {
       let u = await usersCol().findOne({ kakaoId });
       if (!u) {
@@ -182,9 +179,8 @@ app.get("/__routes", (_req, res) => {
       try {
         const kakaoId = req.body?.kakaoId || req.query?.kakaoId;
         const nickname = req.body?.nickname || req.query?.nickname || "";
-
-        // 로그인 전 초기 진입: 200으로 "로그인 필요" 전달
         if (!kakaoId) {
+          // 로그인 전 초기 진입 — 에러 대신 200으로 로그인 필요 신호
           return res.json({
             success: false,
             needLogin: true,
@@ -193,54 +189,34 @@ app.get("/__routes", (_req, res) => {
             corn: null,
           });
         }
-
         const { user, corn } = await ensureAll(kakaoId, nickname);
-        // 응답 평탄화(legacy 호환)
         res.json({
-          success: true,
-          user,
-          corn,
-          kakaoId: user.kakaoId,
-          nickname: user.nickname,
-          water: user.water,
-          fertilizer: user.fertilizer,
-          tokens: user.tokens,
-          storage: user.storage,
-          corn_tokens: corn.token,
+          ...flattenUser(user),              // 평탄화 + user 포함
+          corn,                              // 옥수수 전체
+          corn_tokens:  corn.token,
           corn_popcorn: corn.popcorn,
-          corn_seeds: corn.seeds ?? corn.seed,
+          corn_seeds:  corn.seeds ?? corn.seed,
         });
       } catch (e) {
         console.error("/api/init-user shim error:", e);
         res.status(500).json({ success: false });
       }
     };
-    app.get("/api/init-user", initHandler);
-    app.post("/api/init-user", initHandler);
 
-    // /api/userdata (POST)
-    app.post("/api/userdata", async (req, res, next) => {
-      if (routeExists("/api/userdata", "post")) return next();
+    // userdata shim
+    const userdataHandler = async (req, res) => {
       try {
         const {
-          kakaoId,
-          nickname,
-          water,
-          fertilizer,
-          tokens,
-          gamja,
-          bori,
+          kakaoId, nickname, water, fertilizer, tokens, gamja, bori,
         } = req.body || {};
         if (!kakaoId)
-          return res
-            .status(400)
-            .json({ success: false, message: "kakaoId 필요" });
+          return res.status(400).json({ success: false, message: "kakaoId 필요" });
 
         const set = { updatedAt: new Date() };
-        if (nickname !== undefined) set.nickname = nickname;
-        if (water !== undefined) set.water = Number(water);
+        if (nickname   !== undefined) set.nickname   = nickname;
+        if (water      !== undefined) set.water      = Number(water);
         if (fertilizer !== undefined) set.fertilizer = Number(fertilizer);
-        if (tokens !== undefined) set.tokens = Number(tokens);
+        if (tokens     !== undefined) set.tokens     = Number(tokens);
         if (gamja !== undefined || bori !== undefined)
           set.storage = { gamja: Number(gamja || 0), bori: Number(bori || 0) };
 
@@ -249,28 +225,28 @@ app.get("/__routes", (_req, res) => {
           { $set: set, $setOnInsert: { createdAt: new Date() } },
           { upsert: true, returnDocument: "after" }
         );
-
-        const u = r.value;
-        // 응답 평탄화(legacy 호환)
-        res.json({
-          success: true,
-          user: u,
-          kakaoId: u.kakaoId,
-          nickname: u.nickname,
-          water: u.water,
-          fertilizer: u.fertilizer,
-          tokens: u.tokens,
-          storage: u.storage,
-        });
+        res.json(flattenUser(r.value));
       } catch (e) {
         console.error("/api/userdata shim error:", e);
         res.status(500).json({ success: false });
       }
-    });
+    };
 
-    /* ----------------------------------------------------------------
-       3) 옥수수 모듈 자동 로더 — 이미 올린 파일을 그대로 /api/corn에 붙임
-       ---------------------------------------------------------------- */
+    // shim 장착(기존 라우트 없을 때만)
+    mountShim("post", "/api/login",     loginHandler);
+    mountShim("get",  "/api/init-user", initHandler);
+    mountShim("post", "/api/init-user", initHandler);
+    mountShim("post", "/api/userdata",  userdataHandler);
+
+    // 감자 별칭 경로(/api/gamja/*)도 동일 핸들러로 제공
+    app.post("/api/gamja/login",     loginHandler);
+    app.get ("/api/gamja/init-user", initHandler);
+    app.post("/api/gamja/init-user", initHandler);
+    app.post("/api/gamja/userdata",  userdataHandler);
+
+    /* ================================================================
+       옥수수 모듈 자동 로더 — 이미 올린 파일을 /api/corn 에 장착
+       ================================================================ */
     const cornCandidates = [
       "./routes/cornRoutes",
       "./routes/corn/index",
@@ -281,20 +257,13 @@ app.get("/__routes", (_req, res) => {
     ];
     let cornMounted = false;
     for (const rel of cornCandidates) {
-      if (tryMount("/api/corn", rel)) {
-        cornMounted = true;
-        break;
-      }
+      if (tryMount("/api/corn", rel)) { cornMounted = true; break; }
     }
     if (!cornMounted) {
-      console.warn(
-        "⚠️  corn 모듈을 찾지 못했습니다. (위 후보 중 실제 경로로 하나만 맞춰 주세요)"
-      );
+      console.warn("⚠️  corn 모듈을 찾지 못했습니다. (위 후보 중 실제 경로 하나로 맞춰 주세요)");
     }
 
-    /* ----------------------------------------------------------------
-       START
-       ---------------------------------------------------------------- */
+    /* ===== START ===== */
     app.listen(PORT, () => console.log(`🚀 Server running on : ${PORT}`));
   } catch (e) {
     console.error("❌ DB connect failed:", e.message);
@@ -302,7 +271,7 @@ app.get("/__routes", (_req, res) => {
   }
 })();
 
-/* ===== 유틸: 기존 라우터 안전 장착 (있으면 붙이고, 없으면 경고만) ===== */
+/* ===== 유틸: 기존 라우터 장착(있으면 붙이고, 없으면 경고만) ===== */
 function safeMount(mountPath, rel) {
   const full = path.join(__dirname, rel);
   const found =
@@ -321,23 +290,18 @@ function safeMount(mountPath, rel) {
       return true;
     }
     if (typeof mod === "function") {
-      if (mod.length >= 2) {
-        // (app, db)
+      if (mod.length >= 2) {               // (app, db)
         mod(app, app.locals.db);
         console.log(`✅ route mounted(fn app,db): ${mountPath} <- ${rel}`);
         return true;
-      } else if (mod.length === 1) {
-        // (db) => router
+      } else if (mod.length === 1) {       // (db) => router
         const r = mod(app.locals.db);
         if (r && typeof r.use === "function") {
           app.use(mountPath, r);
-          console.log(
-            `✅ route mounted(fn db->router): ${mountPath} <- ${rel}`
-          );
+          console.log(`✅ route mounted(fn db->router): ${mountPath} <- ${rel}`);
           return true;
         }
-      } else {
-        // () => router
+      } else {                             // () => router
         const r = mod();
         if (r && typeof r.use === "function") {
           app.use(mountPath, r);
@@ -349,14 +313,12 @@ function safeMount(mountPath, rel) {
     console.warn(`⚠️  route export unsupported: ${mountPath} <- ${rel}`);
     return false;
   } catch (e) {
-    console.error(
-      `❌ route mount failed: ${mountPath} <- ${rel} :: ${e.message}`
-    );
+    console.error(`❌ route mount failed: ${mountPath} <- ${rel} :: ${e.message}`);
     return false;
   }
 }
 
-/* ===== 유틸: corn 모듈 마운트 (이미 올린 파일만 사용) ===== */
+/* ===== 유틸: corn 모듈 마운트 ===== */
 function tryMount(mountPath, rel) {
   const full = path.join(__dirname, rel);
   const exists =
@@ -370,20 +332,20 @@ function tryMount(mountPath, rel) {
   try {
     const mod = require(full);
 
+    // express.Router export
     if (mod && typeof mod.use === "function") {
-      // express.Router export
       app.use(mountPath, mod);
       console.log(`✅ mounted(router): ${mountPath} <- ${rel}`);
       return true;
     }
+    // function (app, db)
     if (typeof mod === "function" && mod.length >= 2) {
-      // function (app, db)
       mod(app, app.locals.db);
       console.log(`✅ mounted(fn app,db): ${mountPath} <- ${rel}`);
       return true;
     }
+    // function (db) -> router
     if (typeof mod === "function" && mod.length === 1) {
-      // function (db) -> router
       const r = mod(app.locals.db);
       if (r && typeof r.use === "function") {
         app.use(mountPath, r);
@@ -391,8 +353,8 @@ function tryMount(mountPath, rel) {
         return true;
       }
     }
+    // function () -> router
     if (typeof mod === "function" && mod.length === 0) {
-      // function () -> router
       const r = mod();
       if (r && typeof r.use === "function") {
         app.use(mountPath, r);
@@ -408,7 +370,7 @@ function tryMount(mountPath, rel) {
   }
 }
 
-/* ===== 유틸: 특정 경로 라우트 존재 체크 ===== */
+/* ===== 유틸: 특정 경로 라우트 존재 체크 & shim 장착 ===== */
 function routeExists(pathname, method = "get") {
   const m = method.toLowerCase();
   const stack = app._router?.stack || [];
@@ -417,16 +379,17 @@ function routeExists(pathname, method = "get") {
   }
   return false;
 }
+function mountShim(method, pathname, handler) {
+  if (!routeExists(pathname, method)) {
+    app[method](pathname, handler);
+  }
+}
 
 /* ===== 안전망 ===== */
 process.on("unhandledRejection", (e) => console.error("UNHANDLED:", e));
-process.on("uncaughtException", (e) => console.error("UNCAUGHT :", e));
-process.on("SIGINT", async () => {
-  try {
-    await client?.close();
-  } catch {}
-  process.exit(0);
-});
+process.on("uncaughtException",  (e) => console.error("UNCAUGHT :", e));
+process.on("SIGINT", async () => { try { await client?.close(); } catch {} process.exit(0); });
+
 
 
 
