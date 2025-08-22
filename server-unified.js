@@ -354,157 +354,6 @@ if (!app.locals.__ORCAX_GET_USERDATA__) {
   });
 }
 
-// ====== (신규) 옥수수: 가격보드 ======
-async function getPriceboard() {
-  const doc = await CornSettings.findOne();
-  return (doc?.priceboard) || { salt: 10, sugar: 20, seed: 30, currency: 'ORCX' };
-}
-async function setPriceboard(update) {
-  let doc = await CornSettings.findOne();
-  if (!doc) doc = await CornSettings.create({});
-  const cur = (doc.priceboard && doc.priceboard.toObject?.()) || doc.priceboard || {};
-  doc.priceboard = { ...cur, ...update };
-  await doc.save();
-  return doc.priceboard;
-}
-
-app.get('/api/corn/priceboard', async (req, res) => {
-  try { res.json(await getPriceboard()); }
-  catch { res.status(500).json({ salt: 10, sugar: 20, seed: 30, currency: 'ORCX' }); }
-});
-app.patch('/api/corn/priceboard', async (req, res) => {
-  try {
-    const { salt, sugar, seed, currency } = req.body || {};
-    const next = {};
-    if (Number.isFinite(salt))  next.salt  = Number(salt);
-    if (Number.isFinite(sugar)) next.sugar = Number(sugar);
-    if (Number.isFinite(seed))  next.seed  = Number(seed);
-    if (currency)               next.currency = String(currency);
-    const pb = await setPriceboard(next);
-    res.json(pb);
-  } catch {
-    res.status(500).json(await getPriceboard());
-  }
-});
-
-// ====== (신규) 옥수수: 구매/심기/수확/뻥튀기 ======
-app.post('/api/corn/buy-additive', async (req, res) => {
-  try {
-    const body = req.body || {};
-    const kakaoId = body.kakaoId;
-    let item = body.item || body.type;
-    const q = Math.max(1, Number(body.qty ?? body.amount ?? 1));
-    if (!kakaoId || !item) return res.status(400).json({ error: 'kakaoId,item 필요' });
-
-    // item 표준화
-    if (item === 'seeds') item = 'seed';
-    if (!['salt','sugar','seed'].includes(item)) return res.status(400).json({ error: 'unknown item' });
-
-    const user = await User.findOne({ kakaoId });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    const price = await getPriceboard();
-    const unit  = item === 'salt' ? price.salt : item === 'sugar' ? price.sugar : price.seed;
-    const need  = unit * q;
-
-    if (_N(user.orcx) < need) return res.status(402).json({ error: '토큰 부족' });
-
-    // 차감
-    user.orcx = _N(user.orcx) - need;
-
-    // corn_data 증가
-    const corn = await ensureCornDoc(kakaoId);
-    if (item === 'seed') {
-      corn.seed = _N(corn.seed) + q;     // 단일 seed 필드 증가
-    } else {
-      corn.additives = corn.additives || {};
-      corn.additives[item] = _N(corn.additives[item]) + q;
-    }
-
-    await user.save();
-    await corn.save();
-
-    return res.json({
-      ok: true,
-      wallet: { orcx: _N(user.orcx) },
-      agri: { seeds: _N(corn.seed) },
-      additives: { salt: _N(corn.additives?.salt), sugar: _N(corn.additives?.sugar) }
-    });
-  } catch (e) {
-    console.error('[buy-additive]', e);
-    res.status(500).json({ error: 'server error' });
-  }
-});
-
-app.post('/api/corn/plant', async (req, res) => {
-  try {
-    const { kakaoId } = req.body || {};
-    if (!kakaoId) return res.status(400).json({ error: 'kakaoId 필요' });
-    const corn = await ensureCornDoc(kakaoId);
-    const cur = _N(corn.seed) + _N(corn.seeds);
-    if (cur < 1) return res.status(400).json({ error: '씨앗 부족' });
-    // seed 필드 우선 차감
-    if (_N(corn.seed) > 0) corn.seed = _N(corn.seed) - 1;
-    else corn.seeds = Math.max(0, _N(corn.seeds) - 1);
-    await corn.save();
-    res.json({ ok: true, seeds: _N(corn.seed) + _N(corn.seeds) });
-  } catch (e) {
-    res.status(500).json({ error: 'server error' });
-  }
-});
-
-app.post('/api/corn/harvest', async (req, res) => {
-  try {
-    const { kakaoId } = req.body || {};
-    if (!kakaoId) return res.status(400).json({ error: 'kakaoId 필요' });
-    const corn = await ensureCornDoc(kakaoId);
-
-    // 간단 로직: 5~8개 수확
-    const gain = 5 + Math.floor(Math.random() * 4);
-    corn.corn = _N(corn.corn) + gain;
-    await corn.save();
-
-    res.json({ gain, agri: { corn: _N(corn.corn) } });
-  } catch (e) {
-    res.status(500).json({ error: 'server error' });
-  }
-});
-
-app.post('/api/corn/pop', async (req, res) => {
-  try {
-    const { kakaoId, use } = req.body || {};
-    if (!kakaoId) return res.status(400).json({ error: 'kakaoId 필요' });
-
-    const user = await User.findOne({ kakaoId });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    const corn = await ensureCornDoc(kakaoId);
-    if (_N(corn.corn) < 1) return res.status(400).json({ error: '옥수수 부족' });
-
-    let pick = use === 'sugar' ? 'sugar' : 'salt';
-    if (_N(corn.additives?.[pick]) < 1) {
-      const other = pick === 'salt' ? 'sugar' : 'salt';
-      if (_N(corn.additives?.[other]) < 1) {
-        return res.status(400).json({ error: '첨가물 부족' });
-      }
-      pick = other;
-    }
-
-    // 차감
-    corn.corn = _N(corn.corn) - 1;
-    corn.additives[pick] = _N(corn.additives[pick]) - 1;
-
-    // 60% 팝콘, 40% 토큰
-    const POP_RATE = 0.6;
-    const TOKEN_DROP = [1,2,3,5];
-    const POP_DROP = [1,2];
-    const rnd = arr => arr[Math.floor(Math.random() * arr.length)];
-
-    let result, qty;
-    if (Math.random() < POP_RATE) {
-      qty = rnd(POP_DROP);
-      corn.popcorn = _N(corn.popcorn) + qty;
-
       // 마켓 호환: user.products.popcorn도 증가
       user.products = user.products || {};
       user.products.popcorn = _N(user.products.popcorn) + qty;
@@ -755,212 +604,6 @@ if (!app.locals.__ORCAX_CORN_MISC__) {
     }
   });
 }
-/* === CORN ENGINE BRIDGE (scoped, no global re-declare) === */
-(() => {
-  // ⬇⬇⬇ 여기서만 보이는 지역 변수라 위쪽과 충돌 안 함
-  const CornData = mongoose.models.CornData || mongoose.model('CornData', new mongoose.Schema({
-    kakaoId: { type: String, unique: true, index: true },
-    corn: { type: Number, default: 0 },
-    popcorn: { type: Number, default: 0 },
-    seed: { type: Number, default: 0 },
-    seeds: { type: Number, default: 0 },
-    additives: { salt: { type: Number, default: 0 }, sugar: { type: Number, default: 0 } }
-  }, { collection: 'corn_data' }));
-
-  const CornSettings = mongoose.models.CornSettings || mongoose.model('CornSettings', new mongoose.Schema({
-    priceboard: { salt:{type:Number,default:10}, sugar:{type:Number,default:20}, seed:{type:Number,default:30}, currency:{type:String,default:'ORCX'} }
-  }, { collection: 'corn_settings' }));
-
-  const N = v => (Number.isFinite(+v) ? +v : 0);
-  async function ensureCornDoc(kakaoId){
-    let d = await CornData.findOne({ kakaoId });
-    if (d) return d;
-    try { return await CornData.create({ kakaoId }); }
-    catch { return await CornData.findOne({ kakaoId }); }
-  }
-  async function getPB(){ const s = await CornSettings.findOne(); return s?.priceboard || { salt:10, sugar:20, seed:30, currency:'ORCX' }; }
-  async function setPB(u){ let s = await CornSettings.findOne(); if(!s) s = await CornSettings.create({}); s.priceboard = { ...(s.priceboard?.toObject?.()||s.priceboard||{}), ...u }; await s.save(); return s.priceboard; }
-
-  // 외부 엔진 있으면 우선 장착
-  (function attachExternalCorn(appRef){
-    const tryPaths = ['./routes/corn','./corn','./engine/corn','./corn-engine','./api/corn'];
-    for (const p of tryPaths){
-      try {
-        const mod = require(p);
-        const router = mod.default || mod;
-        if (typeof router === 'function'){
-          appRef.use('/api/corn', router);
-          console.log('🌽 External corn engine attached at /api/corn from', p);
-          return;
-        }
-      } catch {}
-    }
-    console.log('🌽 External corn engine not found. Using built-in engine.');
-  })(app);
-
-  // 내장 엔진
-  const corn = express.Router();     // ← 상단에서 선언된 express를 그대로 사용(재선언 금지)
-
-  // …(summary/priceboard/buy-additive/plant/harvest/pop/exchange/status 라우트들 그대로)…
-
-  app.use('/api/corn', corn);
-})(); // ⬅ 스코프 종료
-
-
-// 공통 kakaoId 파싱
-corn.use((req,_res,next)=>{
-  if (!req.body) req.body = {};
-  if (!req.body.kakaoId && req.query?.kakaoId) req.body.kakaoId = req.query.kakaoId;
-  next();
-});
-
-// 요약(상태)
-corn.get('/summary', async (req,res)=>{
-  try{
-    const kakaoId = req.query.kakaoId;
-    if(!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
-    const user = await User.findOne({ kakaoId });
-    if(!user) return res.status(404).json({ ok:false, error:'user not found' });
-    const c = await ensureCornDoc(kakaoId);
-    const seeds = N(c.seed)+N(c.seeds);
-    res.json({
-      ok:true,
-      wallet:{ orcx:N(user.orcx) },
-      inventory:{ water:N(user.water), fertilizer:N(user.fertilizer) },
-      agri:{ corn:N(c.corn), seeds },
-      additives:{ salt:N(c.additives?.salt), sugar:N(c.additives?.sugar) },
-      food:{ popcorn:N(c.popcorn) }
-    });
-  }catch(e){ res.status(500).json({ ok:false, error:'server error' }); }
-});
-
-// 가격보드
-corn.get('/priceboard', async (_req,res)=>{ res.json(await getPB()); });
-corn.patch('/priceboard', async (req,res)=>{
-  const { salt, sugar, seed, currency } = req.body||{};
-  const u = {};
-  if (Number.isFinite(+salt))  u.salt  = +salt;
-  if (Number.isFinite(+sugar)) u.sugar = +sugar;
-  if (Number.isFinite(+seed))  u.seed  = +seed;
-  if (currency) u.currency = String(currency);
-  res.json(await setPB(u));
-});
-
-// 구매(첨가물/씨앗)
-corn.post('/buy-additive', async (req,res)=>{
-  try{
-    let { kakaoId, item, qty } = req.body||{};
-    if(!kakaoId || !item) return res.status(400).json({ error:'params' });
-    qty = Math.max(1, N(qty));
-    if (item==='seeds') item='seed';
-    if (!['salt','sugar','seed'].includes(item)) return res.status(400).json({ error:'item' });
-
-    const user = await User.findOne({ kakaoId });
-    if(!user) return res.status(404).json({ error:'user' });
-    const pb = await getPB();
-    const unit = item==='salt'?pb.salt:item==='sugar'?pb.sugar:pb.seed;
-    const need = unit*qty;
-    if (N(user.orcx) < need) return res.status(402).json({ error:'ORCX 부족' });
-
-    const c = await ensureCornDoc(kakaoId);
-    user.orcx = N(user.orcx) - need;
-    if (item==='seed') c.seed = N(c.seed) + qty;
-    else {
-      c.additives = c.additives || {};
-      c.additives[item] = N(c.additives[item]) + qty;
-    }
-    await Promise.all([user.save(), c.save()]);
-    res.json({ ok:true, wallet:{ orcx:N(user.orcx) }, additives:c.additives, agri:{ seeds:N(c.seed)+N(c.seeds) }});
-  }catch(e){ res.status(500).json({ error:'server error' }); }
-});
-
-// 심기/수확/뻥튀기
-corn.post('/plant', async (req,res)=>{
-  try{
-    const { kakaoId } = req.body||{};
-    if(!kakaoId) return res.status(400).json({ error:'kakaoId' });
-    const c = await ensureCornDoc(kakaoId);
-    const total = N(c.seed)+N(c.seeds);
-    if (total < 1) return res.status(400).json({ error:'no seeds' });
-    if (N(c.seed)>0) c.seed = N(c.seed) - 1; else c.seeds = Math.max(0, N(c.seeds)-1);
-    await c.save(); res.json({ ok:true, seeds:N(c.seed)+N(c.seeds) });
-  }catch(e){ res.status(500).json({ error:'server error' }); }
-});
-corn.post('/harvest', async (req,res)=>{
-  try{
-    const { kakaoId } = req.body||{};
-    if(!kakaoId) return res.status(400).json({ error:'kakaoId' });
-    const c = await ensureCornDoc(kakaoId);
-    const gain = 5 + Math.floor(Math.random()*4); // 5~8
-    c.corn = N(c.corn)+gain; await c.save();
-    res.json({ ok:true, gain, agri:{ corn:N(c.corn) }});
-  }catch(e){ res.status(500).json({ error:'server error' }); }
-});
-corn.post('/pop', async (req,res)=>{
-  try{
-    const { kakaoId, use } = req.body||{};
-    if(!kakaoId) return res.status(400).json({ error:'kakaoId' });
-    const user = await User.findOne({ kakaoId }); if(!user) return res.status(404).json({ error:'user' });
-    const c = await ensureCornDoc(kakaoId);
-    if (N(c.corn)<1) return res.status(400).json({ error:'no corn' });
-
-    let pick = use==='sugar'?'sugar':'salt';
-    if (N(c.additives?.[pick])<1){
-      const other = pick==='salt'?'sugar':'salt';
-      if (N(c.additives?.[other])<1) return res.status(400).json({ error:'no additives' });
-      pick = other;
-    }
-
-    c.corn = N(c.corn)-1; c.additives[pick] = N(c.additives[pick])-1;
-
-    // 60% 팝콘, 40% 토큰
-    const POP = Math.random() < 0.6;
-    let qty;
-    if (POP){
-      qty = [1,2][Math.floor(Math.random()*2)];
-      c.popcorn = N(c.popcorn)+qty;
-      user.products = user.products || {};
-      user.products.popcorn = N(user.products.popcorn)+qty; // 감자 마켓 호환
-    } else {
-      qty = [1,2,3,5][Math.floor(Math.random()*4)];
-      user.orcx = N(user.orcx)+qty;
-    }
-    await Promise.all([c.save(), user.save()]);
-    res.json({
-      ok:true, result: POP?'popcorn':'token', qty,
-      wallet:{ orcx:N(user.orcx) },
-      food:{ popcorn:N(c.popcorn) },
-      additives:{ salt:N(c.additives.salt), sugar:N(c.additives.sugar) },
-      agri:{ corn:N(c.corn) }
-    });
-  }catch(e){ res.status(500).json({ error:'server error' }); }
-});
-
-// 교환(팝콘↔거름/물 등 확장 가능; 기본은 거름만 예시)
-corn.post('/exchange', async (req,res)=>{
-  try{
-    const { kakaoId, dir, qty } = req.body||{};
-    if(!kakaoId) return res.status(400).json({ error:'kakaoId' });
-    const q = Math.max(1, N(qty||1));
-    const user = await User.findOne({ kakaoId }); if(!user) return res.status(404).json({ error:'user' });
-    const c = await ensureCornDoc(kakaoId);
-    if (dir==='fertilizer->popcorn'){
-      if (N(user.fertilizer)<q) return res.status(400).json({ error:'no fertilizer' });
-      user.fertilizer = N(user.fertilizer)-q; c.popcorn = N(c.popcorn)+q;
-    } else {
-      if (N(c.popcorn)<q) return res.status(400).json({ error:'no popcorn' });
-      c.popcorn = N(c.popcorn)-q; user.fertilizer = N(user.fertilizer)+q;
-    }
-    await Promise.all([user.save(), c.save()]);
-    res.json({ ok:true, inventory:{ fertilizer:N(user.fertilizer) }, food:{ popcorn:N(c.popcorn) } });
-  }catch(e){ res.status(500).json({ error:'server error' }); }
-});
-
-// 별칭 라우트(호환)
-corn.get('/status', (req,res)=>{ req.url='/summary'+(req.url.includes('?')?req.url.slice(req.url.indexOf('?')):''); app._router.handle(req,res,()=>res.end()); });
-
-// 최종 장착 (외부 엔진이 이미 /api/corn 을 점유했더라도 라우트 우선순위에 영향 주지 않음)
-app.use('/api/corn', corn);
 
 /* =====(선택) /api/userdata 응답에 corn 값 동봉 — 감자 프론트 호환 강화 ===== */
 app.post('/api/userdata', async (req,res,next)=>{
@@ -981,43 +624,214 @@ app.post('/api/userdata', async (req,res,next)=>{
   }catch{ return next(); }
 });
 
-/* ===== CORN ROUTER ATTACH (ADD-ONLY) =====
-   외부 corn 라우터가 있을 경우 /api/corn 에 자동 장착 (없으면 경고만)
-*/
-(function attachCornRouter(appRef){
-  try {
-    if (!appRef.locals) appRef.locals = {};
-    if (appRef.locals.__CORN_ROUTER_ATTACHED__) return;
-    const tryPaths = [
-      './routes/corn',
-      './routes/corn.js',
-      './router/corn',
-      './api/corn',
-      './routers/corn',
-      './routes/corn'
-    ];
-    let mod = null, errLast = null;
-    for (const p of tryPaths) {
-      try { mod = require(p); break; }
-      catch (e) { errLast = e; mod = null; }
-    }
-    if (!mod) {
-      console.warn('[CORN-ATTACH] corn router module not found. Tried:', tryPaths.join(', '));
-      if (errLast) console.warn('[CORN-ATTACH] last error:', errLast.message);
-      return;
-    }
-    const cornRouter = (mod.default || mod);
-    if (typeof cornRouter !== 'function') {
-      console.warn('[CORN-ATTACH] router module does not export a function/router');
-      return;
-    }
-    appRef.use('/api/corn', cornRouter);
-    appRef.locals.__CORN_ROUTER_ATTACHED__ = true;
-    console.log('🌽 corn router attached at /api/corn');
-  } catch (e) {
-    console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
+/* ===== CORN ENGINE ATTACH (conflict-free) ===== */
+(() => {
+  // 1) 외부 라우터 탐색
+  const tryPaths = ['./routes/corn','./corn','./engine/corn','./corn-engine','./api/corn'];
+  let router = null;
+  for (const p of tryPaths) {
+    try {
+      const mod = require(p);
+      const ext = mod.default || mod;
+      if (typeof ext === 'function') {
+        router = ext;
+        app.locals.__CORN_EXTERNAL__ = true;
+        console.log('🌽 External corn engine attached at /api/corn from', p);
+        break;
+      }
+    } catch {}
   }
-})(app);
+
+  // 2) 외부가 없을 때만 내장 라우터 생성
+  if (!router) {
+    console.log('🌽 External corn engine not found. Using built-in engine.');
+    const N = v => (Number.isFinite(+v) ? +v : 0);
+
+    const CornData = mongoose.models.CornData || mongoose.model('CornData', new mongoose.Schema({
+      kakaoId: { type: String, unique: true, index: true },
+      corn: { type: Number, default: 0 },
+      popcorn: { type: Number, default: 0 },
+      seed: { type: Number, default: 0 },
+      seeds:{ type: Number, default: 0 },
+      additives: { salt:{type:Number,default:0}, sugar:{type:Number,default:0} }
+    }, { collection: 'corn_data' }));
+
+    const CornSettings = mongoose.models.CornSettings || mongoose.model('CornSettings', new mongoose.Schema({
+      priceboard: { salt:{type:Number,default:10}, sugar:{type:Number,default:20}, seed:{type:Number,default:30}, currency:{type:String,default:'ORCX'} }
+    }, { collection: 'corn_settings' }));
+
+    async function ensureCornDoc(kakaoId){
+      let d = await CornData.findOne({ kakaoId });
+      if (d) return d;
+      try { return await CornData.create({ kakaoId }); }
+      catch { return await CornData.findOne({ kakaoId }); }
+    }
+    async function getPB(){ const s = await CornSettings.findOne(); return s?.priceboard || { salt:10, sugar:20, seed:30, currency:'ORCX' }; }
+    async function setPB(u){ let s = await CornSettings.findOne(); if(!s) s = await CornSettings.create({}); s.priceboard = { ...(s.priceboard?.toObject?.()||s.priceboard||{}), ...u }; await s.save(); return s.priceboard; }
+
+    const corn = express.Router();
+
+    // 공통 kakaoId 파싱
+    corn.use((req,_res,next)=>{
+      if (!req.body) req.body = {};
+      if (!req.body.kakaoId && req.query?.kakaoId) req.body.kakaoId = req.query.kakaoId;
+      next();
+    });
+
+    // summary
+    corn.get('/summary', async (req,res)=>{
+      try{
+        const kakaoId = req.query.kakaoId;
+        if(!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
+        const user = await User.findOne({ kakaoId });
+        if(!user) return res.status(404).json({ ok:false, error:'user not found' });
+        const c = await ensureCornDoc(kakaoId);
+        const seeds = N(c.seed)+N(c.seeds);
+        res.json({ ok:true,
+          wallet:{ orcx:N(user.orcx) },
+          inventory:{ water:N(user.water), fertilizer:N(user.fertilizer) },
+          agri:{ corn:N(c.corn), seeds },
+          additives:{ salt:N(c.additives?.salt), sugar:N(c.additives?.sugar) },
+          food:{ popcorn:N(c.popcorn) }
+        });
+      }catch(e){ res.status(500).json({ ok:false, error:'server error' }); }
+    });
+
+    // priceboard
+    corn.get('/priceboard', async (_req,res)=>{ res.json(await getPB()); });
+    corn.patch('/priceboard', async (req,res)=>{
+      const { salt, sugar, seed, currency } = req.body||{};
+      const u = {};
+      if (Number.isFinite(+salt))  u.salt  = +salt;
+      if (Number.isFinite(+sugar)) u.sugar = +sugar;
+      if (Number.isFinite(+seed))  u.seed  = +seed;
+      if (currency) u.currency = String(currency);
+      res.json(await setPB(u));
+    });
+
+    // buy additive/seed
+    corn.post('/buy-additive', async (req,res)=>{
+      try{
+        let { kakaoId, item, qty } = req.body||{};
+        if(!kakaoId || !item) return res.status(400).json({ error:'params' });
+        qty = Math.max(1, N(qty));
+        if (item==='seeds') item='seed';
+        if (!['salt','sugar','seed'].includes(item)) return res.status(400).json({ error:'item' });
+
+        const user = await User.findOne({ kakaoId });
+        if(!user) return res.status(404).json({ error:'user' });
+        const pb = await getPB();
+        const unit = item==='salt'?pb.salt:item==='sugar'?pb.sugar:pb.seed;
+        const need = unit*qty;
+        if (N(user.orcx) < need) return res.status(402).json({ error:'ORCX 부족' });
+
+        const c = await ensureCornDoc(kakaoId);
+        user.orcx = N(user.orcx) - need;
+        if (item==='seed') c.seed = N(c.seed) + qty;
+        else {
+          c.additives = c.additives || {};
+          c.additives[item] = N(c.additives[item]) + qty;
+        }
+        await Promise.all([user.save(), c.save()]);
+        res.json({ ok:true, wallet:{ orcx:N(user.orcx) }, additives:c.additives, agri:{ seeds:N(c.seed)+N(c.seeds) }});
+      }catch(e){ res.status(500).json({ error:'server error' }); }
+    });
+
+    // plant / harvest / pop
+    corn.post('/plant', async (req,res)=>{
+      try{
+        const { kakaoId } = req.body||{};
+        if(!kakaoId) return res.status(400).json({ error:'kakaoId' });
+        const c = await ensureCornDoc(kakaoId);
+        const total = N(c.seed)+N(c.seeds);
+        if (total < 1) return res.status(400).json({ error:'no seeds' });
+        if (N(c.seed)>0) c.seed = N(c.seed) - 1; else c.seeds = Math.max(0, N(c.seeds)-1);
+        await c.save(); res.json({ ok:true, seeds:N(c.seed)+N(c.seeds) });
+      }catch(e){ res.status(500).json({ error:'server error' }); }
+    });
+
+    corn.post('/harvest', async (req,res)=>{
+      try{
+        const { kakaoId } = req.body||{};
+        if(!kakaoId) return res.status(400).json({ error:'kakaoId' });
+        const c = await ensureCornDoc(kakaoId);
+        const gain = 5 + Math.floor(Math.random()*4); // 5~8
+        c.corn = N(c.corn)+gain; await c.save();
+        res.json({ ok:true, gain, agri:{ corn:N(c.corn) }});
+      }catch(e){ res.status(500).json({ error:'server error' }); }
+    });
+
+    corn.post('/pop', async (req,res)=>{
+      try{
+        const { kakaoId, use } = req.body||{};
+        if(!kakaoId) return res.status(400).json({ error:'kakaoId' });
+        const user = await User.findOne({ kakaoId }); if(!user) return res.status(404).json({ error:'user' });
+        const c = await ensureCornDoc(kakaoId);
+        if (N(c.corn)<1) return res.status(400).json({ error:'no corn' });
+
+        let pick = use==='sugar'?'sugar':'salt';
+        if (N(c.additives?.[pick])<1){
+          const other = pick==='salt'?'sugar':'salt';
+          if (N(c.additives?.[other])<1) return res.status(400).json({ error:'no additives' });
+          pick = other;
+        }
+
+        c.corn = N(c.corn)-1; c.additives[pick] = N(c.additives[pick])-1;
+
+        const POP = Math.random() < 0.6;
+        let qty;
+        if (POP){
+          qty = [1,2][Math.floor(Math.random()*2)];
+          c.popcorn = N(c.popcorn)+qty;
+          user.products = user.products || {};
+          user.products.popcorn = N(user.products.popcorn)+qty;
+        } else {
+          qty = [1,2,3,5][Math.floor(Math.random()*4)];
+          user.orcx = N(user.orcx)+qty;
+        }
+        await Promise.all([c.save(), user.save()]);
+        res.json({ ok:true, result: POP?'popcorn':'token', qty,
+          wallet:{ orcx:N(user.orcx) }, food:{ popcorn:N(c.popcorn) },
+          additives:{ salt:N(c.additives.salt), sugar:N(c.additives.sugar) },
+          agri:{ corn:N(c.corn) }
+        });
+      }catch(e){ res.status(500).json({ error:'server error' }); }
+    });
+
+    // exchange
+    corn.post('/exchange', async (req,res)=>{
+      try{
+        const { kakaoId, dir, qty } = req.body||{};
+        if(!kakaoId) return res.status(400).json({ error:'kakaoId' });
+        const q = Math.max(1, N(qty||1));
+        const user = await User.findOne({ kakaoId }); if(!user) return res.status(404).json({ error:'user' });
+        const c = await ensureCornDoc(kakaoId);
+        if (dir==='fertilizer->popcorn'){
+          if (N(user.fertilizer)<q) return res.status(400).json({ error:'no fertilizer' });
+          user.fertilizer = N(user.fertilizer)-q; c.popcorn = N(c.popcorn)+q;
+        } else {
+          if (N(c.popcorn)<q) return res.status(400).json({ error:'no popcorn' });
+          c.popcorn = N(c.popcorn)-q; user.fertilizer = N(user.fertilizer)+q;
+        }
+        await Promise.all([user.save(), c.save()]);
+        res.json({ ok:true, inventory:{ fertilizer:N(user.fertilizer) }, food:{ popcorn:N(c.popcorn) } });
+      }catch(e){ res.status(500).json({ error:'server error' }); }
+    });
+
+    // 별칭
+    corn.get('/status', (req,res)=>{
+      req.url = '/summary' + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '');
+      app._router.handle(req,res,()=>res.end());
+    });
+
+    router = corn; // 내장 라우터를 최종 router로 지정
+  }
+
+  // 3) 최종 장착 (외부 또는 내장)
+  app.use('/api/corn', router);
+})();
+
+
 
 
 
