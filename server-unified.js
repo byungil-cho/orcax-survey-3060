@@ -332,6 +332,46 @@ app.post('/api/market/exchange', async (req,res)=>{
     res.json({ success:true, inventory:{ water:N(user.water), fertilizer:N(user.fertilizer) }, products:user.products });
   }catch(e){ console.error('[market/exchange]', e); res.status(500).json({ success:false }); }
 });
+// === Market: user inventory (legacy endpoint for gamja pages) ===
+// 프론트가 POST를 쓰지만 GET도 허용해 둡니다.
+app.all('/api/market/user-inventory', async (req, res) => {
+  try {
+    const kakaoId = (req.body && req.body.kakaoId) || (req.query && req.query.kakaoId);
+    if (!kakaoId) return res.status(400).json({ success:false, message:'kakaoId required' });
+
+    const user = await User.findOne({ kakaoId });
+    if (!user) return res.status(404).json({ success:false, message:'user not found' });
+
+    const products = user.products || {};
+    return res.json({
+      success: true,
+      products,                                         // 내 제품 보관함
+      inventory: { water: N(user.water), fertilizer: N(user.fertilizer) },
+      wallet:    { orcx:  N(user.orcx) }
+    });
+  } catch (e) {
+    console.error('[market/user-inventory]', e);
+    return res.status(500).json({ success:false });
+  }
+});
+// === Fallback: /api/processing/get-inventory (없는 방에서만 효과) ===
+app.post('/api/processing/get-inventory', async (req, res, next) => {
+  const kakaoId = req.body && req.body.kakaoId;
+  if (!kakaoId) return next(); // 기존 라우터가 있으면 그쪽으로
+  try {
+    const user = await User.findOne({ kakaoId });
+    if (!user) return res.status(404).json({ success:false });
+    return res.json({
+      success: true,
+      inventory: {
+        water: N(user.water), fertilizer: N(user.fertilizer),
+        potato: N(user.storage?.gamja), barley: N(user.storage?.bori),
+        seedPotato: N(user.seedPotato), seedBarley: N(user.seedBarley),
+      },
+      products: user.products || {}
+    });
+  } catch { return res.status(500).json({ success:false }); }
+});
 
 // -------------------------------
 // 옥수수 엔진 — 외부가 있으면 우선 장착, 없으면 내장 제공
@@ -522,6 +562,7 @@ app.post('/api/market/exchange', async (req,res)=>{
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
+
 
 
 
