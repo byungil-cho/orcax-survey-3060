@@ -530,6 +530,151 @@ app.post('/api/corn/pop', async (req, res) => {
     res.status(500).json({ error: 'server error' });
   }
 });
+/* ===== Legacy Market Compatibility Layer (ONLY server-unified.js) =====
+   gamja-market.html 이 예전에 사용하던 경로/응답을 그대로 복구
+   사용 모델: MarketProduct, User (이미 파일 상단에서 선언됨)
+*/
+function _num(x){ x = Number(x); return Number.isFinite(x) ? x : 0; }
+
+// 현재 판매 가능한 목록
+async function _getActivePriceList(){
+  const items = await MarketProduct.find({ active: true, amount: { $gt: 0 } }).lean();
+  return (items || []).map(it => ({
+    name: it.name,
+    price: _num(it.price),
+    amount: _num(it.amount),
+    active: !!it.active
+  }));
+}
+
+// 시세 전광판 (예전 프론트가 사용)
+app.get('/api/market/price-board', async (req, res) => {
+  try {
+    const priceList = await _getActivePriceList();
+    return res.json({ success: true, priceList });
+  } catch (e) {
+    console.error('[market/price-board]', e);
+    return res.status(500).json({ success:false, message:'server error' });
+  }
+});
+
+// 별칭 (혹시 다른 경로로 부를 경우)
+app.get('/api/market/prices', async (req, res) => {
+  try {
+    const priceList = await _getActivePriceList();
+    return res.json({ success: true, priceList });
+  } catch { return res.status(500).json({ success:false }); }
+});
+
+// 전체 상품 목록 (관리/확인용) — 기존 페이지가 /marketdata를 볼 때 호환
+app.get('/api/marketdata/products', async (req, res) => {
+  try {
+    const list = await MarketProduct.find({}).lean();
+    return res.json({ success:true, products: list });
+  } catch { return res.status(500).json({ success:false, products: [] }); }
+});
+
+// 제품 판매 → ORCX 획득
+app.post('/api/market/sell', async (req, res) => {
+  try {
+    const { kakaoId, item, qty } = req.body || {};
+    if(!kakaoId || !item) return res.status(400).json({ success:false, message:'params' });
+    const q = Math.max(1, _num(qty));
+
+    const user = await User.findOne({ kakaoId });
+    if(!user) return res.status(404).json({ success:false, message:'user' });
+
+    const prod = await MarketProduct.findOne({ name: item, active: true });
+    if(!prod || _num(prod.amount) < q) return res.status(400).json({ success:false, message:'out of stock' });
+
+    const gain = _num(prod.price) * q;
+
+    // 유저 보관함 차감 (popcorn/chips 등 키로 저장되어 있다고 가정)
+    user.products = user.products || {};
+    const cur = _num(user.products[item]);
+    if (cur < q) return res.status(400).json({ success:false, message:'no item' });
+    user.products[item] = cur - q;
+
+    // 재고 감소, 토큰 지급
+    prod.amount = _num(prod.amount) - q;
+    user.orcx   = _num(user.orcx) + gain;
+
+    await Promise.all([ prod.save(), user.save() ]);
+
+    return res.json({
+      success:true,
+      wallet:{ orcx: _num(user.orcx) },
+      products: user.products,
+      sold:{ item, qty:q, gain }
+    });
+  } catch (e) {
+    console.error('[market/sell]', e);
+    return res.status(500).json({ success:false, message:'server error' });
+  }
+});
+
+// 가공식품 ↔ 물/거름 교환 (기본 규칙: 1개 ↔ 자원 3)
+app.post('/api/market/exchange', async (req, res) => {
+  try {
+    const { kakaoId, item, qty, to } = req.body || {};
+    if(!kakaoId || !item || !to) return res.status(400).json({ success:false });
+
+    const q = Math.max(1, _num(qty));
+    const user = await User.findOne({ kakaoId });
+    if(!user) return res.status(404).json({ success:false });
+
+    user.products = user.products || {};
+    const cur = _num(user.products[item]);
+    if (cur < q) return res.status(400).json({ success:false, message:'no item' });
+
+    const ratio = 3;
+    const give = q * ratio;
+
+    if (to === 'water'){
+      user.products[item] = cur - q;
+      user.water = _num(user.water) + give;
+    } else if (to === 'fertilizer'){
+      user.products[item] = cur - q;
+      user.fertilizer = _num(user.fertilizer) + give;
+    } else {
+      return res.status(400).json({ success:false, message:'to must be water|fertilizer' });
+    }
+
+    await user.save();
+    return res.json({
+      success:true,
+      inventory:{ water:_num(user.water), fertilizer:_num(user.fertilizer) },
+      products: user.products
+    });
+  } catch (e) {
+    console.error('[market/exchange]', e);
+    return res.status(500).json({ success:false });
+  }
+});
+
+// 기본 시세/재고 일괄 등록 (비어 있을 때 한 번만 실행)
+app.post('/api/marketdata/products/bulk', async (req, res) => {
+  try {
+    const items = (req.body && req.body.items) || [];
+    const ops = items.map(async it => {
+      const { name, price, amount } = it;
+      const doc = await MarketProduct.findOne({ name });
+      if (!doc) {
+        return MarketProduct.create({ name, price:_num(price), amount:_num(amount), active:true });
+      }
+      doc.price  = _num(price ?? doc.price);
+      doc.amount = _num(amount ?? doc.amount);
+      doc.active = true;
+      return doc.save();
+    });
+    await Promise.all(ops);
+    const products = await MarketProduct.find({}).lean();
+    return res.json({ success:true, products });
+  } catch (e) {
+    console.error('[marketdata/bulk]', e);
+    return res.status(500).json({ success:false });
+  }
+});
 
 // 요약/상태/교환/성장 (추가 라우트)
 if (!app.locals.__ORCAX_CORN_MISC__) {
@@ -648,6 +793,7 @@ if (!app.locals.__ORCAX_CORN_MISC__) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
