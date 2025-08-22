@@ -372,6 +372,48 @@ app.post('/api/processing/get-inventory', async (req, res, next) => {
     });
   } catch { return res.status(500).json({ success:false }); }
 });
+// === Legacy: My Page profile endpoint for gamja ===
+// 1) 경로형: /api/user/profile/:key (닉네임 또는 kakaoId)
+// 2) 쿼리형: /api/user/profile?kakaoId=... 또는 ?nickname=...
+app.get('/api/user/profile/:key', async (req, res) => {
+  try {
+    let key = decodeURIComponent(req.params.key || '').trim();
+    if (!key) return res.status(400).json({ success:false, message:'key required' });
+
+    // 1차: kakaoId / nickname 정확히
+    let user = await User.findOne({ $or: [{ kakaoId:key }, { nickname:key }] });
+    // 2차: 닉네임에 공백이 섞여 들어온 경우(브라우저 표시상 %20) 제거하여 재조회
+    if (!user && /\s/.test(key)) {
+      const noSpace = key.replace(/\s+/g, '');
+      user = await User.findOne({ nickname: noSpace });
+    }
+    if (!user) return res.status(404).json({ success:false, message:'User not found' });
+
+    return res.json(await packUserResponse(user)); // 기존 packUserResponse 재사용
+  } catch (e) {
+    console.error('[GET /api/user/profile/:key]', e);
+    return res.status(500).json({ success:false, message:'server error' });
+  }
+});
+
+app.get('/api/user/profile', async (req, res) => {
+  try {
+    const kakaoId  = (req.query && req.query.kakaoId)  || null;
+    const nickname = (req.query && req.query.nickname) || null;
+    if (!kakaoId && !nickname) return res.status(400).json({ success:false, message:'kakaoId or nickname required' });
+
+    let user = await User.findOne(kakaoId ? { kakaoId } : { nickname });
+    if (!user && nickname && /\s/.test(nickname)) {
+      user = await User.findOne({ nickname: nickname.replace(/\s+/g, '') });
+    }
+    if (!user) return res.status(404).json({ success:false, message:'User not found' });
+
+    return res.json(await packUserResponse(user));
+  } catch (e) {
+    console.error('[GET /api/user/profile]', e);
+    return res.status(500).json({ success:false, message:'server error' });
+  }
+});
 
 // -------------------------------
 // 옥수수 엔진 — 외부가 있으면 우선 장착, 없으면 내장 제공
@@ -562,6 +604,7 @@ app.post('/api/processing/get-inventory', async (req, res, next) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
+
 
 
 
