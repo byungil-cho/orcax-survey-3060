@@ -73,6 +73,38 @@ const CornSettings = mongoose.models.CornSettings || mongoose.model('CornSetting
 }, { collection: 'corn_settings' }));
 
 // ====== 공통 미들웨어 ======
+// === init-user (GET 호환용, 레거시 프론트 대응) ===
+app.get('/api/init-user', async (req, res) => {
+  try {
+    const kakaoId  = (req.query && req.query.kakaoId)  || (req.body && req.body.kakaoId);
+    const nickname = (req.query && req.query.nickname) || (req.body && req.body.nickname);
+    if (!kakaoId || !nickname) {
+      return res.status(400).json({ success:false, message:'kakaoId and nickname required' });
+    }
+
+    // 유저 upsert
+    let user = await User.findOne({ kakaoId });
+    if (!user) {
+      user = await User.create({
+        kakaoId, nickname, orcx:0, water:0, fertilizer:0,
+        seedPotato:0, seedBarley:0,
+        storage:{ gamja:0, bori:0 }, products:{}, growth:{}, lastLogin:new Date()
+      });
+    } else {
+      if (user.nickname !== nickname) user.nickname = nickname;
+      user.lastLogin = new Date();
+      await user.save();
+    }
+
+    // 옥수수 문서도 보장
+    await ensureCornDoc(kakaoId);
+
+    return res.json({ success:true, kakaoId, nickname });
+  } catch (e) {
+    console.error('[GET /api/init-user]', e);
+    return res.status(500).json({ success:false, message:'server error' });
+  }
+});
 
 // CORS (GitHub Pages + ngrok HTTPS 허용)
 const allowOrigins = [
@@ -856,6 +888,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
