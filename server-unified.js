@@ -124,6 +124,8 @@ const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017/farmgame'
 mongoose.connect(mongoUrl, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log('✅ MongoDB 연결 성공'))
   .catch(err => console.error('❌ MongoDB 연결 실패:', err.message));
+db = client.db(DB_NAME);
+require('./api/init-user')(app, db);
 const PORT = process.env.PORT || 3060;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
@@ -856,6 +858,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
