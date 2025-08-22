@@ -16,7 +16,7 @@ client.connect().then(() => {
 });
 
 // -------------------------------------------------------------
-// 1️⃣ 공통 API (카카오 로그인, 마이페이지, 출금 신청)
+// 1️⃣ 공통 API (카카오 로그인, 출금 신청)
 // -------------------------------------------------------------
 app.post("/api/login", async (req, res) => {
   const { kakaoId, nickname } = req.body;
@@ -79,7 +79,8 @@ app.get("/api/corn/status", async (req, res) => {
       sugar: 0, 
       token: 0,
       loan: { active: false, unpaid: 0, startDate: null },
-      bankrupt: false
+      bankrupt: false,
+      createdAt: new Date()
     };
     await db.collection("corn_data").insertOne(cornData);
   }
@@ -88,30 +89,20 @@ app.get("/api/corn/status", async (req, res) => {
 
 // 🌱 씨앗 심기
 app.post("/api/corn/plant", async (req, res) => {
-  const { kakaoId, loan } = req.body;
+  const { kakaoId } = req.body;
   let cornData = await db.collection("corn_data").findOne({ kakaoId });
 
   if (!cornData || cornData.seeds <= 0) {
     return res.json({ success: false, message: "씨앗 없음" });
   }
 
-  // 씨앗 감소 + 옥수수 생성
   await db.collection("corn_data").updateOne(
     { kakaoId },
     { $inc: { seeds: -1, corn: 1 } }
   );
 
-  // 대출이면 빨간색, 연체이면 검은색, 아니면 노란색
-  let color = "yellow";
-  if (cornData.loan.active) {
-    color = "red";
-  }
-  if (cornData.loan.unpaid > 0 && overdueDays(cornData.loan.startDate) > 0) {
-    color = "black";
-  }
-
   cornData = await db.collection("corn_data").findOne({ kakaoId });
-  res.json({ success: true, resources: cornData, color });
+  res.json({ success: true, resources: cornData });
 });
 
 // 🌽 수확
@@ -123,14 +114,12 @@ app.post("/api/corn/harvest", async (req, res) => {
     return res.json({ success: false, message: "옥수수 없음" });
   }
 
-  // 등급 산정 (수확일 기준)
   let grade = "F";
   if (days === 5) grade = "A";
   else if (days === 6) grade = "B";
   else if (days === 7) grade = "C";
   else if (days === 8) grade = "D";
   else if (days === 9) grade = "E";
-  else if (days >= 10) grade = "F";
 
   await db.collection("corn_data").updateOne(
     { kakaoId },
@@ -150,7 +139,6 @@ app.post("/api/corn/popcorn", async (req, res) => {
   const reward = Math.random() > 0.5 ? 1000 : 0;
   let tokenGain = reward;
 
-  // 대출이면 30% 삭감
   if (cornData.loan.active) tokenGain = Math.floor(tokenGain * 0.7);
 
   await db.collection("corn_data").updateOne(
@@ -182,7 +170,7 @@ app.post("/api/corn/loan", async (req, res) => {
   res.json({ success: true, message: "대출 성공" });
 });
 
-// 📉 매일 이자 처리
+// 📉 이자 처리
 app.post("/api/corn/interest", async (req, res) => {
   const { kakaoId } = req.body;
   let cornData = await db.collection("corn_data").findOne({ kakaoId });
@@ -191,7 +179,6 @@ app.post("/api/corn/interest", async (req, res) => {
 
   const interest = Math.floor(cornData.loan.unpaid * 0.05);
   if (cornData.token < interest) {
-    // 파산 처리
     await db.collection("corn_data").updateOne(
       { kakaoId },
       { $set: { bankrupt: true } }
@@ -208,7 +195,7 @@ app.post("/api/corn/interest", async (req, res) => {
   res.json({ success: true, resources: cornData });
 });
 
-// 🏦 파산 해제 신청
+// 🏦 파산 해제
 app.post("/api/corn/recover", async (req, res) => {
   const { kakaoId, payment } = req.body;
   let cornData = await db.collection("corn_data").findOne({ kakaoId });
@@ -227,7 +214,33 @@ app.post("/api/corn/recover", async (req, res) => {
 });
 
 // -------------------------------------------------------------
-// Helper 함수
+// 4️⃣ 호환 API: /api/init-user
+// -------------------------------------------------------------
+app.get("/api/init-user", async (req, res) => {
+  try {
+    const kakaoId = req.query.kakaoId;
+    if (!kakaoId) return res.status(400).json({ error: "kakaoId 필요" });
+
+    let cornData = await db.collection("corn_data").findOne({ kakaoId });
+    if (!cornData) {
+      cornData = { 
+        kakaoId, 
+        corn: 0, seeds: 0, popcorn: 0, salt: 0, sugar: 0, token: 0,
+        loan: { active: false, unpaid: 0, startDate: null },
+        bankrupt: false,
+        createdAt: new Date()
+      };
+      await db.collection("corn_data").insertOne(cornData);
+    }
+    res.json({ success: true, resources: cornData });
+  } catch (err) {
+    console.error("init-user error:", err);
+    res.status(500).json({ error: "서버 오류" });
+  }
+});
+
+// -------------------------------------------------------------
+// Helper
 // -------------------------------------------------------------
 function overdueDays(startDate) {
   if (!startDate) return 0;
@@ -240,6 +253,7 @@ function overdueDays(startDate) {
 // 서버 실행
 // -------------------------------------------------------------
 app.listen(3060, () => console.log("✅ Server running on port 3060"));
+
 
 
 
