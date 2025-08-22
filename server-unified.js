@@ -13,6 +13,15 @@ let MongoStore = null;
 try { MongoStore = require('connect-mongo'); } catch { /* dev fallback */ }
 const path = require('path');
 
+// === API 캐시 금지 & ETag 끄기 (마이페이지 304 방지) ===
+app.set('etag', false);
+app.use('/api', (req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+});
+
 // -------------------------------
 // 기본 설정
 // -------------------------------
@@ -372,24 +381,19 @@ app.post('/api/processing/get-inventory', async (req, res, next) => {
     });
   } catch { return res.status(500).json({ success:false }); }
 });
-// === Legacy: My Page profile endpoint for gamja ===
-// 1) 경로형: /api/user/profile/:key (닉네임 또는 kakaoId)
-// 2) 쿼리형: /api/user/profile?kakaoId=... 또는 ?nickname=...
+// === Legacy: My Page profile endpoint for gamja (304 방지: 항상 200+JSON) ===
 app.get('/api/user/profile/:key', async (req, res) => {
   try {
     let key = decodeURIComponent(req.params.key || '').trim();
     if (!key) return res.status(400).json({ success:false, message:'key required' });
 
-    // 1차: kakaoId / nickname 정확히
     let user = await User.findOne({ $or: [{ kakaoId:key }, { nickname:key }] });
-    // 2차: 닉네임에 공백이 섞여 들어온 경우(브라우저 표시상 %20) 제거하여 재조회
     if (!user && /\s/.test(key)) {
-      const noSpace = key.replace(/\s+/g, '');
-      user = await User.findOne({ nickname: noSpace });
+      user = await User.findOne({ nickname: key.replace(/\s+/g, '') });
     }
     if (!user) return res.status(404).json({ success:false, message:'User not found' });
 
-    return res.json(await packUserResponse(user)); // 기존 packUserResponse 재사용
+    return res.status(200).json(await packUserResponse(user)); // ⬅ 200 고정
   } catch (e) {
     console.error('[GET /api/user/profile/:key]', e);
     return res.status(500).json({ success:false, message:'server error' });
@@ -398,8 +402,8 @@ app.get('/api/user/profile/:key', async (req, res) => {
 
 app.get('/api/user/profile', async (req, res) => {
   try {
-    const kakaoId  = (req.query && req.query.kakaoId)  || null;
-    const nickname = (req.query && req.query.nickname) || null;
+    const kakaoId  = req.query?.kakaoId  || null;
+    const nickname = req.query?.nickname || null;
     if (!kakaoId && !nickname) return res.status(400).json({ success:false, message:'kakaoId or nickname required' });
 
     let user = await User.findOne(kakaoId ? { kakaoId } : { nickname });
@@ -408,7 +412,7 @@ app.get('/api/user/profile', async (req, res) => {
     }
     if (!user) return res.status(404).json({ success:false, message:'User not found' });
 
-    return res.json(await packUserResponse(user));
+    return res.status(200).json(await packUserResponse(user)); // ⬅ 200 고정
   } catch (e) {
     console.error('[GET /api/user/profile]', e);
     return res.status(500).json({ success:false, message:'server error' });
@@ -604,6 +608,7 @@ app.get('/api/user/profile', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
+
 
 
 
