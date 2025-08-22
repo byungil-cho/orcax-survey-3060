@@ -73,6 +73,14 @@ const CornSettings = mongoose.models.CornSettings || mongoose.model('CornSetting
 }, { collection: 'corn_settings' }));
 
 // ====== 공통 미들웨어 ======
+// DB 연결/미들웨어 설정 이후에 위치
+try {
+  const initUserAPI = require('./routes/init-user');
+  initUserAPI(app);
+  console.log('✅ init-user routes attached');
+} catch (e) {
+  console.error('❌ init-user attach failed:', e.message);
+}
 
 // CORS (GitHub Pages + ngrok HTTPS 허용)
 const allowOrigins = [
@@ -856,6 +864,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
