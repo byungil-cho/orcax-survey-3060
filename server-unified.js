@@ -755,66 +755,57 @@ if (!app.locals.__ORCAX_CORN_MISC__) {
     }
   });
 }
-/* ===== C O R N  E N G I N E  B R I D G E  (drop-in only) ===================
-   - 감자/보리 코드는 건드리지 않음
-   - 외부 엔진 모듈이 있으면 /api/corn 으로 장착
-   - 없더라도 내장 엔진(기본 로직)으로 동일 경로 제공
-=============================================================================*/
-//const express = require('express'); 주석처리 이중 작성
+/* === CORN ENGINE BRIDGE (scoped, no global re-declare) === */
+(() => {
+  // ⬇⬇⬇ 여기서만 보이는 지역 변수라 위쪽과 충돌 안 함
+  const CornData = mongoose.models.CornData || mongoose.model('CornData', new mongoose.Schema({
+    kakaoId: { type: String, unique: true, index: true },
+    corn: { type: Number, default: 0 },
+    popcorn: { type: Number, default: 0 },
+    seed: { type: Number, default: 0 },
+    seeds: { type: Number, default: 0 },
+    additives: { salt: { type: Number, default: 0 }, sugar: { type: Number, default: 0 } }
+  }, { collection: 'corn_data' }));
 
-// 1) corn 전용 컬렉션 (없으면 생성)
-const CornData = mongoose.models.CornData || mongoose.model('CornData', new mongoose.Schema({
-  kakaoId:   { type: String, unique: true, index: true },
-  corn:      { type: Number, default: 0 },
-  popcorn:   { type: Number, default: 0 },
-  seed:      { type: Number, default: 0 },   // 일부 프론트 seeds 라고도 씀
-  seeds:     { type: Number, default: 0 },
-  additives: {
-    salt:    { type: Number, default: 0 },
-    sugar:   { type: Number, default: 0 }
+  const CornSettings = mongoose.models.CornSettings || mongoose.model('CornSettings', new mongoose.Schema({
+    priceboard: { salt:{type:Number,default:10}, sugar:{type:Number,default:20}, seed:{type:Number,default:30}, currency:{type:String,default:'ORCX'} }
+  }, { collection: 'corn_settings' }));
+
+  const N = v => (Number.isFinite(+v) ? +v : 0);
+  async function ensureCornDoc(kakaoId){
+    let d = await CornData.findOne({ kakaoId });
+    if (d) return d;
+    try { return await CornData.create({ kakaoId }); }
+    catch { return await CornData.findOne({ kakaoId }); }
   }
-}, { collection: 'corn_data' }));
+  async function getPB(){ const s = await CornSettings.findOne(); return s?.priceboard || { salt:10, sugar:20, seed:30, currency:'ORCX' }; }
+  async function setPB(u){ let s = await CornSettings.findOne(); if(!s) s = await CornSettings.create({}); s.priceboard = { ...(s.priceboard?.toObject?.()||s.priceboard||{}), ...u }; await s.save(); return s.priceboard; }
 
-const CornSettings = mongoose.models.CornSettings || mongoose.model('CornSettings', new mongoose.Schema({
-  priceboard: {
-    salt:     { type: Number, default: 10 },
-    sugar:    { type: Number, default: 20 },
-    seed:     { type: Number, default: 30 },
-    currency: { type: String, default: 'ORCX' }
-  }
-}, { collection: 'corn_settings' }));
+  // 외부 엔진 있으면 우선 장착
+  (function attachExternalCorn(appRef){
+    const tryPaths = ['./routes/corn','./corn','./engine/corn','./corn-engine','./api/corn'];
+    for (const p of tryPaths){
+      try {
+        const mod = require(p);
+        const router = mod.default || mod;
+        if (typeof router === 'function'){
+          appRef.use('/api/corn', router);
+          console.log('🌽 External corn engine attached at /api/corn from', p);
+          return;
+        }
+      } catch {}
+    }
+    console.log('🌽 External corn engine not found. Using built-in engine.');
+  })(app);
 
-const N = v => (Number.isFinite(+v) ? +v : 0);
-async function ensureCornDoc(kakaoId){
-  let d = await CornData.findOne({ kakaoId });
-  if (d) return d;
-  try { return await CornData.create({ kakaoId }); }
-  catch { return await CornData.findOne({ kakaoId }); } // unique race 보호
-}
-async function getPB(){ const s = await CornSettings.findOne(); return s?.priceboard || { salt:10, sugar:20, seed:30, currency:'ORCX' }; }
-async function setPB(u){ let s = await CornSettings.findOne(); if(!s) s = await CornSettings.create({}); s.priceboard = { ...(s.priceboard?.toObject?.()||s.priceboard||{}), ...u }; await s.save(); return s.priceboard; }
+  // 내장 엔진
+  const corn = express.Router();     // ← 상단에서 선언된 express를 그대로 사용(재선언 금지)
 
-// 2) 외부 엔진 모듈이 있으면 우선 사용 (routes/corn, engine/corn 등 자동 탐색)
-(function attachExternalCorn(appRef){
-  const tryPaths = [
-    './routes/corn', './corn', './engine/corn', './corn-engine', './api/corn'
-  ];
-  for (const p of tryPaths){
-    try {
-      const mod = require(p);
-      const router = mod.default || mod;
-      if (typeof router === 'function'){
-        appRef.use('/api/corn', router);
-        console.log('🌽 External corn engine attached at /api/corn from', p);
-        return; // 외부 엔진을 붙였으면 종료
-      }
-    } catch {}
-  }
-  console.log('🌽 External corn engine not found. Using built-in engine.');
-})(app);
+  // …(summary/priceboard/buy-additive/plant/harvest/pop/exchange/status 라우트들 그대로)…
 
-// 3) 내장 엔진 라우터 (외부 엔진이 같은 경로를 가리더라도 겹치지 않게 별도 라우터에서 제공)
-const corn = express.Router();
+  app.use('/api/corn', corn);
+})(); // ⬅ 스코프 종료
+
 
 // 공통 kakaoId 파싱
 corn.use((req,_res,next)=>{
@@ -1027,6 +1018,7 @@ app.post('/api/userdata', async (req,res,next)=>{
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
