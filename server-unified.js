@@ -60,11 +60,11 @@ app.get("/__routes", (_req, res) => {
 /* ===== Mongo 연결 & 부팅 ===== */
 (async () => {
   try {
-    client = new MongoClient(MONGODB_URL, { maxPoolSize: 50 });
+    client = new MongoClient(MONGO_URI, { maxPoolSize: 50 });
     await client.connect();
     db = client.db(DB_NAME);
     app.locals.db = db;
-    console.log(`✅ MongoDB connected: ${MONGODB_URL}/${DB_NAME}`);
+    console.log(`✅ MongoDB connected: ${MONGO_URI}/${DB_NAME}`);
 
     /* ----------------------------------------------------------------
        1) 감자(users) 기존 라우트가 있으면 그대로 장착, 없으면 스킵
@@ -308,4 +308,5 @@ function routeExists(pathname, method = "get") {
 process.on("unhandledRejection", (e) => console.error("UNHANDLED:", e));
 process.on("uncaughtException",  (e) => console.error("UNCAUGHT :", e));
 process.on("SIGINT", async () => { try { await client?.close(); } catch {} process.exit(0); });
+
 
