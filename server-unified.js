@@ -10,6 +10,12 @@ const path = require("path");
 
 const app = express();
 
+app.set('etag', false);
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
+
 /* ===== CORS: 특정 오리진만 허용 + credentials 허용 ===== */
 const ALLOWED_ORIGINS = [
   "https://byungil-cho.github.io",
@@ -316,6 +322,7 @@ function routeExists(pathname, method = "get") {
 process.on("unhandledRejection", (e) => console.error("UNHANDLED:", e));
 process.on("uncaughtException",  (e) => console.error("UNCAUGHT :", e));
 process.on("SIGINT", async () => { try { await client?.close(); } catch {} process.exit(0); });
+
 
 
 
