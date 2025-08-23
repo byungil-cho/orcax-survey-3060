@@ -101,101 +101,6 @@ function flatUser(u){
     storage:u.storage||{ gamja:0, bori:0 }
   };
 }
-// --- Corn SUMMARY compat shim (항상 제공)
-app.get('/api/corn/summary', async (req, res) => {
-  try {
-    const { kakaoId } = req.query;
-    if (!kakaoId) return res.status(400).json({ ok: false, error: 'kakaoId required' });
-
-    // users / corn_data 보장 후 요약 구성
-    let u = await ensureUser(kakaoId);
-    let c = await ensureCorn(kakaoId);
-
-    // orcx/tokens 동기화
-    const orcx = Number.isFinite(+u.orcx) ? +u.orcx
-                : Number.isFinite(+u.tokens) ? +u.tokens : 0;
-
-    return res.json({
-      ok: true,
-      wallet:     { orcx },
-      inventory:  { water: +u.water || 0, fertilizer: +u.fertilizer || 0 },
-      agri:       { corn: +c.corn || 0, seeds: (+c.seed || 0) + (+c.seeds || 0) },
-      additives:  { salt: +(c.additives?.salt || 0), sugar: +(c.additives?.sugar || 0) },
-      food:       { popcorn: +c.popcorn || 0 },
-    });
-  } catch (e) {
-    console.error('[compat /api/corn/summary]', e);
-    res.status(500).json({ ok: false });
-  }
-});
-// 감자/보리 요약 (로그인 직후 연결 체크용)
-app.get('/api/farm/summary', async (req, res) => {
-  try {
-    const kakaoId = req.query.kakaoId || req.body?.kakaoId;
-    if (!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
-
-    let u = await ensureUser(kakaoId);
-    // orcx/tokens 동기화
-    const orcx = Number.isFinite(+u.orcx) ? +u.orcx
-                : Number.isFinite(+u.tokens) ? +u.tokens : 0;
-
-    res.json({
-      ok: true,
-      // UI 헤더에서 쓰는 값들
-      wallet: { orcx },
-      inventory: {
-        water: +u.water || 0,
-        fertilizer: +u.fertilizer || 0,
-        potatoSeeds: +(u.seedPotato || u.storage?.potatoSeeds || 0),
-        barleySeeds: +(u.seedBarley  || u.storage?.barleySeeds  || 0),
-      },
-      storage: u.storage || { gamja:0, bori:0 },
-      products: u.products || {},
-      growth:   u.growth   || {},
-    });
-  } catch (e) {
-    console.error('[farm/summary]', e);
-    res.status(500).json({ ok:false });
-  }
-});
-
-// 어떤 코드베이스는 /api/farm/status 를 씀 → 같은 응답으로 매핑
-app.get('/api/farm/status', (req, res, next) => {
-  req.url = '/summary' + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '');
-  app._router.handle(req, res, next);
-});
-const fs = require('fs');
-const path = require('path');
-
-// 안전하게 require (CJS/ESM 공통 대응)
-function importRouter(p) {
-  const m = require(p);
-  return m?.default || m;
-}
-
-// ✅ processing 라우터
-try {
-  const p = path.join(__dirname, 'routes', 'processing.js');
-  if (!fs.existsSync(p)) throw new Error(`파일 없음: ${p}`);
-  const processing = importRouter(p);
-  app.use('/api/processing', processing);
-  console.log('🔥 processing.js 라우터 파일이 서버에 적용됨 !  (mount: /api/processing)');
-} catch (err) {
-  console.log('⚠️ processing 라우터 미적용 - 내장 로직 사용 또는 404 발생 가능');
-  console.log('   원인:', err.message);
-}
-
-// ✅ corn 라우터
-try {
-  const p = path.join(__dirname, 'routes', 'corn.js');
-  if (!fs.existsSync(p)) throw new Error(`파일 없음: ${p}`);
-  const corn = importRouter(p);
-  app.use('/api/corn', corn);
-  console.log('🌽 corn router attached at /api/corn');
-} catch (err) {
-  console.log('🌽 external corn router 없음 → 내장 corn 엔진 사용');
-  console.log('   원인:', err.message);
-}
 
 /* -------------------- 헬스 -------------------- */
 app.get('/api/health', (_req,res)=>res.json({ ok:true, ts:Date.now() }));
@@ -482,6 +387,7 @@ process.on('SIGINT', async ()=>{
   try { await client?.close(); } catch {}
   process.exit(0);
 });
+
 
 
 
