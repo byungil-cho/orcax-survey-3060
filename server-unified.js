@@ -1,9 +1,7 @@
 // server-unified.js - OrcaX 통합 서버 (감자 + 옥수수 지원)
 require('dotenv').config();
-// 반드시 라우트보다 먼저
 
-// ★ 라우트보다 먼저 붙이기 (가장 위쪽 공통 미들웨어 구간)
-const express = require('express');          // 이미 있다면 중복 불가 없음
+const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
@@ -11,6 +9,7 @@ const cors = require('cors');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const path = require('path');
+
 // ====== 기존 모델/라우터 ======
 const User = require('./models/users');
 
@@ -37,31 +36,42 @@ const userRoutes = require('./routes/user');
 const userdataV2Routes = require('./routes/userdata_v2');
 const seedRoutes = require('./routes/seed-status');
 const seedBuyRoutes = require('./routes/seed');
-const initUserRoutes = require('./api/init-user');
+const initUserRoutes = require('./routes/init-user');
 const loginRoutes = require('./routes/login');
 const processingRoutes = require('./routes/processing');
 const marketdataRoutes = require('./routes/marketdata');
 const marketRoutes = require('./routes/marketdata');
 const seedPriceRoutes = require('./routes/seed-price');
+/* ===== PORT ATTACH (ADD-ONLY) =====
+   - Ensure default port 3060 without changing existing lines.
+   - If process.env.PORT is unset, set to '3060' so any later `const PORT = process.env.PORT || ` picks 3060.
+*/
+if (!process.env.PORT) { process.env.PORT = '3060'; }
 
-app.options('*', cors());
-app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-// ====== 라우터 장착(기존) ======
-app.use('/api/factory', factoryRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api/user', userRoutes);
-app.use('/api/user/v2data', userdataV2Routes);
-app.use('/api/seed', seedRoutes);
-app.use('/api/seed', seedBuyRoutes);
-app.use('/api/processing', processingRoutes);
-app.use('/api/marketdata', marketdataRoutes);
-app.use('/api/market', marketRoutes);
-app.use('/api/init-user', initUserRoutes);
-app.use('/api/login', loginRoutes);
-app.use('/api/seed', seedPriceRoutes);
+// ====== (신규) 옥수수 전용 컬렉션 ======
+const CornData = mongoose.models.CornData || mongoose.model('CornData', new mongoose.Schema({
+  kakaoId: { type: String, index: true, unique: true },
+  // 옥수수/팝콘 수량
+  corn: { type: Number, default: 0 },
+  popcorn: { type: Number, default: 0 },
+  // 첨가물
+  additives: {
+    salt:  { type: Number, default: 0 },
+    sugar: { type: Number, default: 0 }
+  },
+  // 씨옥수수(씨앗)
+  seed: { type: Number, default: 0 }
+}, { collection: 'corn_data' }));
+
+const CornSettings = mongoose.models.CornSettings || mongoose.model('CornSettings', new mongoose.Schema({
+  priceboard: {
+    salt:     { type: Number, default: 10 },
+    sugar:    { type: Number, default: 20 },
+    seed:     { type: Number, default: 30 },
+    currency: { type: String, default: 'ORCX' }
+  }
+}, { collection: 'corn_settings' }));
+
 // ====== 공통 미들웨어 ======
 // === init-user (GET 호환용, 레거시 프론트 대응) ===
 app.get('/api/init-user', async (req, res) => {
@@ -96,45 +106,6 @@ app.get('/api/init-user', async (req, res) => {
   }
 });
 
-// ====== Mongo 연결 ======
-const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017/farmgame';
-mongoose.connect(mongoUrl, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('✅ MongoDB 연결 성공'))
-  .catch(err => console.error('❌ MongoDB 연결 실패:', err.message));
-const PORT = process.env.PORT || 3060;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
-/* ===== PORT ATTACH (ADD-ONLY) =====
-   - Ensure default port 3060 without changing existing lines.
-   - If process.env.PORT is unset, set to '3060' so any later `const PORT = process.env.PORT || ` picks 3060.
-*/
-if (!process.env.PORT) { process.env.PORT = '3060'; }
-
-// ====== (신규) 옥수수 전용 컬렉션 ======
-const CornData = mongoose.models.CornData || mongoose.model('CornData', new mongoose.Schema({
-  kakaoId: { type: String, index: true, unique: true },
-  // 옥수수/팝콘 수량
-  corn: { type: Number, default: 0 },
-  popcorn: { type: Number, default: 0 },
-  // 첨가물
-  additives: {
-    salt:  { type: Number, default: 0 },
-    sugar: { type: Number, default: 0 }
-  },
-  // 씨옥수수(씨앗)
-  seed: { type: Number, default: 0 }
-}, { collection: 'corn_data' }));
-
-const CornSettings = mongoose.models.CornSettings || mongoose.model('CornSettings', new mongoose.Schema({
-  priceboard: {
-    salt:     { type: Number, default: 10 },
-    sugar:    { type: Number, default: 20 },
-    seed:     { type: Number, default: 30 },
-    currency: { type: String, default: 'ORCX' }
-  }
-}, { collection: 'corn_settings' }));
-
 // CORS (GitHub Pages + ngrok HTTPS 허용)
 const allowOrigins = [
   'https://byungil-cho.github.io',
@@ -159,6 +130,37 @@ app.use(cors({
   allowedHeaders: ['Content-Type','Authorization'],
   credentials: false
 }));
+app.options('*', cors());
+
+app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// ====== 라우터 장착(기존) ======
+app.use('/api/factory', factoryRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/user', userRoutes);
+app.use('/api/user/v2data', userdataV2Routes);
+app.use('/api/seed', seedRoutes);
+app.use('/api/seed', seedBuyRoutes);
+app.use('/api/processing', processingRoutes);
+app.use('/api/marketdata', marketdataRoutes);
+app.use('/api/market', marketRoutes);
+app.use('/api/init-user', initUserRoutes);
+app.use('/api/login', loginRoutes);
+app.use('/api/seed', seedPriceRoutes);
+
+// ====== Mongo 연결 ======
+const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017/farmgame';
+mongoose.connect(mongoUrl, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log('✅ MongoDB 연결 성공'))
+  .catch(err => console.error('❌ MongoDB 연결 실패:', err.message));
+const PORT = process.env.PORT || 3060;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
+
 // ====== 세션 (감자에서 사용) ======
 app.use(session({
   secret: 'secret-key',
@@ -851,6 +853,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
   try {
     if (!appRef.locals) appRef.locals = {};
     if (appRef.locals.__CORN_ROUTER_ATTACHED__) return;
+    const path = require('path');
     const tryPaths = [
       './routes/corn',
       './routes/corn.js',
@@ -885,6 +888,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
