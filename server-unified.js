@@ -36,7 +36,7 @@ const userRoutes = require('./routes/user');
 const userdataV2Routes = require('./routes/userdata_v2');
 const seedRoutes = require('./routes/seed-status');
 const seedBuyRoutes = require('./routes/seed');
-const initUserRoutes = require('./routes/init-user');
+const initUserRoutes = require('./api/init-user');
 const loginRoutes = require('./routes/login');
 const processingRoutes = require('./routes/processing');
 const marketdataRoutes = require('./routes/marketdata');
@@ -888,6 +888,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
