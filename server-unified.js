@@ -103,6 +103,15 @@ const CornSettings = mongoose.models.CornSettings || mongoose.model('CornSetting
     currency: { type: String, default: 'ORCX' }
   }
 }, { collection: 'corn_settings' }));
+// init-user 라우터 장착
+const path = require('path');
+try {
+  const initUserRouter = require(path.join(__dirname, 'api', 'init-user'));
+  app.use(initUserRouter);
+  console.log('✅ init-user router attached');
+} catch (e) {
+  console.error('❌ init-user router attach failed:', e.message);
+}
 
 // ====== 공통 미들웨어 ======
 // === init-user (GET 호환용, 레거시 프론트 대응) ===
@@ -889,6 +898,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
