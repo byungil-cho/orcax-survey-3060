@@ -3,7 +3,7 @@ require('dotenv').config();
 
 const express = require('express');
 const app = express();
-const bodyParser = require('body-parser');
+const bodyParser = require('body-parser'); // (중복 파서는 무해하지만, express.json만으로도 충분)
 const mongoose = require('mongoose');
 const cors = require('cors');
 const session = require('express-session');
@@ -36,25 +36,22 @@ const userRoutes = require('./routes/user');
 const userdataV2Routes = require('./routes/userdata_v2');
 const seedRoutes = require('./routes/seed-status');
 const seedBuyRoutes = require('./routes/seed');
-const initUserRoutes = require('./api/init-user');
+// ⚠️ 외부 init-user 라우터는 제거합니다 (이 파일에서 직접 처리)
+// const initUserRoutes = require('./api/init-user');
 const loginRoutes = require('./routes/login');
 const processingRoutes = require('./routes/processing');
 const marketdataRoutes = require('./routes/marketdata');
 const marketRoutes = require('./routes/marketdata');
 const seedPriceRoutes = require('./routes/seed-price');
-/* ===== PORT ATTACH (ADD-ONLY) =====
-   - Ensure default port 3060 without changing existing lines.
-   - If process.env.PORT is unset, set to '3060' so any later `const PORT = process.env.PORT || ` picks 3060.
-*/
+
+/* ===== PORT ATTACH (ADD-ONLY) ===== */
 if (!process.env.PORT) { process.env.PORT = '3060'; }
 
 // ====== (신규) 옥수수 전용 컬렉션 ======
 const CornData = mongoose.models.CornData || mongoose.model('CornData', new mongoose.Schema({
   kakaoId: { type: String, index: true, unique: true },
-  // 옥수수/팝콘 수량
   corn: { type: Number, default: 0 },
   popcorn: { type: Number, default: 0 },
-  // 첨가물
   additives: {
     salt:  { type: Number, default: 0 },
     sugar: { type: Number, default: 0 }
@@ -72,8 +69,67 @@ const CornSettings = mongoose.models.CornSettings || mongoose.model('CornSetting
   }
 }, { collection: 'corn_settings' }));
 
-// ====== 공통 미들웨어 ======
-// === init-user (GET 호환용, 레거시 프론트 대응) ===
+/* ====== 공통 미들웨어 (★ 라우트보다 먼저) ====== */
+const allowOrigins = [
+  'https://byungil-cho.github.io',
+  'http://localhost:3060',
+  'http://localhost:5173',
+  // 실전/서브도메인 권장 추가
+  'https://climbing-wholly-grouper.jp.ngrok.io',
+  'https://orcax.co.kr',
+  'https://farm.orcax.co.kr',
+  'https://biz.orcax.co.kr',
+  'https://cargo.orcax.co.kr',
+];
+
+app.use(cors({
+  origin(origin, cb){
+    if (!origin) return cb(null, true); // 서버 내부/CLI 허용
+    try {
+      const u = new URL(origin);
+      const ok = allowOrigins.some(o => origin.startsWith(o))
+        || /\.ngrok\.io$/.test(u.hostname)
+        || /\.ngrok-?free\.app$/.test(u.hostname);
+      return cb(null, ok);
+    } catch {
+      return cb(null, false);
+    }
+  },
+  methods: ['GET','POST','PATCH','PUT','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization'],
+  credentials: false
+}));
+app.options('*', cors());
+
+// ★ 본문 파서는 라우트보다 반드시 먼저
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+// (원하시면 아래 한 줄은 제거해도 됩니다.)
+// app.use(bodyParser.json());
+
+app.use(express.static(path.join(__dirname, 'public')));
+
+/* ===== 유틸: corn 문서 보장 ===== */
+async function ensureCornDoc(kakaoId){
+  let doc = await CornData.findOne({ kakaoId });
+  if (!doc) {
+    doc = await CornData.create({
+      kakaoId,
+      corn: 0,
+      popcorn: 0,
+      additives: { salt:0, sugar:0 },
+      seed: 0
+    });
+  }
+  return doc;
+}
+
+/* ===== 헬스체크 ===== */
+app.get('/api/health', (req,res)=> res.json({ ok:true, time:new Date().toISOString() }));
+app.get('/api/ping',   (req,res)=> res.send('pong'));
+
+/* ====== init-user (GET/POST 직접 처리 — 외부 라우터 제거) ====== */
+// GET (레거시 프론트 호환)
 app.get('/api/init-user', async (req, res) => {
   try {
     const kakaoId  = (req.query && req.query.kakaoId)  || (req.body && req.body.kakaoId);
@@ -96,9 +152,7 @@ app.get('/api/init-user', async (req, res) => {
       await user.save();
     }
 
-    // 옥수수 문서도 보장
-    await ensureCornDoc(kakaoId);
-
+    await ensureCornDoc(kakaoId); // 옥수수 문서 보장
     return res.json({ success:true, kakaoId, nickname });
   } catch (e) {
     console.error('[GET /api/init-user]', e);
@@ -106,38 +160,37 @@ app.get('/api/init-user', async (req, res) => {
   }
 });
 
-// CORS (GitHub Pages + ngrok HTTPS 허용)
-const allowOrigins = [
-  'https://byungil-cho.github.io',
-  'https://byungil-cho.github.io/OrcaX',
-  'http://localhost:3060',
-  'http://localhost:5173'
-];
-app.use(cors({
-  origin(origin, cb){
-    if (!origin) return cb(null, true); // 서버 내부 호출/CLI 허용
-    try {
-      const u = new URL(origin);
-      const ok = allowOrigins.some(o => origin.startsWith(o))
-        || /\.ngrok\.io$/.test(u.hostname)
-        || /\.ngrok-?free\.app$/.test(u.hostname);
-      return cb(null, ok);
-    } catch {
-      return cb(null, false);
+// POST (프론트/툴에서 JSON 바디로 호출)
+app.post('/api/init-user', async (req, res) => {
+  try {
+    const { kakaoId, nickname } = req.body || {};
+    if (!kakaoId || !nickname) {
+      return res.status(400).json({ success:false, message:'kakaoId and nickname required' });
     }
-  },
-  methods: ['GET','POST','PATCH','PUT','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization'],
-  credentials: false
-}));
-app.options('*', cors());
 
-app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+    // 유저 upsert
+    let user = await User.findOne({ kakaoId });
+    if (!user) {
+      user = await User.create({
+        kakaoId, nickname, orcx:0, water:0, fertilizer:0,
+        seedPotato:0, seedBarley:0,
+        storage:{ gamja:0, bori:0 }, products:{}, growth:{}, lastLogin:new Date()
+      });
+    } else {
+      if (user.nickname !== nickname) user.nickname = nickname;
+      user.lastLogin = new Date();
+      await user.save();
+    }
 
-// ====== 라우터 장착(기존) ======
+    await ensureCornDoc(kakaoId); // 옥수수 문서 보장
+    return res.json({ success:true, kakaoId, nickname });
+  } catch (e) {
+    console.error('[POST /api/init-user]', e);
+    return res.status(500).json({ success:false, message:'server error' });
+  }
+});
+
+/* ====== 라우터 장착(기존) ====== */
 app.use('/api/factory', factoryRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
@@ -147,19 +200,22 @@ app.use('/api/seed', seedBuyRoutes);
 app.use('/api/processing', processingRoutes);
 app.use('/api/marketdata', marketdataRoutes);
 app.use('/api/market', marketRoutes);
-app.use('/api/init-user', initUserRoutes);
+// ⚠️ 외부 init-user 라우터는 제거 (중복/충돌 방지)
+// app.use('/api/init-user', initUserRoutes);
 app.use('/api/login', loginRoutes);
 app.use('/api/seed', seedPriceRoutes);
 
-// ====== Mongo 연결 ======
+/* ====== Mongo 연결/리스닝 ====== */
 const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017/farmgame';
 mongoose.connect(mongoUrl, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log('✅ MongoDB 연결 성공'))
   .catch(err => console.error('❌ MongoDB 연결 실패:', err.message));
+
 const PORT = process.env.PORT || 3060;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
+
 
 // ====== 세션 (감자에서 사용) ======
 app.use(session({
@@ -888,6 +944,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
