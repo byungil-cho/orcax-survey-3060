@@ -1,5 +1,9 @@
 // server-unified.js - OrcaX 통합 서버 (감자 + 옥수수 지원)
 require('dotenv').config();
+// 반드시 라우트보다 먼저
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 // ★ 라우트보다 먼저 붙이기 (가장 위쪽 공통 미들웨어 구간)
 const express = require('express');          // 이미 있다면 중복 불가 없음
 const app = express();
@@ -44,8 +48,6 @@ const marketRoutes = require('./routes/marketdata');
 const seedPriceRoutes = require('./routes/seed-price');
 
 app.options('*', cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -887,6 +889,8 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
+
 
 
 
