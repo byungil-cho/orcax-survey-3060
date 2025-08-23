@@ -1,4 +1,10 @@
 // routes/cornRoutes.js
+const express = require("express");
+const router = express.Router();
+const User = require("../models/user");
+const CornData = require("../models/CornData");
+
+// 요약 조회
 router.get("/summary", async (req, res) => {
   try {
     const kakaoId = req.query.kakaoId;
@@ -24,23 +30,25 @@ router.get("/summary", async (req, res) => {
 
     res.json({
       inventory: {
-        seed: Number(cornDoc.seed ?? 0),        // ✅ 씨앗
-        water: Number(user.water ?? 0),         // ✅ 물
-        fertilizer: Number(user.fertilizer ?? 0) // ✅ 거름
+        seed: Number(cornDoc.seed ?? 0),
+        water: Number(user.water ?? 0),
+        fertilizer: Number(user.fertilizer ?? 0),
       },
-      wallet: { orcx: Number(user.tokens ?? 0) }, // ✅ 토큰
-      agri: { corn: Number(cornDoc.corn ?? 0) },  // ✅ 옥수수
-      food: { popcorn: Number(cornDoc.popcorn ?? 0) }, // ✅ 팝콘
+      wallet: { orcx: Number(user.tokens ?? 0) },
+      agri: { corn: Number(cornDoc.corn ?? 0) },
+      food: { popcorn: Number(cornDoc.popcorn ?? 0) },
       additives: {
-        salt: Number(cornDoc.additives?.salt ?? 0),  // ✅ 소금
-        sugar: Number(cornDoc.additives?.sugar ?? 0) // ✅ 설탕
+        salt: Number(cornDoc.additives?.salt ?? 0),
+        sugar: Number(cornDoc.additives?.sugar ?? 0),
       },
       status: cornDoc.corn > 0 ? "growing" : "fallow",
       day: cornDoc.corn > 0 ? 1 : 0,
-      growthPercent: cornDoc.corn > 0 ? 50 : 0
+      growthPercent: cornDoc.corn > 0 ? 50 : 0,
     });
   } catch (e) {
     console.error("corn/summary error:", e);
     res.status(500).json({ success: false, message: "server error" });
   }
 });
+
+module.exports = router;
