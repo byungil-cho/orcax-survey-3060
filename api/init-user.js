@@ -1,20 +1,67 @@
-// api/init-user.js
+// backend/api/init-user.js
 const express = require('express');
 const router = express.Router();
 
-// 여기에 실제 DB 모델 import (예: User, CornData)
-// const User = require('../models/User');
-// const CornData = require('../models/CornData');
+const User = require('../models/user');       // 감자보리 농장(users 컬렉션)
+const CornData = require('../models/cornData'); // 옥수수 농장(corn_data 컬렉션)
 
-// 통합 upsert 함수
+/**
+ * 통합 upsert: users + corn_data 동시에 보장
+ */
 async function upsertAll(kakaoId, nickname = '') {
-  // TODO: 실제 모델 로직 채워넣기
-  // const user = await User.findOneAndUpdate(...);
-  // const corn = await CornData.findOneAndUpdate(...);
-  return { kakaoId, nickname, ok: true };
+  // users 컬렉션 초기화/갱신
+  const user = await User.findOneAndUpdate(
+    { kakaoId },
+    {
+      $setOnInsert: {
+        kakaoId,
+        nickname,
+        tokens: 0,
+        water: 0,
+        fertilizer: 0,
+        isBankrupt: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      $set: {
+        nickname,
+        updatedAt: new Date(),
+      }
+    },
+    { upsert: true, new: true }
+  );
+
+  // corn_data 컬렉션 초기화/갱신
+  const corn = await CornData.findOneAndUpdate(
+    { kakaoId },
+    {
+      $setOnInsert: {
+        kakaoId,
+        seed: 0,
+        popcorn: 0,
+        corn: [],
+        additives: { salt: 0, sugar: 0 },
+        loan: {
+          amount: 0,
+          interest: 0,
+          createdAt: new Date(),
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      $set: {
+        updatedAt: new Date(),
+      }
+    },
+    { upsert: true, new: true }
+  );
+
+  return { kakaoId, nickname, user, corn };
 }
 
-// GET /api/init-user
+// ------------------ Routes ------------------
+
+// GET /api/init-user?kakaoId=...&nickname=...
 router.get('/api/init-user', async (req, res) => {
   try {
     const { kakaoId, nickname = '' } = req.query || {};
@@ -28,7 +75,7 @@ router.get('/api/init-user', async (req, res) => {
   }
 });
 
-// POST /api/init-user
+// POST /api/init-user { kakaoId, nickname }
 router.post('/api/init-user', async (req, res) => {
   try {
     const { kakaoId, nickname = '' } = req.body || {};
