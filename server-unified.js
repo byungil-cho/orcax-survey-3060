@@ -1,7 +1,7 @@
 // server-unified.js - OrcaX 통합 서버 (감자 + 옥수수 지원)
 require('dotenv').config();
-
-const express = require('express');
+// ★ 라우트보다 먼저 붙이기 (가장 위쪽 공통 미들웨어 구간)
+const express = require('express');          // 이미 있다면 중복 불가 없음
 const app = express();
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
@@ -42,6 +42,36 @@ const processingRoutes = require('./routes/processing');
 const marketdataRoutes = require('./routes/marketdata');
 const marketRoutes = require('./routes/marketdata');
 const seedPriceRoutes = require('./routes/seed-price');
+
+app.options('*', cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
+// ====== 라우터 장착(기존) ======
+app.use('/api/factory', factoryRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/user', userRoutes);
+app.use('/api/user/v2data', userdataV2Routes);
+app.use('/api/seed', seedRoutes);
+app.use('/api/seed', seedBuyRoutes);
+app.use('/api/processing', processingRoutes);
+app.use('/api/marketdata', marketdataRoutes);
+app.use('/api/market', marketRoutes);
+app.use('/api/init-user', initUserRoutes);
+app.use('/api/login', loginRoutes);
+app.use('/api/seed', seedPriceRoutes);
+
+// ====== Mongo 연결 ======
+const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017/farmgame';
+mongoose.connect(mongoUrl, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log('✅ MongoDB 연결 성공'))
+  .catch(err => console.error('❌ MongoDB 연결 실패:', err.message));
+const PORT = process.env.PORT || 3060;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
 /* ===== PORT ATTACH (ADD-ONLY) =====
    - Ensure default port 3060 without changing existing lines.
    - If process.env.PORT is unset, set to '3060' so any later `const PORT = process.env.PORT || ` picks 3060.
@@ -130,37 +160,6 @@ app.use(cors({
   allowedHeaders: ['Content-Type','Authorization'],
   credentials: false
 }));
-app.options('*', cors());
-
-app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// ====== 라우터 장착(기존) ======
-app.use('/api/factory', factoryRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api/user', userRoutes);
-app.use('/api/user/v2data', userdataV2Routes);
-app.use('/api/seed', seedRoutes);
-app.use('/api/seed', seedBuyRoutes);
-app.use('/api/processing', processingRoutes);
-app.use('/api/marketdata', marketdataRoutes);
-app.use('/api/market', marketRoutes);
-app.use('/api/init-user', initUserRoutes);
-app.use('/api/login', loginRoutes);
-app.use('/api/seed', seedPriceRoutes);
-
-// ====== Mongo 연결 ======
-const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017/farmgame';
-mongoose.connect(mongoUrl, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('✅ MongoDB 연결 성공'))
-  .catch(err => console.error('❌ MongoDB 연결 실패:', err.message));
-const PORT = process.env.PORT || 3060;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
-
 // ====== 세션 (감자에서 사용) ======
 app.use(session({
   secret: 'secret-key',
@@ -888,6 +887,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
