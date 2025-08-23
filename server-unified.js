@@ -1,8 +1,6 @@
 // server-unified.js - OrcaX 통합 서버 (감자 + 옥수수 지원)
 require('dotenv').config();
 // 반드시 라우트보다 먼저
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
 // ★ 라우트보다 먼저 붙이기 (가장 위쪽 공통 미들웨어 구간)
 const express = require('express');          // 이미 있다면 중복 불가 없음
@@ -49,7 +47,8 @@ const seedPriceRoutes = require('./routes/seed-price');
 app.options('*', cors());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
-
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 // ====== 라우터 장착(기존) ======
 app.use('/api/factory', factoryRoutes);
 app.use('/api/auth', authRoutes);
@@ -63,7 +62,49 @@ app.use('/api/market', marketRoutes);
 app.use('/api/init-user', initUserRoutes);
 app.use('/api/login', loginRoutes);
 app.use('/api/seed', seedPriceRoutes);
+// ====== 공통 미들웨어 ======
+// === init-user (GET 호환용, 레거시 프론트 대응) ===
+app.get('/api/init-user', async (req, res) => {
+  try {
+    const kakaoId  = (req.query && req.query.kakaoId)  || (req.body && req.body.kakaoId);
+    const nickname = (req.query && req.query.nickname) || (req.body && req.body.nickname);
+    if (!kakaoId || !nickname) {
+      return res.status(400).json({ success:false, message:'kakaoId and nickname required' });
+    }
 
+    // 유저 upsert
+    let user = await User.findOne({ kakaoId });
+    if (!user) {
+      user = await User.create({
+        kakaoId, nickname, orcx:0, water:0, fertilizer:0,
+        seedPotato:0, seedBarley:0,
+        storage:{ gamja:0, bori:0 }, products:{}, growth:{}, lastLogin:new Date()
+      });
+    } else {
+      if (user.nickname !== nickname) user.nickname = nickname;
+      user.lastLogin = new Date();
+      await user.save();
+    }
+
+    // 옥수수 문서도 보장
+    await ensureCornDoc(kakaoId);
+
+    return res.json({ success:true, kakaoId, nickname });
+  } catch (e) {
+    console.error('[GET /api/init-user]', e);
+    return res.status(500).json({ success:false, message:'server error' });
+  }
+});
+
+// init-user 라우터 장착
+const path = require('path');
+try {
+  const initUserRouter = require(path.join(__dirname, 'api', 'init-user'));
+  app.use(initUserRouter);
+  console.log('✅ init-user router attached');
+} catch (e) {
+  console.error('❌ init-user router attach failed:', e.message);
+}
 // ====== Mongo 연결 ======
 const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017/farmgame';
 mongoose.connect(mongoUrl, { useNewUrlParser: true, useUnifiedTopology: true })
@@ -102,49 +143,6 @@ const CornSettings = mongoose.models.CornSettings || mongoose.model('CornSetting
     currency: { type: String, default: 'ORCX' }
   }
 }, { collection: 'corn_settings' }));
-// init-user 라우터 장착
-const path = require('path');
-try {
-  const initUserRouter = require(path.join(__dirname, 'api', 'init-user'));
-  app.use(initUserRouter);
-  console.log('✅ init-user router attached');
-} catch (e) {
-  console.error('❌ init-user router attach failed:', e.message);
-}
-
-// ====== 공통 미들웨어 ======
-// === init-user (GET 호환용, 레거시 프론트 대응) ===
-app.get('/api/init-user', async (req, res) => {
-  try {
-    const kakaoId  = (req.query && req.query.kakaoId)  || (req.body && req.body.kakaoId);
-    const nickname = (req.query && req.query.nickname) || (req.body && req.body.nickname);
-    if (!kakaoId || !nickname) {
-      return res.status(400).json({ success:false, message:'kakaoId and nickname required' });
-    }
-
-    // 유저 upsert
-    let user = await User.findOne({ kakaoId });
-    if (!user) {
-      user = await User.create({
-        kakaoId, nickname, orcx:0, water:0, fertilizer:0,
-        seedPotato:0, seedBarley:0,
-        storage:{ gamja:0, bori:0 }, products:{}, growth:{}, lastLogin:new Date()
-      });
-    } else {
-      if (user.nickname !== nickname) user.nickname = nickname;
-      user.lastLogin = new Date();
-      await user.save();
-    }
-
-    // 옥수수 문서도 보장
-    await ensureCornDoc(kakaoId);
-
-    return res.json({ success:true, kakaoId, nickname });
-  } catch (e) {
-    console.error('[GET /api/init-user]', e);
-    return res.status(500).json({ success:false, message:'server error' });
-  }
-});
 
 // CORS (GitHub Pages + ngrok HTTPS 허용)
 const allowOrigins = [
@@ -896,6 +894,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
