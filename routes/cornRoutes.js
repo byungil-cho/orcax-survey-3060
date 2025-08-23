@@ -1,3 +1,10 @@
+const express = require("express");
+const router = express.Router();
+
+// ... (모든 라우트 정의)
+
+module.exports = router;
+
 // 구매 API (씨옥수수, 소금, 설탕)
 router.post("/buy", async (req, res) => {
   try {
