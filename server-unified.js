@@ -10,7 +10,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
-
+const path = require('path');
 // ====== 기존 모델/라우터 ======
 const User = require('./models/users');
 
@@ -96,15 +96,6 @@ app.get('/api/init-user', async (req, res) => {
   }
 });
 
-// init-user 라우터 장착
-const path = require('path');
-try {
-  const initUserRouter = require(path.join(__dirname, 'api', 'init-user'));
-  app.use(initUserRouter);
-  console.log('✅ init-user router attached');
-} catch (e) {
-  console.error('❌ init-user router attach failed:', e.message);
-}
 // ====== Mongo 연결 ======
 const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017/farmgame';
 mongoose.connect(mongoUrl, { useNewUrlParser: true, useUnifiedTopology: true })
@@ -894,6 +885,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
