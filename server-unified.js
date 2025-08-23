@@ -128,6 +128,42 @@ app.get('/api/corn/summary', async (req, res) => {
     res.status(500).json({ ok: false });
   }
 });
+// 감자/보리 요약 (로그인 직후 연결 체크용)
+app.get('/api/farm/summary', async (req, res) => {
+  try {
+    const kakaoId = req.query.kakaoId || req.body?.kakaoId;
+    if (!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
+
+    let u = await ensureUser(kakaoId);
+    // orcx/tokens 동기화
+    const orcx = Number.isFinite(+u.orcx) ? +u.orcx
+                : Number.isFinite(+u.tokens) ? +u.tokens : 0;
+
+    res.json({
+      ok: true,
+      // UI 헤더에서 쓰는 값들
+      wallet: { orcx },
+      inventory: {
+        water: +u.water || 0,
+        fertilizer: +u.fertilizer || 0,
+        potatoSeeds: +(u.seedPotato || u.storage?.potatoSeeds || 0),
+        barleySeeds: +(u.seedBarley  || u.storage?.barleySeeds  || 0),
+      },
+      storage: u.storage || { gamja:0, bori:0 },
+      products: u.products || {},
+      growth:   u.growth   || {},
+    });
+  } catch (e) {
+    console.error('[farm/summary]', e);
+    res.status(500).json({ ok:false });
+  }
+});
+
+// 어떤 코드베이스는 /api/farm/status 를 씀 → 같은 응답으로 매핑
+app.get('/api/farm/status', (req, res, next) => {
+  req.url = '/summary' + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '');
+  app._router.handle(req, res, next);
+});
 
 /* -------------------- 헬스 -------------------- */
 app.get('/api/health', (_req,res)=>res.json({ ok:true, ts:Date.now() }));
@@ -414,6 +450,7 @@ process.on('SIGINT', async ()=>{
   try { await client?.close(); } catch {}
   process.exit(0);
 });
+
 
 
 
