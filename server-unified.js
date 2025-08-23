@@ -164,6 +164,38 @@ app.get('/api/farm/status', (req, res, next) => {
   req.url = '/summary' + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '');
   app._router.handle(req, res, next);
 });
+const fs = require('fs');
+const path = require('path');
+
+// 안전하게 require (CJS/ESM 공통 대응)
+function importRouter(p) {
+  const m = require(p);
+  return m?.default || m;
+}
+
+// ✅ processing 라우터
+try {
+  const p = path.join(__dirname, 'routes', 'processing.js');
+  if (!fs.existsSync(p)) throw new Error(`파일 없음: ${p}`);
+  const processing = importRouter(p);
+  app.use('/api/processing', processing);
+  console.log('🔥 processing.js 라우터 파일이 서버에 적용됨 !  (mount: /api/processing)');
+} catch (err) {
+  console.log('⚠️ processing 라우터 미적용 - 내장 로직 사용 또는 404 발생 가능');
+  console.log('   원인:', err.message);
+}
+
+// ✅ corn 라우터
+try {
+  const p = path.join(__dirname, 'routes', 'corn.js');
+  if (!fs.existsSync(p)) throw new Error(`파일 없음: ${p}`);
+  const corn = importRouter(p);
+  app.use('/api/corn', corn);
+  console.log('🌽 corn router attached at /api/corn');
+} catch (err) {
+  console.log('🌽 external corn router 없음 → 내장 corn 엔진 사용');
+  console.log('   원인:', err.message);
+}
 
 /* -------------------- 헬스 -------------------- */
 app.get('/api/health', (_req,res)=>res.json({ ok:true, ts:Date.now() }));
@@ -450,6 +482,7 @@ process.on('SIGINT', async ()=>{
   try { await client?.close(); } catch {}
   process.exit(0);
 });
+
 
 
 
