@@ -43,7 +43,7 @@ const processingRoutes = require('./routes/processing');
 const marketdataRoutes = require('./routes/marketdata');
 const marketRoutes = require('./routes/marketdata');
 const seedPriceRoutes = require('./routes/seed-price');
-
+const cornRoutes = require('./routes/cornRoutes');
 /* ===== PORT ATTACH (ADD-ONLY) ===== */
 if (!process.env.PORT) { process.env.PORT = '3060'; }
 
@@ -200,6 +200,7 @@ app.use('/api/seed', seedBuyRoutes);
 app.use('/api/processing', processingRoutes);
 app.use('/api/marketdata', marketdataRoutes);
 app.use('/api/market', marketRoutes);
+app.use('/api/corn', cornRoutes);
 // ⚠️ 외부 init-user 라우터는 제거 (중복/충돌 방지)
 // app.use('/api/init-user', initUserRoutes);
 app.use('/api/login', loginRoutes);
@@ -944,6 +945,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
