@@ -1,8 +1,10 @@
+// backend/api/cornRoutes.js
 const express = require("express");
 const router = express.Router();
 const User = require("../models/user");
-const CornData = require("../models/CornData");
+const CornData = require("../models/cornData");
 
+// 요약 조회: 감자·보리(users) + 옥수수(corn_data)
 router.get("/summary", async (req, res) => {
   try {
     const kakaoId = req.query.kakaoId;
@@ -15,6 +17,7 @@ router.get("/summary", async (req, res) => {
     const user = await User.findOne({ kakaoId });
     const cornDoc = await CornData.findOne({ kakaoId });
 
+    // 유저나 옥수수 문서 없으면 기본값 반환
     if (!user || !cornDoc) {
       return res.json({
         inventory: { seed: 0, water: 0, fertilizer: 0 },
@@ -22,6 +25,7 @@ router.get("/summary", async (req, res) => {
         agri: { corn: 0 },
         food: { popcorn: 0 },
         additives: { salt: 0, sugar: 0 },
+
         // 호환성 alias
         seed: 0,
         seeds: 0,
@@ -33,15 +37,16 @@ router.get("/summary", async (req, res) => {
       });
     }
 
-    // 실제 값
-    const seedVal = Number(cornDoc.seed ?? 0);
-    const waterVal = Number(user.water ?? 0);
-    const fertVal = Number(user.fertilizer ?? 0);
-    const orcxVal = Number(user.tokens ?? 0);
-    const cornVal = Number(cornDoc.corn ?? 0);
-    const popVal = Number(cornDoc.popcorn ?? 0);
-    const saltVal = Number(cornDoc.additives?.salt ?? 0);
-    const sugarVal = Number(cornDoc.additives?.sugar ?? 0);
+    // ✅ 새 구조 반영
+    const seedVal   = Number(cornDoc.agri?.seeds ?? 0);
+    const cornVal   = Array.isArray(cornDoc.agri?.corn) ? cornDoc.agri.corn.length : Number(cornDoc.agri?.corn ?? 0);
+    const popVal    = Number(cornDoc.agri?.popcorn ?? 0);
+    const saltVal   = Number(cornDoc.agri?.additives?.salt ?? 0);
+    const sugarVal  = Number(cornDoc.agri?.additives?.sugar ?? 0);
+
+    const waterVal  = Number(user.inventory?.water ?? 0);
+    const fertVal   = Number(user.inventory?.fertilizer ?? 0);
+    const orcxVal   = Number(user.wallet?.tokens ?? 0);
 
     res.json({
       inventory: {
