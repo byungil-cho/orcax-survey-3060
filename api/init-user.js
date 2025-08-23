@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 
-const User = require('../models/user');       // 감자보리 농장(users 컬렉션)
+const User = require('../models/user');       // 감자·보리 농장(users 컬렉션)
 const CornData = require('../models/cornData'); // 옥수수 농장(corn_data 컬렉션)
 
 /**
@@ -16,9 +16,13 @@ async function upsertAll(kakaoId, nickname = '') {
       $setOnInsert: {
         kakaoId,
         nickname,
-        tokens: 0,
-        water: 0,
-        fertilizer: 0,
+        wallet: { tokens: 0 },   // ✅ 토큰은 wallet 안에
+        inventory: {             // ✅ 자원은 inventory 안에
+          water: 0,
+          fertilizer: 0,
+          seedPotato: 0,
+          seedBarley: 0,
+        },
         isBankrupt: false,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -37,10 +41,12 @@ async function upsertAll(kakaoId, nickname = '') {
     {
       $setOnInsert: {
         kakaoId,
-        seed: 0,
-        popcorn: 0,
-        corn: [],
-        additives: { salt: 0, sugar: 0 },
+        agri: {                  // ✅ 프론트 기대구조 맞춤
+          seeds: 0,
+          corn: [],              // 옥수수 농사 단계별 데이터
+          popcorn: 0,
+          additives: { salt: 0, sugar: 0 },
+        },
         loan: {
           amount: 0,
           interest: 0,
