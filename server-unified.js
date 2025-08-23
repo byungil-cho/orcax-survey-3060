@@ -12,7 +12,6 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
-const path = require('path');
 
 // ====== 기존 모델/라우터 ======
 const User = require('./models/users');
@@ -863,7 +862,6 @@ if (!app.locals.__orcax_added_corn_status_alias) {
   try {
     if (!appRef.locals) appRef.locals = {};
     if (appRef.locals.__CORN_ROUTER_ATTACHED__) return;
-    const path = require('path');
     const tryPaths = [
       './routes/corn',
       './routes/corn.js',
@@ -898,6 +896,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
