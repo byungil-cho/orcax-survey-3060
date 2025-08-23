@@ -34,8 +34,7 @@ try {
 
 // 등급 계산 (심은 지 n일)
 function gradeByDays(days) {
-  // 5:A, 6:B, 7:C, 8:D, 9:E, 10+ : F
-  if (days <= 4) return null; // 아직 수확 불가
+  if (days <= 4) return null;
   if (days === 5) return "A";
   if (days === 6) return "B";
   if (days === 7) return "C";
@@ -44,56 +43,17 @@ function gradeByDays(days) {
   return "F";
 }
 
-// 보상표 (등급→토큰, 팝콘 수량)
+// 보상표
 const TOKEN_REWARD = { A: 30, B: 20, C: 10, D: 5, E: 3, F: 1 };
 const POPCORN_REWARD = { A: 3, B: 2, C: 1, D: 1, E: 1, F: 1 };
 
 // 연체/대출 색상
 function cornColor(cornDoc) {
   if (cornDoc?.loan?.unpaid > 0 && cornDoc?.loan?.lastInterestDate) {
-    // 연체 존재 → 검정
     return "black";
   }
-  if (cornDoc?.loan?.unpaid > 0) return "red"; // 대출 중
-  return "yellow"; // 정상
-}
-
-// 하루 이자 정산(5%/일). 토큰에서 차감, 부족하면 파산 처리.
-async function applyDailyInterest(user, cornDoc) {
-  if (!cornDoc.loan) cornDoc.loan = { active: false, unpaid: 0, startDate: null };
-  const loan = cornDoc.loan;
-
-  if (!loan.unpaid || loan.unpaid <= 0) return { changed: false };
-
-  const now = new Date();
-  const last = loan.lastInterestDate ? new Date(loan.lastInterestDate) : null;
-
-  // 이미 오늘 계산했다면 스킵
-  if (last && last.toDateString() === now.toDateString()) {
-    return { changed: false };
-  }
-
-  // 단순히 "오늘 1회"만 계산 (복잡한 여러 일자 경과는 생략)
-  const interest = Math.floor(loan.unpaid * 0.05); // 5%
-  const need = interest;
-
-  // 사용자 토큰 차감
-  const tokens = Number(user.tokens || 0);
-  if (tokens >= need) {
-    user.tokens = tokens - need;
-    loan.unpaid = (loan.unpaid || 0) + interest;
-    loan.lastInterestDate = now;
-    await user.save();
-    await cornDoc.save();
-    return { changed: true, bankrupt: false, interest };
-  }
-
-  // 토큰 부족 → 파산
-  user.isBankrupt = true;
-  loan.lastInterestDate = now;
-  await user.save();
-  await cornDoc.save();
-  return { changed: true, bankrupt: true, interest };
+  if (cornDoc?.loan?.unpaid > 0) return "red";
+  return "yellow";
 }
 
 // 안전 숫자
@@ -102,7 +62,6 @@ const N = (v, d = 0) => (v === undefined || v === null ? d : Number(v));
 // --- Routes -----------------------------------------------------------------
 
 // 심기
-// POST /api/corn/plant  { kakaoId }
 router.post("/plant", async (req, res) => {
   try {
     const kakaoId = req.body?.kakaoId;
@@ -119,7 +78,6 @@ router.post("/plant", async (req, res) => {
       return res.json({ success: false, message: "파산 상태입니다. 해제 후 심기 가능" });
     }
 
-    // 씨앗 차감 (seed 또는 seeds 어느 필드든 고려)
     const seeds = N(cornDoc.seeds ?? cornDoc.seed);
     if (seeds <= 0) {
       return res.json({ success: false, message: "씨앗 없음" });
@@ -127,11 +85,10 @@ router.post("/plant", async (req, res) => {
     if (cornDoc.seeds !== undefined) cornDoc.seeds = seeds - 1;
     else cornDoc.seed = seeds - 1;
 
-    // corn 배열에 심은 기록 추가
     if (!Array.isArray(cornDoc.corn)) cornDoc.corn = [];
     cornDoc.corn.push({
       plantedAt: new Date(),
-      color: cornColor(cornDoc), // red / black / yellow
+      color: cornColor(cornDoc),
       harvestedAt: null,
       grade: null,
     });
@@ -147,7 +104,6 @@ router.post("/plant", async (req, res) => {
 });
 
 // 수확
-// POST /api/corn/harvest { kakaoId }
 router.post("/harvest", async (req, res) => {
   try {
     const kakaoId = req.body?.kakaoId;
@@ -160,20 +116,17 @@ router.post("/harvest", async (req, res) => {
       (await CornData.findOne({ kakaoId })) ||
       (await CornData.create({ kakaoId }));
 
-    // 수확 전 이자 계산
-    await applyDailyInterest(user, cornDoc);
-
     if (!Array.isArray(cornDoc.corn)) cornDoc.corn = [];
 
     const now = new Date();
     const harvested = [];
 
     for (const item of cornDoc.corn) {
-      if (item.harvestedAt) continue; // 이미 수확
+      if (item.harvestedAt) continue;
       const days =
         Math.floor((now.getTime() - new Date(item.plantedAt).getTime()) / (24 * 60 * 60 * 1000));
       const g = gradeByDays(days);
-      if (!g) continue; // 아직 수확 불가
+      if (!g) continue;
 
       item.harvestedAt = now;
       item.grade = g;
@@ -190,8 +143,7 @@ router.post("/harvest", async (req, res) => {
   }
 });
 
-// 뻥튀기 (등급 보상 + 팝콘/토큰 증가)
-// POST /api/corn/pop  { kakaoId }
+// 뻥튀기
 router.post("/pop", async (req, res) => {
   try {
     const kakaoId = req.body?.kakaoId;
@@ -209,7 +161,6 @@ router.post("/pop", async (req, res) => {
     let tokenGain = 0;
     let popcornGain = 0;
 
-    // 수확된 것만 보상
     for (const item of cornDoc.corn) {
       if (!item.harvestedAt || item._popped) continue;
 
@@ -218,7 +169,6 @@ router.post("/pop", async (req, res) => {
       let addPop = POPCORN_REWARD[g] || 0;
 
       const c = item.color || cornColor(cornDoc);
-      // 대출/연체 색이면 30% 삭감
       if (c === "red" || c === "black") {
         addToken = Math.floor(addToken * 0.7);
       }
@@ -226,7 +176,7 @@ router.post("/pop", async (req, res) => {
       tokenGain += addToken;
       popcornGain += addPop;
 
-      item._popped = true; // 중복 방지
+      item._popped = true;
     }
 
     if (tokenGain > 0) user.tokens = N(user.tokens) + tokenGain;
@@ -250,7 +200,6 @@ router.post("/pop", async (req, res) => {
 });
 
 // 파산 해제
-// POST /api/corn/release-bankruptcy  { kakaoId }
 router.post("/release-bankruptcy", async (req, res) => {
   try {
     const kakaoId = req.body?.kakaoId;
@@ -264,7 +213,7 @@ router.post("/release-bankruptcy", async (req, res) => {
       (await CornData.create({ kakaoId }));
 
     const unpaid = N(cornDoc?.loan?.unpaid);
-    const need = unpaid * 2; // 문서 규칙: 미상환*2
+    const need = unpaid * 2;
 
     if (N(user.tokens) < need) {
       return res.json({ success: false, message: `토큰 부족(필요: ${need})` });
@@ -284,6 +233,56 @@ router.post("/release-bankruptcy", async (req, res) => {
     res.json({ success: true, message: "파산 해제 완료", tokens: user.tokens });
   } catch (e) {
     console.error("corn/release-bankruptcy error:", e);
+    res.status(500).json({ success: false, message: "server error" });
+  }
+});
+
+// 요약 조회
+router.get("/summary", async (req, res) => {
+  try {
+    const kakaoId = req.query.kakaoId;
+    if (!kakaoId) return res.status(400).json({ success: false, message: "kakaoId 필요" });
+
+    const user = await User.findOne({ kakaoId });
+    const cornDoc = await CornData.findOne({ kakaoId });
+
+    if (!user || !cornDoc) {
+      return res.json({
+        inventory: { water: 0, fertilizer: 0 },
+        wallet: { orcx: 0 },
+        agri: { corn: 0 },
+        food: { popcorn: 0 },
+        additives: { salt: 0, sugar: 0 },
+        status: "fallow",
+        day: 0,
+        growthPercent: 0,
+      });
+    }
+
+    let day = 0;
+    if (cornDoc.corn?.length) {
+      const plantedAt = new Date(cornDoc.corn[0].plantedAt);
+      day = Math.floor((Date.now() - plantedAt.getTime()) / (1000 * 60 * 60 * 24));
+    }
+
+    res.json({
+      inventory: {
+        water: Number(user.water ?? 0),
+        fertilizer: Number(user.fertilizer ?? 0),
+      },
+      wallet: { orcx: Number(user.tokens ?? 0) },
+      agri: { corn: cornDoc.corn?.length ?? 0 },
+      food: { popcorn: cornDoc.popcorn ?? 0 },
+      additives: {
+        salt: cornDoc.additives?.salt ?? 0,
+        sugar: cornDoc.additives?.sugar ?? 0,
+      },
+      status: cornDoc.corn?.length ? "growing" : "fallow",
+      day,
+      growthPercent: cornDoc.corn?.length ? 50 : 0, // TODO: 성장 퍼센트 계산 로직 추가 가능
+    });
+  } catch (e) {
+    console.error("corn/summary error:", e);
     res.status(500).json({ success: false, message: "server error" });
   }
 });
