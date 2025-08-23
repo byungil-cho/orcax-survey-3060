@@ -101,6 +101,33 @@ function flatUser(u){
     storage:u.storage||{ gamja:0, bori:0 }
   };
 }
+// --- Corn SUMMARY compat shim (항상 제공)
+app.get('/api/corn/summary', async (req, res) => {
+  try {
+    const { kakaoId } = req.query;
+    if (!kakaoId) return res.status(400).json({ ok: false, error: 'kakaoId required' });
+
+    // users / corn_data 보장 후 요약 구성
+    let u = await ensureUser(kakaoId);
+    let c = await ensureCorn(kakaoId);
+
+    // orcx/tokens 동기화
+    const orcx = Number.isFinite(+u.orcx) ? +u.orcx
+                : Number.isFinite(+u.tokens) ? +u.tokens : 0;
+
+    return res.json({
+      ok: true,
+      wallet:     { orcx },
+      inventory:  { water: +u.water || 0, fertilizer: +u.fertilizer || 0 },
+      agri:       { corn: +c.corn || 0, seeds: (+c.seed || 0) + (+c.seeds || 0) },
+      additives:  { salt: +(c.additives?.salt || 0), sugar: +(c.additives?.sugar || 0) },
+      food:       { popcorn: +c.popcorn || 0 },
+    });
+  } catch (e) {
+    console.error('[compat /api/corn/summary]', e);
+    res.status(500).json({ ok: false });
+  }
+});
 
 /* -------------------- 헬스 -------------------- */
 app.get('/api/health', (_req,res)=>res.json({ ok:true, ts:Date.now() }));
@@ -387,6 +414,7 @@ process.on('SIGINT', async ()=>{
   try { await client?.close(); } catch {}
   process.exit(0);
 });
+
 
 
 
