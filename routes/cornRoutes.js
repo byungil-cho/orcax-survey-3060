@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
 
-const CornData = require("../models/cornData");
+const CornData = require("../models/CornData");
 const User = require("../models/user");   // 🔥 꼭 필요
 
 // ==========================
@@ -38,27 +38,35 @@ router.post("/buy", async (req, res) => {
     else user.tokens = tokens - totalPrice;
 
     // 아이템 지급
-    if (item === "seed") cornDoc.agri.seeds = (cornDoc.agri?.seeds ?? 0) + amount;
-    if (item === "salt") cornDoc.agri.additives.salt = (cornDoc.agri?.additives?.salt ?? 0) + amount;
-    if (item === "sugar") cornDoc.agri.additives.sugar = (cornDoc.agri?.additives?.sugar ?? 0) + amount;
+    if (item === "seed") cornDoc.seed = (cornDoc.seed ?? 0) + amount;
+    if (item === "salt") cornDoc.additives.salt = (cornDoc.additives?.salt ?? 0) + amount;
+    if (item === "sugar") cornDoc.additives.sugar = (cornDoc.additives?.sugar ?? 0) + amount;
 
     await user.save();
     await cornDoc.save();
 
-    // 🔑 옥수수 선택 로직 (loanStatus 기준)
-    let selectedCorn = cornDoc.agri?.corn?.typeA ?? 0; // 기본 typeA
-    if (user.loanStatus === "B") selectedCorn = cornDoc.agri?.corn?.typeB ?? 0;
-    if (user.loanStatus === "C") selectedCorn = cornDoc.agri?.corn?.typeC ?? 0;
+    // 옥수수 선택 로직 (loanStatus 또는 grade 기준)
+    let selectedCorn = 0;
+    if (cornDoc.corn && cornDoc.corn.length > 0) {
+      if (user.loanStatus === "B") {
+        selectedCorn = cornDoc.corn.filter(c => c.grade === "B").length;
+      } else if (user.loanStatus === "C") {
+        selectedCorn = cornDoc.corn.filter(c => c.grade === "F").length;
+      } else {
+        selectedCorn = cornDoc.corn.filter(c => c.grade === "A").length;
+      }
+    }
 
     res.json({
       success: true,
       message: `${item} ${amount}개 구매 완료`,
       tokens: user.wallet?.tokens ?? user.tokens,
       inventory: {
-        seeds: cornDoc.agri?.seeds ?? 0,
-        corn: selectedCorn,   // 👈 옥수수 1종류만 선택해서 반환
-        salt: cornDoc.agri?.additives?.salt ?? 0,
-        sugar: cornDoc.agri?.additives?.sugar ?? 0
+        corn: selectedCorn,                      // 옥수수 (상태별 선택)
+        popcorn: cornDoc.popcorn ?? 0,           // 뻥튀기
+        seed: cornDoc.seed ?? 0,                 // 씨옥수수
+        salt: cornDoc.additives?.salt ?? 0,      // 소금
+        sugar: cornDoc.additives?.sugar ?? 0     // 설탕
       }
     });
   } catch (e) {
@@ -79,19 +87,27 @@ router.get("/status", async (req, res) => {
       return res.status(404).json({ success: false, message: "유저 없음" });
     }
 
-    // loanStatus 값에 따라 옥수수 종류 선택
-    let selectedCorn = cornDoc.agri?.corn?.typeA ?? 0;
-    if (user.loanStatus === "B") selectedCorn = cornDoc.agri?.corn?.typeB ?? 0;
-    if (user.loanStatus === "C") selectedCorn = cornDoc.agri?.corn?.typeC ?? 0;
+    // 옥수수 선택 로직 (loanStatus → grade 필터링)
+    let selectedCorn = 0;
+    if (cornDoc.corn && cornDoc.corn.length > 0) {
+      if (user.loanStatus === "B") {
+        selectedCorn = cornDoc.corn.filter(c => c.grade === "B").length;
+      } else if (user.loanStatus === "C") {
+        selectedCorn = cornDoc.corn.filter(c => c.grade === "F").length;
+      } else {
+        selectedCorn = cornDoc.corn.filter(c => c.grade === "A").length;
+      }
+    }
 
     res.json({
       success: true,
       nickname: user.nickname,
       inventory: {
-        seeds: cornDoc.agri?.seeds ?? 0,
-        corn: selectedCorn,   // 👈 옥수수 상태 1개만 내려줌
-        salt: cornDoc.agri?.additives?.salt ?? 0,
-        sugar: cornDoc.agri?.additives?.sugar ?? 0
+        corn: selectedCorn,                      // 옥수수
+        popcorn: cornDoc.popcorn ?? 0,           // 뻥튀기
+        seed: cornDoc.seed ?? 0,                 // 씨옥수수
+        salt: cornDoc.additives?.salt ?? 0,      // 소금
+        sugar: cornDoc.additives?.sugar ?? 0     // 설탕
       }
     });
   } catch (e) {
