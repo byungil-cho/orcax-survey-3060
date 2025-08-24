@@ -63,6 +63,51 @@ router.get('/api/init-user', async (req, res) => {
     created: user.createdAt
   };
 }
+// ---- corn_data (옥수수) ----
+  const corn = await CornData.findOneAndUpdate(
+    { kakaoId },
+    {
+      $setOnInsert: {
+        kakaoId,
+        corn: 0,
+        popcorn: 0,
+        seed: 0,
+        seeds: 0,
+        g: 0,
+        phase: 'IDLE',
+        plantedAt: null,
+        additives: { salt: 0, sugar: 0 }
+      }
+    },
+    { new: true, upsert: true }
+  );
+
+  // ---- 응답(숫자/문자만) 평탄화 ----
+  return {
+    kakaoId: user.kakaoId,
+    nickname: user.nickname ?? nickname ?? '',
+    // users 쪽
+    orcx: user.orcx ?? 0,
+    water: user.water ?? 0,
+    fertilizer: user.fertilizer ?? 0,
+    seedPotato: user.seedPotato ?? 0,
+    seedBarley: user.seedBarley ?? 0,
+    gamja: user?.storage?.gamja ?? 0,
+    bori: user?.storage?.bori ?? 0,
+    growthPotato: user?.growth?.potato ?? 0,
+    growthBarley: user?.growth?.barley ?? 0,
+    // corn_data 쪽
+    corn: corn?.corn ?? 0,
+    popcorn: corn?.popcorn ?? 0,
+    seed: corn?.seed ?? 0,
+    seeds: corn?.seeds ?? 0,
+    g: corn?.g ?? 0,
+    phase: corn?.phase ?? 'IDLE',
+    plantedAt: corn?.plantedAt ?? null,
+    salt: corn?.additives?.salt ?? 0,
+    sugar: corn?.additives?.sugar ?? 0
+  };
+}
 // POST /api/init-user
 router.post('/api/init-user', async (req, res) => {
   try {
