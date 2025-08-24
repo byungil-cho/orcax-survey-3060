@@ -1,28 +1,55 @@
+// api/init-user.js
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User'); // 경로 확인 필요
 
-// 감자 유저 등록 및 초기 자산 지급
 async function upsertAll(kakaoId, nickname = '') {
-  const user = await User.findOneAndUpdate(
-    { kakaoId },
-    {
-      $setOnInsert: {
-        kakaoId,
-        nickname,
-        water: 10,
-        fertilizer: 10,
-        tokens: 10,
-        potato: 0,
-        barley: 0,
-        seedPotato: 0,
-        seedBarley: 0,
-        createdAt: new Date()
-      }
-    },
-    { new: true, upsert: true }
-  );
+  let user = await User.findOne({ kakaoId });
 
+// 여기에 실제 DB 모델 import (예: User, CornData)
+// const User = require('../models/User');
+// const CornData = require('../models/CornData');
+
+// 통합 upsert 함수
+async function upsertAll(kakaoId, nickname = '') {
+  // TODO: 실제 모델 로직 채워넣기
+  // const user = await User.findOneAndUpdate(...);
+  // const corn = await CornData.findOneAndUpdate(...);
+  return { kakaoId, nickname, ok: true };
+}
+
+// GET /api/init-user
+router.get('/api/init-user', async (req, res) => {
+  try {
+    const { kakaoId, nickname = '' } = req.query || {};
+    if (!kakaoId) return res.status(400).json({ ok: false, message: 'kakaoId required' });
+
+    const result = await upsertAll(kakaoId, nickname);
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    console.error('[GET /api/init-user] error:', e);
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+// 감자 & 보리 유저 처리 로직
+
+  // 신규 유저일 경우 초기 자산 지급
+  if (!user) {
+    user = new User({
+      kakaoId,
+      nickname,
+      water: 10,
+      fertilizer: 10,
+      tokens: 10,
+      potato: 0,
+      barley: 0,
+      seedPotato: 0,
+      seedBarley: 0,
+      createdAt: new Date()
+    });
+    await user.save();
+  }
+
+  // 기존 유저이든 신규 유저이든 똑같이 데이터 반환
   return {
     kakaoId: user.kakaoId,
     nickname: user.nickname,
@@ -36,22 +63,7 @@ async function upsertAll(kakaoId, nickname = '') {
     created: user.createdAt
   };
 }
-
-// GET 요청
-router.get('/api/init-user', async (req, res) => {
-  try {
-    const { kakaoId, nickname = '' } = req.query || {};
-    if (!kakaoId) return res.status(400).json({ ok: false, message: 'kakaoId required' });
-
-    const result = await upsertAll(kakaoId, nickname);
-    res.json({ ok: true, ...result });
-  } catch (e) {
-    console.error('[GET /api/init-user] error:', e);
-    res.status(500).json({ ok: false, error: String(e?.message || e) });
-  }
-});
-
-// POST 요청
+// POST /api/init-user
 router.post('/api/init-user', async (req, res) => {
   try {
     const { kakaoId, nickname = '' } = req.body || {};
