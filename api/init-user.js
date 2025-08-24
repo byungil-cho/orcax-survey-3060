@@ -1,9 +1,8 @@
-// api/init-user.js
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User'); // 실제 경로 맞춰야 함
+const User = require('../models/User'); // 경로 확인 필요
 
-// 감자보리 유저 upsert
+// 감자 유저 등록 및 초기 자산 지급
 async function upsertAll(kakaoId, nickname = '') {
   const user = await User.findOneAndUpdate(
     { kakaoId },
@@ -14,6 +13,10 @@ async function upsertAll(kakaoId, nickname = '') {
         water: 10,
         fertilizer: 10,
         tokens: 10,
+        potato: 0,
+        barley: 0,
+        seedPotato: 0,
+        seedBarley: 0,
         createdAt: new Date()
       }
     },
@@ -23,14 +26,18 @@ async function upsertAll(kakaoId, nickname = '') {
   return {
     kakaoId: user.kakaoId,
     nickname: user.nickname,
-    water: user.water,
-    fertilizer: user.fertilizer,
-    tokens: user.tokens,
+    water: user.water ?? 0,
+    fertilizer: user.fertilizer ?? 0,
+    tokens: user.tokens ?? 0,
+    potato: user.potato ?? 0,
+    barley: user.barley ?? 0,
+    seedPotato: user.seedPotato ?? 0,
+    seedBarley: user.seedBarley ?? 0,
     created: user.createdAt
   };
 }
 
-// GET /api/init-user
+// GET 요청
 router.get('/api/init-user', async (req, res) => {
   try {
     const { kakaoId, nickname = '' } = req.query || {};
@@ -44,7 +51,7 @@ router.get('/api/init-user', async (req, res) => {
   }
 });
 
-// POST /api/init-user
+// POST 요청
 router.post('/api/init-user', async (req, res) => {
   try {
     const { kakaoId, nickname = '' } = req.body || {};
