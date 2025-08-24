@@ -204,7 +204,7 @@ app.use('/api/market', marketRoutes);
 app.use('/api/corn', cornRoutes);
 app.use(initUserRoute);
 app.use(require('./routes/corn-enter'))
-app.use(require('./routes/init-user'));  // 카카오 로그인 → users upsert
+app.use(require('./api/init-user'));  // 카카오 로그인 → users upsert
 app.use(require('./routes/corn'));       // 옥수수 전용 API 세트
 
 // ⚠️ 외부 init-user 라우터는 제거 (중복/충돌 방지)
@@ -954,4 +954,5 @@ if (!app.locals.__orcax_added_corn_status_alias) {
   }
 
 })(app);
+
 
