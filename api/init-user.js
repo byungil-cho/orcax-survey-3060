@@ -2,20 +2,20 @@
 const express = require('express');
 const router = express.Router();
 
-const User = require('../models/User');         // 감자·보리
-const CornData = require('../models/CornData'); // 옥수수
+const User = require('../models/User');         
+const CornData = require('../models/CornData'); 
 
-// ✅ 통합 upsert
+// ✅ 절대 기존 데이터 덮어쓰지 않음
 async function upsertAll(kakaoId, nickname = '') {
   // --------------------------
-  // 1) 감자/보리 (users 컬렉션)
+  // 1) 감자/보리(User)
   // --------------------------
   let user = await User.findOne({ kakaoId });
   if (!user) {
     user = new User({
       kakaoId,
       nickname,
-      wallet: { tokens: 10 }, // 초기 토큰
+      wallet: { tokens: 10 }, 
       inventory: {
         water: 10,
         fertilizer: 10,
@@ -27,7 +27,7 @@ async function upsertAll(kakaoId, nickname = '') {
   }
 
   // --------------------------
-  // 2) 옥수수 (corn_data 컬렉션)
+  // 2) 옥수수(CornData)
   // --------------------------
   let cornDoc = await CornData.findOne({ kakaoId });
   if (!cornDoc) {
@@ -42,23 +42,23 @@ async function upsertAll(kakaoId, nickname = '') {
   }
 
   // --------------------------
-  // 3) 결과 통합 반환
+  // 3) 감자 + 옥수수 합쳐서 응답만 반환
   // --------------------------
   return {
     kakaoId,
     nickname: user.nickname,
     tokens: user.wallet?.tokens ?? user.tokens ?? 0,
     inventory: {
-      // 감자/보리 (users 컬렉션 기준)
+      // 감자/보리
       water: user.inventory?.water ?? 0,
       fertilizer: user.inventory?.fertilizer ?? 0,
       potato: user.inventory?.potato ?? 0,
       barley: user.inventory?.barley ?? 0,
 
-      // 옥수수 (corn_data 컬렉션 기준)
+      // 옥수수
       corn: cornDoc?.corn ?? 0,
       popcorn: cornDoc?.popcorn ?? 0,
-      seed: cornDoc?.seed ?? 0,          // ✅ seed(단수)만 사용
+      seed: cornDoc?.seed ?? 0,         
       salt: cornDoc?.additives?.salt ?? 0,
       sugar: cornDoc?.additives?.sugar ?? 0,
     }
@@ -66,7 +66,7 @@ async function upsertAll(kakaoId, nickname = '') {
 }
 
 // GET /api/init-user
-router.get('/api/init-user', async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { kakaoId, nickname = '' } = req.query || {};
     if (!kakaoId) return res.status(400).json({ ok: false, message: 'kakaoId required' });
@@ -80,7 +80,7 @@ router.get('/api/init-user', async (req, res) => {
 });
 
 // POST /api/init-user
-router.post('/api/init-user', async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { kakaoId, nickname = '' } = req.body || {};
     if (!kakaoId) return res.status(400).json({ ok: false, message: 'kakaoId required' });
