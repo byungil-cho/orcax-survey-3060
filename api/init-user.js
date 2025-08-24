@@ -2,16 +2,67 @@
 const express = require('express');
 const router = express.Router();
 
-// 여기에 실제 DB 모델 import (예: User, CornData)
-// const User = require('../models/User');
-// const CornData = require('../models/CornData');
+const User = require('../models/User');         // 감자·보리
+const CornData = require('../models/CornData'); // 옥수수
 
-// 통합 upsert 함수
+// ✅ 통합 upsert
 async function upsertAll(kakaoId, nickname = '') {
-  // TODO: 실제 모델 로직 채워넣기
-  // const user = await User.findOneAndUpdate(...);
-  // const corn = await CornData.findOneAndUpdate(...);
-  return { kakaoId, nickname, ok: true };
+  // --------------------------
+  // 1) 감자/보리 (users 컬렉션)
+  // --------------------------
+  let user = await User.findOne({ kakaoId });
+  if (!user) {
+    user = new User({
+      kakaoId,
+      nickname,
+      wallet: { tokens: 10 }, // 초기 토큰
+      inventory: {
+        water: 10,
+        fertilizer: 10,
+        potato: 0,
+        barley: 0,
+      }
+    });
+    await user.save();
+  }
+
+  // --------------------------
+  // 2) 옥수수 (corn_data 컬렉션)
+  // --------------------------
+  let cornDoc = await CornData.findOne({ kakaoId });
+  if (!cornDoc) {
+    cornDoc = new CornData({
+      kakaoId,
+      corn: 0,
+      popcorn: 0,
+      seed: 0,
+      additives: { salt: 0, sugar: 0 }
+    });
+    await cornDoc.save();
+  }
+
+  // --------------------------
+  // 3) 결과 통합 반환
+  // --------------------------
+  return {
+    kakaoId,
+    nickname: user.nickname,
+    tokens: user.wallet?.tokens ?? user.tokens ?? 0,
+    inventory: {
+      // 감자/보리 (users 컬렉션 기준)
+      water: user.inventory?.water ?? 0,
+      fertilizer: user.inventory?.fertilizer ?? 0,
+      potato: user.inventory?.potato ?? 0,
+      barley: user.inventory?.barley ?? 0,
+
+      // 옥수수 (corn_data 컬렉션 기준)
+      corn: cornDoc?.corn ?? 0,
+      popcorn: cornDoc?.popcorn ?? 0,
+      seed: cornDoc?.seed ?? 0,          // ✅ seed(단수)만 사용
+      salt: cornDoc?.additives?.salt ?? 0,
+      sugar: cornDoc?.additives?.sugar ?? 0,
+    }
+  };
 }
 
 // GET /api/init-user
