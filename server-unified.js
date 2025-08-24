@@ -208,7 +208,9 @@ app.use(require('./routes/corn-enter'))
 // app.use('/api/init-user', initUserRoutes);
 app.use('/api/login', loginRoutes);
 app.use('/api/seed', seedPriceRoutes);
-
+// (있다면 유지) 본문 파서
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 /* ====== Mongo 연결/리스닝 ====== */
 const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017/farmgame';
 mongoose.connect(mongoUrl, { useNewUrlParser: true, useUnifiedTopology: true })
@@ -947,4 +949,5 @@ if (!app.locals.__orcax_added_corn_status_alias) {
   } catch (e) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
+
 })(app);
