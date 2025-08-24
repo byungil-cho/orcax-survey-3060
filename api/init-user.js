@@ -1,17 +1,33 @@
 // api/init-user.js
 const express = require('express');
 const router = express.Router();
+const User = require('../models/User'); // 실제 경로 맞춰야 함
 
-// 여기에 실제 DB 모델 import (예: User, CornData)
-// const User = require('../models/User');
-// const CornData = require('../models/CornData');
-
-// 통합 upsert 함수
+// 감자보리 유저 upsert
 async function upsertAll(kakaoId, nickname = '') {
-  // TODO: 실제 모델 로직 채워넣기
-  // const user = await User.findOneAndUpdate(...);
-  // const corn = await CornData.findOneAndUpdate(...);
-  return { kakaoId, nickname, ok: true };
+  const user = await User.findOneAndUpdate(
+    { kakaoId },
+    {
+      $setOnInsert: {
+        kakaoId,
+        nickname,
+        water: 10,
+        fertilizer: 10,
+        tokens: 10,
+        createdAt: new Date()
+      }
+    },
+    { new: true, upsert: true }
+  );
+
+  return {
+    kakaoId: user.kakaoId,
+    nickname: user.nickname,
+    water: user.water,
+    fertilizer: user.fertilizer,
+    tokens: user.tokens,
+    created: user.createdAt
+  };
 }
 
 // GET /api/init-user
