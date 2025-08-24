@@ -30,41 +30,32 @@ router.get('/api/init-user', async (req, res) => {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
-// 감자 & 보리 유저 처리 로직
+  // --- users ---
+  const userDoc = await User.findOneAndUpdate(
+    { kakaoId },
+    {
+      $setOnInsert: {
+        kakaoId,
+        nickname,
+        email: `user-${kakaoId}@noemail.local`,
+        water: 10,
+        fertilizer: 10,
+        orcx: 0,
+        seedPotato: 0,
+        seedBarley: 0,
+        'growth.potato': 0,
+        'growth.barley': 0,
+        'storage.gamja': 0,
+        'storage.bori': 0,
+        createdAt: new Date()
+      },
+      ...(nickname ? { $set: { nickname } } : {})
+    },
+    { new: true, upsert: true }
+  );
 
-  // 신규 유저일 경우 초기 자산 지급
-  if (!user) {
-    user = new User({
-      kakaoId,
-      nickname,
-      water: 10,
-      fertilizer: 10,
-      tokens: 10,
-      potato: 0,
-      barley: 0,
-      seedPotato: 0,
-      seedBarley: 0,
-      createdAt: new Date()
-    });
-    await user.save();
-  }
-
-  // 기존 유저이든 신규 유저이든 똑같이 데이터 반환
-  return {
-    kakaoId: user.kakaoId,
-    nickname: user.nickname,
-    water: user.water ?? 0,
-    fertilizer: user.fertilizer ?? 0,
-    tokens: user.tokens ?? 0,
-    potato: user.potato ?? 0,
-    barley: user.barley ?? 0,
-    seedPotato: user.seedPotato ?? 0,
-    seedBarley: user.seedBarley ?? 0,
-    created: user.createdAt
-  };
-}
-// ---- corn_data (옥수수) ----
-  const corn = await CornData.findOneAndUpdate(
+  // --- corn_data ---
+  const cornDoc = await CornData.findOneAndUpdate(
     { kakaoId },
     {
       $setOnInsert: {
@@ -82,30 +73,28 @@ router.get('/api/init-user', async (req, res) => {
     { new: true, upsert: true }
   );
 
-  // ---- 응답(숫자/문자만) 평탄화 ----
+  // --- 응답 평탄화 ---
   return {
-    kakaoId: user.kakaoId,
-    nickname: user.nickname ?? nickname ?? '',
-    // users 쪽
-    orcx: user.orcx ?? 0,
-    water: user.water ?? 0,
-    fertilizer: user.fertilizer ?? 0,
-    seedPotato: user.seedPotato ?? 0,
-    seedBarley: user.seedBarley ?? 0,
-    gamja: user?.storage?.gamja ?? 0,
-    bori: user?.storage?.bori ?? 0,
-    growthPotato: user?.growth?.potato ?? 0,
-    growthBarley: user?.growth?.barley ?? 0,
-    // corn_data 쪽
-    corn: corn?.corn ?? 0,
-    popcorn: corn?.popcorn ?? 0,
-    seed: corn?.seed ?? 0,
-    seeds: corn?.seeds ?? 0,
-    g: corn?.g ?? 0,
-    phase: corn?.phase ?? 'IDLE',
-    plantedAt: corn?.plantedAt ?? null,
-    salt: corn?.additives?.salt ?? 0,
-    sugar: corn?.additives?.sugar ?? 0
+    kakaoId: userDoc.kakaoId,
+    nickname: userDoc.nickname ?? nickname ?? '',
+    orcx: userDoc.orcx ?? 0,
+    water: userDoc.water ?? 0,
+    fertilizer: userDoc.fertilizer ?? 0,
+    seedPotato: userDoc.seedPotato ?? 0,
+    seedBarley: userDoc.seedBarley ?? 0,
+    gamja: userDoc?.storage?.gamja ?? 0,
+    bori: userDoc?.storage?.bori ?? 0,
+    growthPotato: userDoc?.growth?.potato ?? 0,
+    growthBarley: userDoc?.growth?.barley ?? 0,
+    corn: cornDoc?.corn ?? 0,
+    popcorn: cornDoc?.popcorn ?? 0,
+    seed: cornDoc?.seed ?? 0,
+    seeds: cornDoc?.seeds ?? 0,
+    g: cornDoc?.g ?? 0,
+    phase: cornDoc?.phase ?? 'IDLE',
+    plantedAt: cornDoc?.plantedAt ?? null,
+    salt: cornDoc?.additives?.salt ?? 0,
+    sugar: cornDoc?.additives?.sugar ?? 0
   };
 }
 // POST /api/init-user
