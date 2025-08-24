@@ -45,28 +45,17 @@ router.post("/buy", async (req, res) => {
     await user.save();
     await cornDoc.save();
 
-    // 옥수수 선택 로직 (loanStatus 또는 grade 기준)
-    let selectedCorn = 0;
-    if (cornDoc.corn && cornDoc.corn.length > 0) {
-      if (user.loanStatus === "B") {
-        selectedCorn = cornDoc.corn.filter(c => c.grade === "B").length;
-      } else if (user.loanStatus === "C") {
-        selectedCorn = cornDoc.corn.filter(c => c.grade === "F").length;
-      } else {
-        selectedCorn = cornDoc.corn.filter(c => c.grade === "A").length;
-      }
-    }
-
+    // ✅ DB 구조에 맞게 corn은 숫자 그대로 반환
     res.json({
       success: true,
       message: `${item} ${amount}개 구매 완료`,
       tokens: user.wallet?.tokens ?? user.tokens,
       inventory: {
-        corn: selectedCorn,                      // 옥수수 (상태별 선택)
-        popcorn: cornDoc.popcorn ?? 0,           // 뻥튀기
-        seed: cornDoc.seed ?? 0,                 // 씨옥수수
-        salt: cornDoc.additives?.salt ?? 0,      // 소금
-        sugar: cornDoc.additives?.sugar ?? 0     // 설탕
+        corn: cornDoc.corn ?? 0,                // 👈 옥수수 (숫자 필드 그대로)
+        popcorn: cornDoc.popcorn ?? 0,          // 팝콘
+        seed: cornDoc.seed ?? 0,                // 씨옥수수
+        salt: cornDoc.additives?.salt ?? 0,     // 소금
+        sugar: cornDoc.additives?.sugar ?? 0    // 설탕
       }
     });
   } catch (e) {
@@ -87,27 +76,15 @@ router.get("/status", async (req, res) => {
       return res.status(404).json({ success: false, message: "유저 없음" });
     }
 
-    // 옥수수 선택 로직 (loanStatus → grade 필터링)
-    let selectedCorn = 0;
-    if (cornDoc.corn && cornDoc.corn.length > 0) {
-      if (user.loanStatus === "B") {
-        selectedCorn = cornDoc.corn.filter(c => c.grade === "B").length;
-      } else if (user.loanStatus === "C") {
-        selectedCorn = cornDoc.corn.filter(c => c.grade === "F").length;
-      } else {
-        selectedCorn = cornDoc.corn.filter(c => c.grade === "A").length;
-      }
-    }
-
     res.json({
       success: true,
       nickname: user.nickname,
       inventory: {
-        corn: selectedCorn,                      // 옥수수
-        popcorn: cornDoc.popcorn ?? 0,           // 뻥튀기
-        seed: cornDoc.seed ?? 0,                 // 씨옥수수
-        salt: cornDoc.additives?.salt ?? 0,      // 소금
-        sugar: cornDoc.additives?.sugar ?? 0     // 설탕
+        corn: cornDoc.corn ?? 0,                // 옥수수
+        popcorn: cornDoc.popcorn ?? 0,          // 팝콘
+        seed: cornDoc.seed ?? 0,                // 씨옥수수
+        salt: cornDoc.additives?.salt ?? 0,     // 소금
+        sugar: cornDoc.additives?.sugar ?? 0    // 설탕
       }
     });
   } catch (e) {
