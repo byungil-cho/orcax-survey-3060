@@ -1,6 +1,9 @@
 const express = require("express");
 const router = express.Router();
+const mongoose = require("mongoose");
 
+const CornData = require("../models/cornData");
+const User = require("../models/user");   // 🔥 이 줄 꼭 필요
 // ... (모든 라우트 정의)
 
 module.exports = router;
