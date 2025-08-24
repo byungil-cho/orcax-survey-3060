@@ -5,7 +5,7 @@ const router = express.Router();
 
 module.exports = router;
 
-// 구매 API (씨옥수수, 소금, 설탕)
+// 구매 API
 router.post("/buy", async (req, res) => {
   try {
     const { kakaoId, item, amount = 1 } = req.body;
@@ -19,7 +19,6 @@ router.post("/buy", async (req, res) => {
       return res.status(404).json({ success: false, message: "유저 없음" });
     }
 
-    // 가격표 (토큰 단위)
     const PRICES = { seed: 2, salt: 1, sugar: 1 };
     if (!PRICES[item]) {
       return res.status(400).json({ success: false, message: "잘못된 item" });
@@ -37,15 +36,9 @@ router.post("/buy", async (req, res) => {
     else user.tokens = tokens - totalPrice;
 
     // 아이템 지급
-    if (item === "seed") {
-      cornDoc.agri.seeds = (cornDoc.agri?.seeds ?? 0) + amount;
-    }
-    if (item === "salt") {
-      cornDoc.agri.additives.salt = (cornDoc.agri?.additives?.salt ?? 0) + amount;
-    }
-    if (item === "sugar") {
-      cornDoc.agri.additives.sugar = (cornDoc.agri?.additives?.sugar ?? 0) + amount;
-    }
+    if (item === "seed") cornDoc.agri.seeds = (cornDoc.agri?.seeds ?? 0) + amount;
+    if (item === "salt") cornDoc.agri.additives.salt = (cornDoc.agri?.additives?.salt ?? 0) + amount;
+    if (item === "sugar") cornDoc.agri.additives.sugar = (cornDoc.agri?.additives?.sugar ?? 0) + amount;
 
     await user.save();
     await cornDoc.save();
