@@ -1,14 +1,15 @@
+// cornRoutes.js
+
 const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
 
 const CornData = require("../models/cornData");
-const User = require("../models/user");   // 🔥 이 줄 꼭 필요
-// ... (모든 라우트 정의)
+const User = require("../models/user");
 
-module.exports = router;
+// 🔽 기존 plant, harvest, pop, release-bankruptcy 라우트들...
 
-// 구매 API
+// 🔽 구매 API (module.exports 위로 옮겨야 함)
 router.post("/buy", async (req, res) => {
   try {
     const { kakaoId, item, amount = 1 } = req.body;
@@ -22,6 +23,7 @@ router.post("/buy", async (req, res) => {
       return res.status(404).json({ success: false, message: "유저 없음" });
     }
 
+    // 가격표
     const PRICES = { seed: 2, salt: 1, sugar: 1 };
     if (!PRICES[item]) {
       return res.status(400).json({ success: false, message: "잘못된 item" });
@@ -61,3 +63,6 @@ router.post("/buy", async (req, res) => {
     res.status(500).json({ success: false, message: "server error" });
   }
 });
+
+// 🔽 맨 마지막에 export
+module.exports = router;
