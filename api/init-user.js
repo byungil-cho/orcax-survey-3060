@@ -33,9 +33,7 @@ async function upsertAll(kakaoId, nickname = '') {
   );
 
   // ---- corn_data (옥수수) ----
-  //const corn = await CornData.findOneAndUpdate(
-    { kakaoId },
-    {
+     {
       $setOnInsert: {
         kakaoId,
         corn: 0,
