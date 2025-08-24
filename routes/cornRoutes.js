@@ -11,21 +11,21 @@ const User = require("../models/user");
 router.post("/plant", async (req, res) => {
   try {
     const { kakaoId } = req.body;
-    const user = await User.findOne({ kakaoId });
-    if (!user) return res.status(404).json({ success: false, message: "user 없음" });
+    const cornDoc = await CornData.findOne({ kakaoId });
 
-    const cornDoc = (await CornData.findOne({ kakaoId })) || (await CornData.create({ kakaoId, agri: { seeds: 0, corn: 0, popcorn: 0, additives: { salt: 0, sugar: 0 } } }));
+    if (!cornDoc) {
+      return res.status(404).json({ success: false, message: "corn 데이터 없음" });
+    }
 
     if ((cornDoc.agri?.seeds ?? 0) <= 0) {
       return res.json({ success: false, message: "씨옥수수 없음" });
     }
 
     cornDoc.agri.seeds -= 1;
-    cornDoc.agri.corn = (cornDoc.agri.corn ?? 0) + 1;
+    cornDoc.agri.corn = (cornDoc.agri?.corn ?? 0) + 1;
 
     await cornDoc.save();
-
-    res.json({ success: true, message: "심기 완료", corn: cornDoc.agri.corn, seeds: cornDoc.agri.seeds });
+    res.json({ success: true, corn: cornDoc.agri.corn, seeds: cornDoc.agri.seeds });
   } catch (e) {
     console.error("corn/plant error:", e);
     res.status(500).json({ success: false, message: "server error" });
@@ -39,11 +39,11 @@ router.post("/harvest", async (req, res) => {
   try {
     const { kakaoId } = req.body;
     const cornDoc = await CornData.findOne({ kakaoId });
+
     if (!cornDoc) return res.status(404).json({ success: false, message: "corn 데이터 없음" });
 
     const harvested = cornDoc.agri?.corn ?? 0;
     cornDoc.agri.corn = 0;
-
     await cornDoc.save();
 
     res.json({ success: true, harvested, corn: cornDoc.agri.corn });
@@ -54,20 +54,20 @@ router.post("/harvest", async (req, res) => {
 });
 
 // =======================
-// 뻥튀기 (팝콘 생산)
+// 팝콘 생산
 // =======================
 router.post("/pop", async (req, res) => {
   try {
     const { kakaoId } = req.body;
     const cornDoc = await CornData.findOne({ kakaoId });
-    if (!cornDoc) return res.status(404).json({ success: false, message: "corn 데이터 없음" });
 
-    const corn = cornDoc.agri?.corn ?? 0;
-    if (corn <= 0) return res.json({ success: false, message: "옥수수 없음" });
+    if (!cornDoc) return res.status(404).json({ success: false, message: "corn 데이터 없음" });
+    if ((cornDoc.agri?.corn ?? 0) <= 0) {
+      return res.json({ success: false, message: "옥수수 없음" });
+    }
 
     cornDoc.agri.corn -= 1;
     cornDoc.agri.popcorn = (cornDoc.agri?.popcorn ?? 0) + 1;
-
     await cornDoc.save();
 
     res.json({ success: true, popcorn: cornDoc.agri.popcorn, corn: cornDoc.agri.corn });
@@ -84,6 +84,7 @@ router.post("/release-bankruptcy", async (req, res) => {
   try {
     const { kakaoId } = req.body;
     const user = await User.findOne({ kakaoId });
+
     if (!user) return res.status(404).json({ success: false, message: "user 없음" });
 
     user.isBankrupt = false;
@@ -97,25 +98,23 @@ router.post("/release-bankruptcy", async (req, res) => {
 });
 
 // =======================
-// 구매 API (씨옥수수, 소금, 설탕)
+// 구매 API
 // =======================
 router.post("/buy", async (req, res) => {
   try {
     const { kakaoId, item, amount = 1 } = req.body;
-    if (!kakaoId || !item) {
-      return res.status(400).json({ success: false, message: "kakaoId와 item 필요" });
-    }
-
     const user = await User.findOne({ kakaoId });
     const cornDoc = await CornData.findOne({ kakaoId });
-    if (!user || !cornDoc) return res.status(404).json({ success: false, message: "유저/옥수수 데이터 없음" });
+
+    if (!user || !cornDoc) {
+      return res.status(404).json({ success: false, message: "유저/옥수수 데이터 없음" });
+    }
 
     const PRICES = { seed: 2, salt: 1, sugar: 1 };
     if (!PRICES[item]) return res.status(400).json({ success: false, message: "잘못된 item" });
 
     const tokens = user.wallet?.tokens ?? user.tokens ?? 0;
     const totalPrice = PRICES[item] * amount;
-
     if (tokens < totalPrice) return res.json({ success: false, message: "토큰 부족" });
 
     // 토큰 차감
@@ -132,7 +131,6 @@ router.post("/buy", async (req, res) => {
 
     res.json({
       success: true,
-      message: `${item} ${amount}개 구매 완료`,
       tokens: user.wallet?.tokens ?? user.tokens,
       inventory: {
         seeds: cornDoc.agri?.seeds ?? 0,
@@ -147,7 +145,7 @@ router.post("/buy", async (req, res) => {
 });
 
 // =======================
-// 요약 조회 API (옥수수, 씨앗, 소금, 설탕, 팝콘)
+// 요약 조회 API (🔥 corn 필드만 추가)
 // =======================
 router.get("/summary", async (req, res) => {
   try {
@@ -159,7 +157,7 @@ router.get("/summary", async (req, res) => {
 
     res.json({
       seeds: cornDoc.agri?.seeds ?? 0,
-      corn: cornDoc.agri?.corn ?? 0,
+      corn: cornDoc.agri?.corn ?? 0,   // ✅ 옥수수 추가
       salt: cornDoc.agri?.additives?.salt ?? 0,
       sugar: cornDoc.agri?.additives?.sugar ?? 0,
       popcorn: cornDoc.agri?.popcorn ?? 0
@@ -170,5 +168,4 @@ router.get("/summary", async (req, res) => {
   }
 });
 
-// =======================
 module.exports = router;
