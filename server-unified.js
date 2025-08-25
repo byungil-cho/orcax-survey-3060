@@ -671,15 +671,16 @@ app.post('/api/corn/buy', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'unknown item', item });
     }
 
-    // 2) 가격 로딩 및 검증
-    const price = await getPriceboard();
-    const unit = item === 'salt'  ? Number(price?.salt)
-               : item === 'sugar' ? Number(price?.sugar)
-               :                   Number(price?.seed);
-    if (!Number.isFinite(unit) || unit < 0) {
-      return res.status(500).json({ ok: false, error: 'INVALID_PRICEBOARD', price });
-    }
-    const need = unit * q;
+  // 올바른 예시 (✅ async 함수 안)
+app.post('/api/corn/buy', async (req, res) => {
+  try {
+    ...
+    const price = await getPriceboard();   // ✅ 여기서는 오류 없음
+    ...
+  } catch (e) {
+    ...
+  }
+});
 
     // 3) 토큰 원자적 차감 (users.orcx) - 조건(orcx >= need)과 감소를 한 번에
     const user = await User.findOneAndUpdate(
@@ -1040,6 +1041,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
   }
 
 })(app);
+
 
 
 
