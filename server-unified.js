@@ -588,7 +588,7 @@ app.patch('/api/corn/priceboard', async (req, res) => {
 });
 
 // ====== (신규) 옥수수: 구매하기 (init-user 미터치, 이 블록만 교체) ======
-// ✅ /api/corn/buy (프론트와 구조 맞춤)
+// ✅ /api/corn/buy (프론트엔드 /api/corn/buy 호출 대응)
 app.post('/api/corn/buy', async (req, res) => {
   try {
     const { kakaoId, item } = req.body || {};
@@ -598,7 +598,7 @@ app.post('/api/corn/buy', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'kakaoId,item 필요' });
     }
 
-    // 프론트에서 한글로 올 수도 있으니 매핑 처리
+    // 한글/영문 아이템명 매핑
     const map = { 
       '씨앗': 'seed', '씨옥수수': 'seed', 'seeds': 'seed',
       '소금': 'salt', '설탕': 'sugar',
@@ -606,7 +606,7 @@ app.post('/api/corn/buy', async (req, res) => {
     };
     const normalizedItem = map[item] || String(item).toLowerCase();
 
-    // 가격 불러오기
+    // ✅ await는 async 함수 안에서만 사용 가능 (여긴 async 블록 안이므로 OK)
     const price = await getPriceboard();
     const unit = normalizedItem === 'salt'  ? Number(price?.salt)
                : normalizedItem === 'sugar' ? Number(price?.sugar)
@@ -621,7 +621,7 @@ app.post('/api/corn/buy', async (req, res) => {
     );
     if (!user) return res.status(402).json({ ok: false, error: 'INSUFFICIENT_ORCX_OR_USER' });
 
-    // corn_data 업데이트
+    // corn_data 증가
     const inc = {};
     if (normalizedItem === 'seed')  inc['seed'] = qty;
     if (normalizedItem === 'salt')  inc['additives.salt'] = qty;
@@ -633,7 +633,7 @@ app.post('/api/corn/buy', async (req, res) => {
       { upsert: true, new: true }
     );
 
-    // 프론트 paintResources() 가 읽는 구조로 응답
+    // 프론트 paintResources()가 읽는 구조로 응답
     return res.json({
       ok: true,
       wallet: { orcx: user.orcx },
@@ -648,7 +648,6 @@ app.post('/api/corn/buy', async (req, res) => {
     res.status(500).json({ ok: false, error: 'SERVER_ERROR' });
   }
 });
-
 
 // ✅ /api/corn/buy → /api/corn/buy-additive 별칭 라우트
 app.post('/api/corn/buy', async (req, res) => {
@@ -1041,6 +1040,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
   }
 
 })(app);
+
 
 
 
