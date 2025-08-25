@@ -588,6 +588,7 @@ app.patch('/api/corn/priceboard', async (req, res) => {
 });
 
 // ====== (신규) 옥수수: 구매하기 (init-user 미터치, 이 블록만 교체) ======
+// ====== (신규) 옥수수: 구매하기 ======
 app.post('/api/corn/buy', async (req, res) => {
   try {
     const { kakaoId, item } = req.body || {};
@@ -597,6 +598,7 @@ app.post('/api/corn/buy', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'kakaoId,item 필요' });
     }
 
+    // 한글/영문 아이템명 매핑
     const map = { 
       '씨앗': 'seed', '씨옥수수': 'seed', 'seeds': 'seed',
       '소금': 'salt', '설탕': 'sugar',
@@ -604,12 +606,14 @@ app.post('/api/corn/buy', async (req, res) => {
     };
     const normalizedItem = map[item] || String(item).toLowerCase();
 
+    // 가격 불러오기
     const price = await getPriceboard();
     const unit = normalizedItem === 'salt'  ? Number(price?.salt)
                : normalizedItem === 'sugar' ? Number(price?.sugar)
                : Number(price?.seed);
     const need = unit * qty;
 
+    // 유저 찾고 토큰 차감
     const user = await User.findOneAndUpdate(
       { kakaoId, orcx: { $gte: need } },
       { $inc: { orcx: -need } },
@@ -617,6 +621,7 @@ app.post('/api/corn/buy', async (req, res) => {
     );
     if (!user) return res.status(402).json({ ok: false, error: 'INSUFFICIENT_ORCX_OR_USER' });
 
+    // corn_data 증가
     const inc = {};
     if (normalizedItem === 'seed')  inc['seed'] = qty;
     if (normalizedItem === 'salt')  inc['additives.salt'] = qty;
@@ -628,6 +633,7 @@ app.post('/api/corn/buy', async (req, res) => {
       { upsert: true, new: true }
     );
 
+    // 프론트 paintResources() 가 읽는 구조로 응답
     return res.json({
       ok: true,
       wallet: { orcx: user.orcx },
@@ -642,28 +648,7 @@ app.post('/api/corn/buy', async (req, res) => {
     res.status(500).json({ ok: false, error: 'SERVER_ERROR' });
   }
 });
-
-// ✅ /api/corn/buy → /api/corn/buy-additive 별칭 라우트
-app.post('/api/corn/buy', async (req, res) => {
-  try {
-    // qty 또는 amount → buy-additive에서 쓰는 qty 로 통일
-    req.body.qty = req.body.qty || req.body.amount || 1;
-
-    // 내부적으로 /api/corn/buy-additive 라우트를 실행시킴
-    req.url = '/api/corn/buy-additive';
-    app._router.handle(req, res, () => {});
-  } catch (e) {
-    console.error('[buy alias error]', e);
-    res.status(500).json({ ok: false, error: 'buy alias error' });
-  }
-});
-
-    // 1) item 값 표준화 (한글/복수형 모두 영문 키로 통일)
-    const map = { '씨앗': 'seed', '소금': 'salt', '설탕': 'sugar', 'seeds': 'seed' };
-    item = map[item] || String(item).toLowerCase();
-    if (!['seed', 'salt', 'sugar'].includes(item)) {
-      return res.status(400).json({ ok: false, error: 'unknown item', item });
-    }
+//=====================================================================
 
   // 올바른 예시 (✅ async 함수 안)
 app.post('/api/corn/buy', async (req, res) => {
@@ -1035,6 +1020,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
   }
 
 })(app);
+
 
 
 
