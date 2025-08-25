@@ -587,7 +587,7 @@ app.patch('/api/corn/priceboard', async (req, res) => {
   }
 });
 
-// ====== (신규) 옥수수: 구매/심기/수확/뻥튀기 ======여기부터 추가 수정내용 구매하기
+// ====== (신규) 옥수수: 구매/심기/수확/뻥튀기 ======
 app.post('/api/corn/buy-additive', async (req, res) => {
   try {
     const { kakaoId } = req.body || {};
@@ -657,12 +657,9 @@ app.post('/api/corn/buy-additive', async (req, res) => {
     res.status(500).json({ error: 'server error' });
   }
 });
-//<==여기까지 새로추가 수정
-  } catch (e) {
-    console.error('[buy-additive]', e);
-    res.status(500).json({ error: 'server error' });
-  }
-});app.post('/api/corn/plant', async (req, res) => {
+//============================================여기까지 수정교체
+
+app.post('/api/corn/plant', async (req, res) => {
   try {
     const { kakaoId } = req.body || {};
     if (!kakaoId) return res.status(400).json({ error: 'kakaoId 필요' });
@@ -981,6 +978,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
   }
 
 })(app);
+
 
 
 
