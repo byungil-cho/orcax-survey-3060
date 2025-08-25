@@ -596,6 +596,64 @@ app.post('/api/corn/buy-additive', async (req, res) => {
     if (!kakaoId || !item) {
       return res.status(400).json({ ok: false, error: 'kakaoId,item 필요' });
     }
+    // ✅ /api/corn/buy → /api/corn/buy-additive 별칭 라우트
+app.post('/api/corn/buy', async (req, res) => {
+  try {
+    const { kakaoId, item } = req.body || {};
+    const qty = req.body.qty || req.body.amount || 1;
+
+    if (!kakaoId || !item) {
+      return res.status(400).json({ ok: false, error: 'kakaoId,item 필요' });
+    }
+
+    // 내부적으로 /buy-additive 로직을 직접 실행
+    const map = { '씨앗': 'seed', '소금': 'salt', '설탕': 'sugar', 'seeds': 'seed' };
+    const normalizedItem = map[item] || String(item).toLowerCase();
+    req.body.item = normalizedItem;
+    req.body.qty = qty;
+
+    // 가격 불러오기
+    const price = await getPriceboard();
+    const unit = normalizedItem === 'salt'  ? Number(price?.salt)
+               : normalizedItem === 'sugar' ? Number(price?.sugar)
+               : Number(price?.seed);
+    const need = unit * qty;
+
+    // 토큰 차감
+    const user = await User.findOneAndUpdate(
+      { kakaoId, orcx: { $gte: need } },
+      { $inc: { orcx: -need } },
+      { new: true }
+    );
+    if (!user) return res.status(402).json({ ok: false, error: 'INSUFFICIENT_ORCX_OR_USER' });
+
+    // corn_data 증가
+    const inc = {};
+    if (normalizedItem === 'seed')  inc['seed'] = qty;
+    if (normalizedItem === 'salt')  inc['additives.salt'] = qty;
+    if (normalizedItem === 'sugar') inc['additives.sugar'] = qty;
+
+    const corn = await CornData.findOneAndUpdate(
+      { kakaoId },
+      { $setOnInsert: { kakaoId }, $inc: inc },
+      { upsert: true, new: true }
+    );
+
+    return res.json({
+      ok: true,
+      wallet: { orcx: user.orcx },
+      seed: corn?.seed || 0,
+      additives: {
+        salt:  corn?.additives?.salt  || 0,
+        sugar: corn?.additives?.sugar || 0
+      }
+    });
+  } catch (e) {
+    console.error('[buy error]', e);
+    res.status(500).json({ ok: false, error: 'SERVER_ERROR' });
+  }
+});
+
 // ✅ /api/corn/buy → /api/corn/buy-additive 별칭 라우트
 app.post('/api/corn/buy', async (req, res) => {
   try {
@@ -987,6 +1045,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
   }
 
 })(app);
+
 
 
 
