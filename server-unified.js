@@ -587,64 +587,68 @@ app.patch('/api/corn/priceboard', async (req, res) => {
   }
 });
 
-// ====== (신규) 옥수수: 구매/심기/수확/뻥튀기 =======
+// ====== (신규) 옥수수: 구매하기 (init-user 미터치, 이 블록만 교체) ======
 app.post('/api/corn/buy-additive', async (req, res) => {
   try {
     const { kakaoId } = req.body || {};
     let { item, qty } = req.body || {};
     const q = Math.max(1, Number(qty ?? 1));
-
     if (!kakaoId || !item) {
-      return res.status(400).json({ error: 'kakaoId,item 필요' });
+      return res.status(400).json({ ok: false, error: 'kakaoId,item 필요' });
     }
 
-    // ✅ item 값 영문화 통일
-    const map = { '씨앗':'seed', '소금':'salt', '설탕':'sugar', 'seeds':'seed' };
-    item = map[item] || item;
-    if (!['seed','salt','sugar'].includes(item)) {
-      return res.status(400).json({ error: 'unknown item' });
+    // 1) item 값 표준화 (한글/복수형 모두 영문 키로 통일)
+    const map = { '씨앗': 'seed', '소금': 'salt', '설탕': 'sugar', 'seeds': 'seed' };
+    item = map[item] || String(item).toLowerCase();
+    if (!['seed', 'salt', 'sugar'].includes(item)) {
+      return res.status(400).json({ ok: false, error: 'unknown item', item });
     }
 
-    // 유저 찾기
-    const user = await User.findOne({ kakaoId });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    // 가격
+    // 2) 가격 로딩 및 검증
     const price = await getPriceboard();
-    const unit = (item === 'salt') ? price.salt
-              : (item === 'sugar') ? price.sugar
-              : price.seed;
+    const unit = item === 'salt'  ? Number(price?.salt)
+               : item === 'sugar' ? Number(price?.sugar)
+               :                   Number(price?.seed);
+    if (!Number.isFinite(unit) || unit < 0) {
+      return res.status(500).json({ ok: false, error: 'INVALID_PRICEBOARD', price });
+    }
     const need = unit * q;
 
-    // ✅ 토큰 차감
-    if ((user.orcx || 0) < need) {
-      return res.status(402).json({ error: '토큰 부족' });
+    // 3) 토큰 원자적 차감 (users.orcx) - 조건(orcx >= need)과 감소를 한 번에
+    const user = await User.findOneAndUpdate(
+      { kakaoId, orcx: { $gte: need } },
+      { $inc: { orcx: -need } },
+      { new: true }
+    );
+    if (!user) {
+      return res.status(402).json({ ok: false, error: 'INSUFFICIENT_ORCX_OR_USER' });
     }
-    user.orcx = (user.orcx || 0) - need;
 
-    // ✅ 옥수수 데이터 갱신
-    const corn = await ensureCornDoc(kakaoId);
-    corn.additives = corn.additives || {};
-    if (item === 'seed')  corn.seed            = (corn.seed || 0) + q;
-    if (item === 'salt')  corn.additives.salt  = (corn.additives.salt  || 0) + q;
-    if (item === 'sugar') corn.additives.sugar = (corn.additives.sugar || 0) + q;
+    // 4) corn_data 원자적 증가 (영문 키 구조 유지)
+    const inc = {};
+    if (item === 'seed')  inc['seed'] = q;
+    if (item === 'salt')  inc['additives.salt'] = q;
+    if (item === 'sugar') inc['additives.sugar'] = q;
 
-    await user.save();
-    await corn.save();
+    const corn = await CornData.findOneAndUpdate(
+      { kakaoId },
+      { $setOnInsert: { kakaoId }, $inc: inc },
+      { upsert: true, new: true }
+    );
 
-    // ✅ 응답 반환
+    // 5) 응답: 프론트가 바로 갱신 가능하도록 최신값 반환
     return res.json({
       ok: true,
       orcx: user.orcx,
-      seed: corn.seed || 0,
+      seed: corn?.seed || 0,
       additives: {
-        salt: corn.additives?.salt || 0,
-        sugar: corn.additives?.sugar || 0
+        salt:  corn?.additives?.salt  || 0,
+        sugar: corn?.additives?.sugar || 0
       }
     });
   } catch (e) {
     console.error('[buy-additive]', e);
-    res.status(500).json({ error: 'server error' });
+    return res.status(500).json({ ok: false, error: 'SERVER_ERROR' });
   }
 });
 
@@ -969,6 +973,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
   }
 
 })(app);
+
 
 
 
