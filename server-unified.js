@@ -587,7 +587,7 @@ app.patch('/api/corn/priceboard', async (req, res) => {
   }
 });
 
-// ====== (신규) 옥수수: 구매/심기/수확/뻥튀기 ======
+// ====== (신규) 옥수수: 구매/심기/수확/뻥튀기 ======여기부터 추가 수정내용 구매하기
 app.post('/api/corn/buy-additive', async (req, res) => {
   try {
     const { kakaoId } = req.body || {};
@@ -598,24 +598,42 @@ app.post('/api/corn/buy-additive', async (req, res) => {
 
     // item 표준화
     if (item === 'seeds') item = 'seed';
-    if (!['salt','sugar','seed'].includes(item)) return res.status(400).json({ error: 'unknown item' });
+    if (!['salt','sugar','seed'].includes(item)) {
+      return res.status(400).json({ error: 'unknown item' });
+    }
 
+    // 유저 찾기
     const user = await User.findOne({ kakaoId });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
+    // 가격 가져오기
     const price = await getPriceboard();
-    const unit  = item === 'salt' ? price.salt : item === 'sugar' ? price.sugar : price.seed;
+    const unit  = (item === 'salt')
+      ? price.salt
+      : (item === 'sugar')
+        ? price.sugar
+        : price.seed;
+
     const need  = unit * q;
 
-    if ((user.orcx || 0) < need) return res.status(402).json({ error: '토큰 부족' });
+    // ✅ orcx 필드 통합 확인 (user.wallet.orcx 또는 user.orcx)
+    let balance = (user.wallet?.orcx ?? user.orcx ?? 0);
+    if (balance < need) {
+      return res.status(402).json({ error: '토큰 부족' });
+    }
 
     // 차감
-    user.orcx = (user.orcx || 0) - need;
+    balance -= need;
+    if (user.wallet && typeof user.wallet.orcx === 'number') {
+      user.wallet.orcx = balance;
+    } else {
+      user.orcx = balance;
+    }
 
-    // corn_data 증가
+    // corn_data 업데이트
     const corn = await ensureCornDoc(kakaoId);
     if (item === 'seed') {
-      corn.seed = (corn.seed || 0) + q;             // ★ 최상위 seed 증가
+      corn.seed = (corn.seed || 0) + q;
     } else {
       corn.additives = corn.additives || {};
       corn.additives[item] = (corn.additives[item] || 0) + q;
@@ -624,13 +642,22 @@ app.post('/api/corn/buy-additive', async (req, res) => {
     await user.save();
     await corn.save();
 
-    // 200 OK + 최신 상태 반환 (프런트는 2xx면 성공 처리)
+    // ✅ 프론트에서 기대하는 키명(seedCorn)으로 반환
     return res.json({
       ok: true,
-      wallet: { orcx: user.orcx || 0 },
-      agri: { seeds: (corn.seed || 0) },           // 합산 없이 단일 필드
-      additives: { salt: (corn.additives?.salt || 0), sugar: (corn.additives?.sugar || 0) }
+      wallet: { orcx: balance },
+      agri: { seedCorn: corn.seed || 0 },
+      additives: {
+        salt: corn.additives?.salt || 0,
+        sugar: corn.additives?.sugar || 0
+      }
     });
+  } catch (e) {
+    console.error('[buy-additive]', e);
+    res.status(500).json({ error: 'server error' });
+  }
+});
+//<==여기까지 새로추가 수정
   } catch (e) {
     console.error('[buy-additive]', e);
     res.status(500).json({ error: 'server error' });
@@ -954,5 +981,6 @@ if (!app.locals.__orcax_added_corn_status_alias) {
   }
 
 })(app);
+
 
 
