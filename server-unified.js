@@ -587,13 +587,12 @@ app.patch('/api/corn/priceboard', async (req, res) => {
   }
 });
 
-// ====== (신규) 옥수수: 구매/심기/수확/뻥튀기 ======
+// ====== (신규) 옥수수: 구매/심기/수확/뻥튀기 =======
 app.post('/api/corn/buy-additive', async (req, res) => {
   try {
     const { kakaoId } = req.body || {};
-    let { item, type, qty, amount } = req.body || {};
-    item = item || type; // alias 허용
-    const q = Math.max(1, Number(qty ?? amount ?? 1));
+    let { item, qty } = req.body || {};
+    const q = Math.max(1, Number(qty ?? 1));
     if (!kakaoId || !item) return res.status(400).json({ error: 'kakaoId,item 필요' });
 
     // item 표준화
@@ -613,43 +612,39 @@ app.post('/api/corn/buy-additive', async (req, res) => {
       : (item === 'sugar')
         ? price.sugar
         : price.seed;
-
     const need  = unit * q;
 
-    // ✅ orcx 필드 통합 확인 (user.wallet.orcx 또는 user.orcx)
-    let balance = (user.wallet?.orcx ?? user.orcx ?? 0);
-    if (balance < need) {
+    // ✅ 토큰 차감 (user.orcx만 사용)
+    if ((user.orcx || 0) < need) {
       return res.status(402).json({ error: '토큰 부족' });
     }
+    user.orcx = (user.orcx || 0) - need;
 
-    // 차감
-    balance -= need;
-    if (user.wallet && typeof user.wallet.orcx === 'number') {
-      user.wallet.orcx = balance;
-    } else {
-      user.orcx = balance;
-    }
-
-    // corn_data 업데이트
+    // ✅ corn_data 업데이트
     const corn = await ensureCornDoc(kakaoId);
     if (item === 'seed') {
       corn.seed = (corn.seed || 0) + q;
     } else {
-      corn.additives = corn.additives || {};
-      corn.additives[item] = (corn.additives[item] || 0) + q;
+      corn.첨가제 = corn.첨가제 || {};
+      if (item === 'salt') {
+        corn.첨가제.소금 = (corn.첨가제.소금 || 0) + q;
+      }
+      if (item === 'sugar') {
+        corn.첨가제.설탕 = (corn.첨가제.설탕 || 0) + q;
+      }
     }
 
     await user.save();
     await corn.save();
 
-    // ✅ 프론트에서 기대하는 키명(seedCorn)으로 반환
+    // 응답 반환
     return res.json({
       ok: true,
-      wallet: { orcx: balance },
-      agri: { seedCorn: corn.seed || 0 },
+      orcx: user.orcx,
+      seedCorn: corn.seed || 0,
       additives: {
-        salt: corn.additives?.salt || 0,
-        sugar: corn.additives?.sugar || 0
+        소금: corn.첨가제?.소금 || 0,
+        설탕: corn.첨가제?.설탕 || 0
       }
     });
   } catch (e) {
@@ -657,6 +652,7 @@ app.post('/api/corn/buy-additive', async (req, res) => {
     res.status(500).json({ error: 'server error' });
   }
 });
+
 //============================================여기까지 수정교체
 
 app.post('/api/corn/plant', async (req, res) => {
@@ -978,6 +974,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
   }
 
 })(app);
+
 
 
 
