@@ -591,13 +591,14 @@ app.patch('/api/corn/priceboard', async (req, res) => {
 app.post('/api/corn/buy-additive', async (req, res) => {
   try {
     const { kakaoId } = req.body || {};
-    let { item, qty } = req.body || {};
+    let  { item, qty } = req.body || {};
     const q = Math.max(1, Number(qty ?? 1));
     if (!kakaoId || !item) return res.status(400).json({ error: 'kakaoId,item 필요' });
 
-    // item 표준화
-    if (item === 'seeds') item = 'seed';
-    if (!['salt','sugar','seed'].includes(item)) {
+    // ✅ 표준화: 한글/영문 어떤 값이 와도 영문으로 통일
+    const map = { '씨앗':'seed', '소금':'salt', '설탕':'sugar', 'seeds':'seed' };
+    item = map[item] || item;
+    if (!['seed','salt','sugar'].includes(item)) {
       return res.status(400).json({ error: 'unknown item' });
     }
 
@@ -605,51 +606,42 @@ app.post('/api/corn/buy-additive', async (req, res) => {
     const user = await User.findOne({ kakaoId });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    // 가격 가져오기
+    // 가격
     const price = await getPriceboard();
-    const unit  = (item === 'salt')
-      ? price.salt
-      : (item === 'sugar')
-        ? price.sugar
-        : price.seed;
-    const need  = unit * q;
+    const unit  = item === 'salt' ? price.salt
+                 : item === 'sugar' ? price.sugar
+                 : price.seed;
+    const need = unit * q;
 
-    // ✅ 토큰 차감 (user.orcx만 사용)
+    // ✅ 토큰 차감 (users.orcx)
     if ((user.orcx || 0) < need) {
       return res.status(402).json({ error: '토큰 부족' });
     }
     user.orcx = (user.orcx || 0) - need;
 
-    // ✅ corn_data 업데이트
-    const corn = await ensureCornDoc(kakaoId);
-    if (item === 'seed') {
-      corn.seed = (corn.seed || 0) + q;
-    } else {
-      corn.첨가제 = corn.첨가제 || {};
-      if (item === 'salt') {
-        corn.첨가제.소금 = (corn.첨가제.소금 || 0) + q;
-      }
-      if (item === 'sugar') {
-        corn.첨가제.설탕 = (corn.첨가제.설탕 || 0) + q;
-      }
-    }
+    // ✅ corn_data 업데이트 (영문 키 구조)
+    const corn = await ensureCornDoc(kakaoId); // ensureCornDoc은 최소 { kakaoId, seed:0, additives:{ salt:0, sugar:0 } } 보장
+    corn.additives = corn.additives || {};
+    if (item === 'seed')  corn.seed               = (corn.seed || 0) + q;
+    if (item === 'salt')  corn.additives.salt     = (corn.additives.salt  || 0) + q;
+    if (item === 'sugar') corn.additives.sugar    = (corn.additives.sugar || 0) + q;
 
     await user.save();
     await corn.save();
 
-    // 응답 반환
+    // ✅ 프론트 갱신용 최신값 반환 (영문 키)
     return res.json({
       ok: true,
       orcx: user.orcx,
-      seedCorn: corn.seed || 0,
+      seed: corn.seed || 0,
       additives: {
-        소금: corn.첨가제?.소금 || 0,
-        설탕: corn.첨가제?.설탕 || 0
+        salt:  corn.additives?.salt  || 0,
+        sugar: corn.additives?.sugar || 0
       }
     });
   } catch (e) {
     console.error('[buy-additive]', e);
-    res.status(500).json({ error: 'server error' });
+    return res.status(500).json({ error: 'server error' });
   }
 });
 
@@ -974,6 +966,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
   }
 
 })(app);
+
 
 
 
