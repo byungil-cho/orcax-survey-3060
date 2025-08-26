@@ -126,6 +126,55 @@ router.post('/api/corn-plant', async (req, res) => {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
+/**
+ * 구매 API (소금, 설탕, 씨옥수수)
+ * - users.tokens 차감
+ * - corn_data.additives 또는 seed 증가
+ */
+router.post('/api/corn-buy', async (req, res) => {
+  try {
+    const { kakaoId, item, qty } = req.body || {};
+    if (!kakaoId) return res.status(400).json({ ok: false, message: 'kakaoId required' });
+    if (!['salt','sugar','seed'].includes(item)) return res.status(400).json({ ok: false, message: 'invalid item' });
+    if (!qty || qty <= 0) return res.status(400).json({ ok: false, message: 'invalid qty' });
+
+    // 가격표
+    const prices = { salt: 10, sugar: 20, seed: 100 };
+    const totalCost = prices[item] * qty;
+
+    const [user, corn] = await Promise.all([
+      User.findOne({ kakaoId }),
+      CornData.findOne({ kakaoId })
+    ]);
+    if (!user) return res.status(404).json({ ok: false, message: 'user not found' });
+    if (!corn) return res.status(404).json({ ok: false, message: 'corn_data not found' });
+
+    if ((user.tokens ?? user.orcx ?? 0) < totalCost) {
+      return res.status(400).json({ ok: false, message: 'not enough tokens' });
+    }
+
+    // 토큰 차감
+    user.tokens = (user.tokens || user.orcx || 0) - totalCost;
+
+    // 아이템 증가
+    if (item === 'salt') corn.additives.salt += qty;
+    if (item === 'sugar') corn.additives.sugar += qty;
+    if (item === 'seed') corn.seed += qty;
+
+    await Promise.all([user.save(), corn.save()]);
+
+    res.json({
+      ok: true,
+      tokens: user.tokens,
+      salt: corn.additives.salt,
+      sugar: corn.additives.sugar,
+      seed: corn.seed
+    });
+  } catch (e) {
+    console.error('[POST /api/corn-buy] error:', e);
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
 
 /**
  * 뻥튀기 수령 (popcorn → tokens)
@@ -231,3 +280,4 @@ router.post('/api/corn-repay', async (req, res) => {
 });
 
 module.exports = router;
+
