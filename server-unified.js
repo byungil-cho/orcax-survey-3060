@@ -2,7 +2,20 @@
 require('dotenv').config();
 
 const express = require('express');
-const app = express();
+const app = express()
+// ---- Safety middleware: prevent accidental overwrite of 'corn' array with strings ----
+app.use((req, res, next) => {
+  try {
+    if (req && req.body && typeof req.body === 'object') {
+      if (typeof req.body.corn === 'string') {
+        console.warn('[SANITIZE] Removed string body.corn to protect schema (expected array)');
+        delete req.body.corn;
+      }
+    }
+  } catch (e) { /* ignore */ }
+  next();
+});
+;
 const bodyParser = require('body-parser'); // (중복 파서는 무해하지만, express.json만으로도 충분)
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -67,8 +80,7 @@ const CornData = mongoose.models.CornData || mongoose.model('CornData', new mong
     status: { type: String, default: 'fallow' }
   },
   updatedAt: { type: Date, default: Date.now }
-  , reservedAt: { type: Date }
-  , reservedFor: { type: Date }}, { collection: 'corn_data' }));
+}, { collection: 'corn_data' }));
 
 const CornSettings = mongoose.models.CornSettings || mongoose.model('CornSettings', new mongoose.Schema({
   priceboard: {
@@ -640,96 +652,50 @@ return res.json({
   console.error('[buy-additive]', e);
   res.status(500).json({ error: 'server error' });
 }
-});
 
-
-// ===== CORN: KST time helpers & reservation logic =====
-const __KST_OFF__ = 9 * 60 * 60 * 1000; // KST = UTC+9
-function nowUTC() { return new Date(); }
-function nowKST() { return new Date(Date.now() + __KST_OFF__); }
-function kstParts(dUTC = nowUTC()) {
-  const k = new Date(dUTC.getTime() + __KST_OFF__);
-  return { y:k.getUTCFullYear(), m:k.getUTCMonth()+1, d:k.getUTCDate(), h:k.getUTCHours() };
-}
-function kstToUTC(y, m, d, h) { return new Date(Date.UTC(y, (m-1), d, h - 9, 0, 0, 0)); }
-function fmtKST(dateLike) {
-  if (!dateLike) return null;
-  const d = new Date(dateLike);
-  const k = new Date(d.getTime() + __KST_OFF__);
-  const y=k.getUTCFullYear(), mo=String(k.getUTCMonth()+1).padStart(2,'0');
-  const da=String(k.getUTCDate()).padStart(2,'0'), hh=String(k.getUTCHours()).padStart(2,'0');
-  const mm=String(k.getUTCMinutes()).padStart(2,'0');
-  return `${y}-${mo}-${da} ${hh}:${mm} KST`;
-}
-/** 결정 규칙: 08~14시 즉시, 그 외는 다음날 08시 예약 */
-function decidePlanting(now = nowUTC()) {
-  const {y,m,d,h} = kstParts(now);
-  const tomorrow0800UTC = kstToUTC(y,m,d+1,8);
-  if (h >= 8 && h < 14) return { mode:'IMMEDIATE' };
-  return { mode:'RESERVE', reservedFor: tomorrow0800UTC };
-}
-async function autoActivateReservation(corn) {
-  if (!corn) return corn;
-  if (corn.phase === 'RESERVED' && corn.reservedFor) {
-    if (Date.now() >= new Date(corn.reservedFor).getTime()) {
-      corn.phase = 'GROW';
-      corn.plantedAt = new Date(corn.reservedFor);
-      corn.reservedAt = null;
-      await corn.save();
-    }
-  }
-  return corn;
-}
-
-/* ===================== 🌱 씨앗 심기 (즉시/예약) ===================== */
+/* ===================== 🌱 씨앗 심기 ===================== */
 app.post('/api/corn/plant', async (req, res) => {
   try {
     const { kakaoId } = req.body || {};
-    if (!kakaoId) return res.status(400).json({ error: 'kakaoId 필요' });
+    if (!kakaoId) {
+      return res.status(400).json({ error: 'kakaoId 필요' });
+    }
 
     const corn = await ensureCornDoc(kakaoId);
-    if (!corn) return res.status(404).json({ error: 'Corn data not found' });
-
-    if (corn.phase === 'GROW')     return res.status(400).json({ error: '이미 심어진 옥수수가 있습니다.' });
-    if (corn.phase === 'RESERVED') return res.status(400).json({ error: '예약된 심기가 대기 중입니다.' });
-
-    const have = Number(corn.seed || 0);
-    if (have < 1) return res.status(400).json({ error: '씨앗 부족' });
-
-    corn.seed = have - 1;
-
-    const decision = decidePlanting(nowUTC());
-    if (decision.mode === 'IMMEDIATE') {
-      corn.phase     = 'GROW';
-      corn.g         = Number(corn.g || 0);
-      corn.plantedAt = nowUTC();
-      corn.reservedAt = null;
-      corn.reservedFor = null;
-      await corn.save();
-      return res.json({
-        ok: true, mode: 'IMMEDIATE',
-        msg: '오늘 바로 심기 시작',
-        plantedAt: fmtKST(corn.plantedAt),
-        seed: corn.seed
-      });
-    } else {
-      corn.phase       = 'RESERVED';
-      corn.g           = Number(corn.g || 0);
-      corn.reservedAt  = nowUTC();
-      corn.reservedFor = decision.reservedFor;
-      await corn.save();
-      return res.json({
-        ok: true, mode: 'RESERVE',
-        msg: '예약 완료 (다음날 08:00 자동 심기)',
-        reservedFor: fmtKST(decision.reservedFor),
-        seed: corn.seed
-      });
+    if (!corn) {
+      return res.status(404).json({ error: 'Corn data not found' });
     }
+
+    // 🚫 이미 심어져 있는 상태라면 막기
+    if (corn.phase === "GROW") {
+      return res.status(400).json({ error: '이미 심어진 옥수수가 있습니다.' });
+    }
+
+    // 🚫 씨앗 부족
+    if ((corn.seed || 0) < 1) {
+      return res.status(400).json({ error: '씨앗 부족' });
+    }
+
+    // ✅ 심기 진행
+    corn.seed -= 1;
+    corn.phase = "GROW";
+    corn.plantedAt = new Date();
+
+    await corn.save();
+
+    res.json({
+      ok: true,
+      seeds: corn.seed || 0,
+      phase: corn.phase,
+      plantedAt: corn.plantedAt
+    });
   } catch (e) {
-    console.error('[plant]', e);
-    return res.status(500).json({ error: 'server error' });
+    console.error('[POST /api/corn/plant] error:', e);
+    res.status(500).json({ error: 'server error' });
   }
-});   // 🌟 라우트 닫기
+});   // 🌟 반드시 이렇게 닫기
+
+
 /* ===================== 🌽 수확 ===================== */
 app.post('/api/corn/harvest', async (req, res) => {
   try {
@@ -740,9 +706,9 @@ app.post('/api/corn/harvest', async (req, res) => {
 
     const corn = await ensureCornDoc(kakaoId);
 
-    // 간단 로직: 5~9개 수확
+    // 간단 로직: 5~8개 수확
     const gain = 5 + Math.floor(Math.random() * 4);
-    corn.corn = (corn.corn || 0) + gain;
+    corn.popcorn = (corn.popcorn || 0) + gain;
     corn.phase = "IDLE"; // 🌟 수확 후 상태 초기화
     await corn.save();
 
@@ -984,36 +950,59 @@ if (!app.locals.__orcax_added_corn_grow) {
   });
 }
 
-
-/** 7) GET /api/corn/status – 예약 자동 시작 포함 */
-if (!app.locals.__orcax_added_corn_status) {
-  app.locals.__orcax_added_corn_status = true;
+/** 7) GET /api/corn/status – summary 별칭(추가만) */
+if (!app.locals.__orcax_added_corn_status_alias) {
+  app.locals.__orcax_added_corn_status_alias = true;
   app.get('/api/corn/status', async (req, res) => {
-    try {
-      const kakaoId = (req.query && req.query.kakaoId) || (req.body && req.body.kakaoId);
-      if (!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
-
-      const corn = await ensureCornDoc(kakaoId);
-      if (!corn) return res.status(404).json({ ok:false, error:'Corn data not found' });
-
-      await autoActivateReservation(corn);
-
-      return res.json({
-        ok: true,
-        seed: Number(corn.seed || 0),
-        g:    Number(corn.g || 0),
-        phase: corn.phase || 'IDLE',
-        plantedAt: fmtKST(corn.plantedAt),
-        reservedFor: fmtKST(corn.reservedFor),
-        serverNow: fmtKST(nowUTC())
-      });
-    } catch (e) {
-      console.error('[status]', e);
-      res.status(500).json({ ok:false, error:'server error' });
-    }
+    // 이미 구현된 /api/corn/summary 로 위임 (기존 코드 재사용, 무해)
+    req.url = '/api/corn/summary' + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '');
+    app._router.handle(req, res, () => res.status(404).end());
   });
 }
-(app);
+/* ===== CORN ROUTER ATTACH (ADD-ONLY) =====
+   - Attach external corn router at /api/corn without touching existing routers.
+   - Resolves several common paths; warns if not found.
+*/
+(function attachCornRouter(appRef){
+  try {
+    if (!appRef.locals) appRef.locals = {};
+    if (appRef.locals.__CORN_ROUTER_ATTACHED__) return;
+    const path = require('path');
+    const tryPaths = [
+      './routes/corn',
+      './routes/corn.js',
+      './router/corn',
+      './api/corn',
+      './routers/corn',
+      './routes/corn'
+    ];
+
+    let mod = null, resolved = null, errLast = null;
+    for (const p of tryPaths) {
+      try {
+        resolved = p;
+        mod = require(p);
+        break;
+      } catch (e) { errLast = e; mod = null; resolved = null; }
+    }
+    if (!mod) {
+      console.warn('[CORN-ATTACH] corn router module not found. Tried:', tryPaths.join(', '));
+      if (errLast) console.warn('[CORN-ATTACH] last error:', errLast.message);
+      return;
+    }
+    const cornRouter = (mod.default || mod);
+    if (typeof cornRouter !== 'function') {
+      console.warn('[CORN-ATTACH] router module does not export a function/router');
+      return;
+    }
+    appRef.use('/api/corn', cornRouter);
+    appRef.locals.__CORN_ROUTER_ATTACHED__ = true;
+    console.log('🌽 corn router attached at /api/corn');
+  } catch (e) {
+    console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
+  }
+})(app);
+
 
 
 
