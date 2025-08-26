@@ -661,16 +661,25 @@ app.post('/api/corn/harvest', async (req, res) => {
   }
 });
 
-app.post('/api/corn/pop', async (req, res) => {
+// ✅ corn 상태 요약 (게이지용) 여기 추가했어요 =========>664-682
+app.post('/api/corn/summary', async (req,res)=>{
   try {
-    const { kakaoId, use } = req.body || {};
-    if (!kakaoId) return res.status(400).json({ error: 'kakaoId 필요' });
+    const { kakaoId } = req.body || {};
+    const corn = await corn_data.findOne({ kakaoId });
+    if(!corn) return res.json({ ok:false, message:'no corn data' });
 
-    const user = await User.findOne({ kakaoId });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    const corn = await ensureCornDoc(kakaoId);
-    if ((corn.corn || 0) < 1) return res.status(400).json({ error: '옥수수 부족' });
+    res.json({
+      ok:true,
+      day: corn.day || 1,
+      phase: corn.phase || 1,
+      waterGiven: corn.waterGiven || 0,
+      fertGiven: corn.fertGiven || 0
+    });
+  } catch(e){
+    console.error('[POST /api/corn/summary] error:', e);
+    res.status(500).json({ ok:false, error:String(e?.message || e) });
+  }
+});
 
     // 사용할 첨가물 결정
     let pick = use === 'sugar' ? 'sugar' : 'salt';
@@ -945,5 +954,6 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
