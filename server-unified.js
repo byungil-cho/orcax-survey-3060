@@ -647,7 +647,7 @@ app.post('/api/corn/plant', async (req, res) => {
     if (!kakaoId) {
       return res.status(400).json({ error: 'kakaoId 필요' });
     }
-
+    }); 
     const corn = await ensureCornDoc(kakaoId);
     if (!corn) {
       return res.status(404).json({ error: 'Corn data not found' });
@@ -988,6 +988,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
