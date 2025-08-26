@@ -69,8 +69,6 @@ const CornData = mongoose.models.CornData || mongoose.model('CornData', new mong
   updatedAt: { type: Date, default: Date.now }
 }, { collection: 'corn_data' }));
 
-const corn = await corn_data.findOne({ kakaoId });
-
 const CornSettings = mongoose.models.CornSettings || mongoose.model('CornSettings', new mongoose.Schema({
   priceboard: {
     salt:     { type: Number, default: 10 },
@@ -951,6 +949,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
