@@ -59,6 +59,7 @@ const CornData = mongoose.models.CornData || mongoose.model('CornData', new mong
   // 씨옥수수(씨앗)
   seed: { type: Number, default: 0 }
 }, { collection: 'corn_data' }));
+const corn = await corn_data.findOne({ kakaoId });
 
 const CornSettings = mongoose.models.CornSettings || mongoose.model('CornSettings', new mongoose.Schema({
   priceboard: {
@@ -940,6 +941,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
