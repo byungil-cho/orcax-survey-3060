@@ -50,15 +50,25 @@ if (!process.env.PORT) { process.env.PORT = '3060'; }
 // ====== (신규) 옥수수 전용 컬렉션 ======
 const CornData = mongoose.models.CornData || mongoose.model('CornData', new mongoose.Schema({
   kakaoId: { type: String, index: true, unique: true },
-  corn: { type: Number, default: 0 },
+  corn: { type: Array, default: [] },  // 배열로 교체
   popcorn: { type: Number, default: 0 },
   additives: {
     salt:  { type: Number, default: 0 },
     sugar: { type: Number, default: 0 }
   },
-  // 씨옥수수(씨앗)
-  seed: { type: Number, default: 0 }
+  seed: { type: Number, default: 0 },
+  g: { type: Number, default: 0 },
+  phase: { type: String, default: 'fallow' },
+  plantedAt: { type: Date },
+  seeds: { type: Number, default: 0 },
+  loan: {
+    amount: { type: Number, default: 0 },
+    interest: { type: Number, default: 0 },
+    status: { type: String, default: 'fallow' }
+  },
+  updatedAt: { type: Date, default: Date.now }
 }, { collection: 'corn_data' }));
+
 const corn = await corn_data.findOne({ kakaoId });
 
 const CornSettings = mongoose.models.CornSettings || mongoose.model('CornSettings', new mongoose.Schema({
@@ -941,6 +951,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
