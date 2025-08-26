@@ -681,6 +681,17 @@ app.post('/api/corn/summary', async (req,res)=>{
   }
 });
 
+    // 팝콘 뻥튀기 (옥수수 → 팝콘 or 토큰)===> 수정교체한부부 684~749
+app.post('/api/corn/pop', async (req, res) => {
+  try {
+    const { kakaoId, use } = req.body;
+    const user = await users.findOne({ kakaoId });
+    const corn = await corn_data.findOne({ kakaoId });
+
+    if (!user || !corn) {
+      return res.status(404).json({ error: 'User or corn data not found' });
+    }
+
     // 사용할 첨가물 결정
     let pick = use === 'sugar' ? 'sugar' : 'salt';
     if ((corn.additives[pick] || 0) < 1) {
@@ -695,10 +706,10 @@ app.post('/api/corn/summary', async (req,res)=>{
     corn.corn -= 1;
     corn.additives[pick] -= 1;
 
-    // 60% 팝콘, 40% 토큰
+    // 60% 확률 팝콘, 40% 확률 토큰
     const POP_RATE = 0.6;
-    const TOKEN_DROP = [1,2,3,5];
-    const POP_DROP = [1,2];
+    const TOKEN_DROP = [1, 2, 3, 5];
+    const POP_DROP = [1, 2];
     const rnd = arr => arr[Math.floor(Math.random() * arr.length)];
 
     let result, qty;
@@ -706,7 +717,7 @@ app.post('/api/corn/summary', async (req,res)=>{
       qty = rnd(POP_DROP);
       corn.popcorn = (corn.popcorn || 0) + qty;
 
-      // 마켓과 호환 위해 user.products.popcorn도 올려줌
+      // 마켓 호환용 user.products.popcorn도 갱신
       user.products = user.products || {};
       user.products.popcorn = (user.products.popcorn || 0) + qty;
 
@@ -721,18 +732,21 @@ app.post('/api/corn/summary', async (req,res)=>{
     await corn.save();
 
     res.json({
-      result, qty,
+      result,
+      qty,
       wallet: { orcx: user.orcx || 0 },
       food: { popcorn: corn.popcorn || 0 },
-      additives: { salt: corn.additives.salt || 0, sugar: corn.additives.sugar || 0 },
+      additives: { 
+        salt: corn.additives?.salt || 0, 
+        sugar: corn.additives?.sugar || 0 
+      },
       agri: { corn: corn.corn || 0 }
     });
   } catch (e) {
+    console.error('[POST /api/corn/pop] error:', e);
     res.status(500).json({ error: 'server error' });
   }
 });
-
-
 /* ===== [ADD][SAFE] OrcaX corn/userdata compatibility additions (no base edits) ===== */
 
 /** 1) 사전 정규화 미들웨어: seeds → seed, query→body (userdata) */
@@ -954,6 +968,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
