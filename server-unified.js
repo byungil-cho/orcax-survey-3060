@@ -1015,10 +1015,12 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     app._router.handle(req, res, () => res.status(404).end());
   });
 }
+
 /* ===== CORN ROUTER ATTACH (ADD-ONLY) =====
    - Attach external corn router at /api/corn without touching existing routers.
    - Resolves several common paths; warns if not found.
-*/
+*/   // ⬅⬅⬅ 여기 반드시 닫기
+
 (function attachCornRouter(appRef){
   try {
     if (!appRef.locals) appRef.locals = {};
@@ -1058,6 +1060,8 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
+
 
 
 
