@@ -695,7 +695,6 @@ app.post('/api/corn/plant', async (req, res) => {
   }
 });   // 🌟 반드시 이렇게 닫기
 
-
 /* ===================== 🌽 수확 (5·7·9 분배 + 소금/설탕 요구) ===================== */
 app.post('/api/corn/harvest', async (req, res) => {
   try {
@@ -792,8 +791,6 @@ app.post('/api/corn/harvest', async (req, res) => {
     return res.status(500).json({ ok:false, error: 'server error' });
   }
 });
-  // 🌟 이것도 닫기
-
 // ✅ corn 상태 요약 (게이지용) 여기 추가했어요 =========>664-682
 app.post('/api/corn/summary', async (req,res)=>{
   try {
@@ -1073,6 +1070,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
