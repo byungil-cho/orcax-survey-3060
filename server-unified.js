@@ -681,72 +681,42 @@ app.post('/api/corn/summary', async (req,res)=>{
   }
 });
 
-    // 팝콘 뻥튀기 (옥수수 → 팝콘 or 토큰)===> 수정교체한부부 684~749
-app.post('/api/corn/pop', async (req, res) => {
+  // 옥수수 요약 (자원 상태 불러오기)
+app.post('/api/corn/summary', async (req, res) => {
   try {
-    const { kakaoId, use } = req.body;
+    const { kakaoId } = req.body;
+    if (!kakaoId) {
+      return res.json({ ok: false, message: 'kakaoId required' });
+    }
+
     const user = await users.findOne({ kakaoId });
     const corn = await corn_data.findOne({ kakaoId });
 
     if (!user || !corn) {
-      return res.status(404).json({ error: 'User or corn data not found' });
+      return res.json({ ok: false, message: 'user or corn not found' });
     }
-
-    // 사용할 첨가물 결정
-    let pick = use === 'sugar' ? 'sugar' : 'salt';
-    if ((corn.additives[pick] || 0) < 1) {
-      const other = pick === 'salt' ? 'sugar' : 'salt';
-      if ((corn.additives[other] || 0) < 1) {
-        return res.status(400).json({ error: '첨가물 부족' });
-      }
-      pick = other;
-    }
-
-    // 차감
-    corn.corn -= 1;
-    corn.additives[pick] -= 1;
-
-    // 60% 확률 팝콘, 40% 확률 토큰
-    const POP_RATE = 0.6;
-    const TOKEN_DROP = [1, 2, 3, 5];
-    const POP_DROP = [1, 2];
-    const rnd = arr => arr[Math.floor(Math.random() * arr.length)];
-
-    let result, qty;
-    if (Math.random() < POP_RATE) {
-      qty = rnd(POP_DROP);
-      corn.popcorn = (corn.popcorn || 0) + qty;
-
-      // 마켓 호환용 user.products.popcorn도 갱신
-      user.products = user.products || {};
-      user.products.popcorn = (user.products.popcorn || 0) + qty;
-
-      result = 'popcorn';
-    } else {
-      qty = rnd(TOKEN_DROP);
-      user.orcx = (user.orcx || 0) + qty;
-      result = 'token';
-    }
-
-    await user.save();
-    await corn.save();
 
     res.json({
-      result,
-      qty,
-      wallet: { orcx: user.orcx || 0 },
-      food: { popcorn: corn.popcorn || 0 },
-      additives: { 
-        salt: corn.additives?.salt || 0, 
-        sugar: corn.additives?.sugar || 0 
+      ok: true,
+      water: user.water ?? 0,
+      fert: user.fertilizer ?? 0,
+      orcx: user.orcx ?? 0,
+      corn: corn.corn ?? 0,
+      popcorn: corn.popcorn ?? 0,
+      additives: {
+        salt: corn.additives?.salt ?? 0,
+        sugar: corn.additives?.sugar ?? 0
       },
-      agri: { corn: corn.corn || 0 }
+      seeds: corn.seed ?? 0,
+      phase: corn.phase ?? 'INIT',
+      day: corn.day ?? 1
     });
   } catch (e) {
-    console.error('[POST /api/corn/pop] error:', e);
-    res.status(500).json({ error: 'server error' });
+    console.error('[POST /api/corn/summary] error:', e);
+    res.status(500).json({ ok: false, error: String(e) });
   }
 });
+
 /* ===== [ADD][SAFE] OrcaX corn/userdata compatibility additions (no base edits) ===== */
 
 /** 1) 사전 정규화 미들웨어: seeds → seed, query→body (userdata) */
@@ -968,6 +938,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
