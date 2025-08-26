@@ -625,17 +625,22 @@ app.post('/api/corn/buy-additive', async (req, res) => {
     await user.save();
     await corn.save();
 
-    // 200 OK + 최신 상태 반환 (프런트는 2xx면 성공 처리)
-    return res.json({
-      ok: true,
-      wallet: { orcx: user.orcx || 0 },
-      agri: { seeds: (corn.seed || 0) },           // 합산 없이 단일 필드
-      additives: { salt: (corn.additives?.salt || 0), sugar: (corn.additives?.sugar || 0) }
-    });
-  } catch (e) {
-    console.error('[buy-additive]', e);
-    res.status(500).json({ error: 'server error' });
+   // 200 OK + 최신 상태 반환 (프런트는 2xx면 성공 처리)
+return res.json({
+  ok: true,
+  wallet: { orcx: user.orcx || 0 },
+  agri: { seeds: (corn.seed || 0) }, // 합산 없이 단일 필드
+  additives: { 
+    salt: (corn.additives?.salt || 0), 
+    sugar: (corn.additives?.sugar || 0) 
   }
+});
+} catch (e) {
+  console.error('[buy-additive]', e);
+  res.status(500).json({ error: 'server error' });
+}
+
+/* ===================== 🌱 씨앗 심기 ===================== */
 app.post('/api/corn/plant', async (req, res) => {
   try {
     const { kakaoId } = req.body || {};
@@ -677,22 +682,29 @@ app.post('/api/corn/plant', async (req, res) => {
   }
 });
 
+/* ===================== 🌽 수확 ===================== */
 app.post('/api/corn/harvest', async (req, res) => {
   try {
     const { kakaoId } = req.body || {};
-    if (!kakaoId) return res.status(400).json({ error: 'kakaoId 필요' });
+    if (!kakaoId) {
+      return res.status(400).json({ error: 'kakaoId 필요' });
+    }
+
     const corn = await ensureCornDoc(kakaoId);
 
     // 간단 로직: 5~8개 수확
     const gain = 5 + Math.floor(Math.random() * 4);
     corn.corn = (corn.corn || 0) + gain;
+    corn.phase = "IDLE"; // 🌟 수확 후 상태 초기화 (안하면 다시 심기 불가)
     await corn.save();
 
     res.json({
+      ok: true,
       gain,
       agri: { corn: corn.corn || 0 }
     });
   } catch (e) {
+    console.error('[POST /api/corn/harvest] error:', e);
     res.status(500).json({ error: 'server error' });
   }
 });
@@ -976,6 +988,8 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
+
 
 
 
