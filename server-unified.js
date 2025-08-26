@@ -639,6 +639,7 @@ return res.json({
   console.error('[buy-additive]', e);
   res.status(500).json({ error: 'server error' });
 }
+});
 
 /* ===================== 🌱 씨앗 심기 ===================== */
 app.post('/api/corn/plant', async (req, res) => {
@@ -986,9 +987,10 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     appRef.locals.__CORN_ROUTER_ATTACHED__ = true;
     console.log('🌽 corn router attached at /api/corn');
   } catch (e) {
-    console.warn('[CORN-ATTACH] failed to attach', e);
+    console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
