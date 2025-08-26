@@ -696,32 +696,103 @@ app.post('/api/corn/plant', async (req, res) => {
 });   // 🌟 반드시 이렇게 닫기
 
 
-/* ===================== 🌽 수확 ===================== */
+/* ===================== 🌽 수확 (5·7·9 분배 + 소금/설탕 요구) ===================== */
 app.post('/api/corn/harvest', async (req, res) => {
   try {
-    const { kakaoId } = req.body || {};
-    if (!kakaoId) {
-      return res.status(400).json({ error: 'kakaoId 필요' });
-    }
+    const { kakaoId, grade } = req.body || {};
+    if (!kakaoId) return res.status(400).json({ ok:false, error: 'kakaoId 필요' });
 
     const corn = await ensureCornDoc(kakaoId);
+    if (!corn) return res.status(404).json({ ok:false, error: 'Corn data not found' });
 
-    // 간단 로직: 5~8개 수확
-    const gain = 5 + Math.floor(Math.random() * 4);
-    corn.popcorn = (corn.popcorn || 0) + gain;
-    corn.phase = "IDLE"; // 🌟 수확 후 상태 초기화
+    // 유저 ORCX 적립용
+    let user = await User.findOne({ kakaoId });
+    if (!user) return res.status(404).json({ ok:false, error: 'User not found' });
+
+    // 등급별 금액 (A: 1000/900/800, B: 800/700/600) - 다른 등급은 B로 처리
+    const isA = String(grade || 'A').toUpperCase() === 'A';
+    const amounts = isA
+      ? { high: 1000, mid: 900, low: 800 }
+      : { high:  800, mid: 700, low: 600 };
+
+    // 수확 개수: 5/7/9 랜덤 (횟수 = 분배 총합)
+    const pick = [5, 7, 9];
+    const harvestCount = pick[Math.floor(Math.random() * pick.length)];
+
+    // 분배 패턴 고정 (순서는 셔플)
+    const dist = (harvestCount === 5)
+      ? { high:2, mid:1, low:1, popcorn:1 }
+      : (harvestCount === 7)
+        ? { high:1, mid:2, low:3, popcorn:1 }
+        : { high:1, mid:2, low:4, popcorn:2 }; // 9개
+
+    // ⛔ 뻥튀기(팝콘) 발생 횟수만큼 소금/설탕 1개씩 필요
+    const needSalt  = dist.popcorn;
+    const needSugar = dist.popcorn;
+    const saltHave  = Number(corn?.additives?.salt  || 0);
+    const sugarHave = Number(corn?.additives?.sugar || 0);
+
+    if (saltHave < needSalt || sugarHave < needSugar) {
+      return res.status(400).json({
+        ok: false,
+        error: '소금/설탕 부족',
+        need:  { salt: needSalt, sugar: needSugar },
+        have:  { salt: saltHave, sugar: sugarHave }
+      });
+    }
+
+    // 보상 리스트 생성 후 셔플 (비율은 유지, 순서만 랜덤)
+    const rewards = []
+      .concat(Array(dist.high).fill({ type:'money', amount: amounts.high }))
+      .concat(Array(dist.mid ).fill({ type:'money', amount: amounts.mid  }))
+      .concat(Array(dist.low ).fill({ type:'money', amount: amounts.low  }))
+      .concat(Array(dist.popcorn).fill({ type:'popcorn', amount: 1 }));
+
+    for (let i = rewards.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const t = rewards[i]; rewards[i] = rewards[j]; rewards[j] = t;
+    }
+
+    // 합산
+    let sumOrcx = 0, popAdd = 0;
+    for (const r of rewards) {
+      if (r.type === 'money') sumOrcx += r.amount;
+      else popAdd += 1;
+    }
+
+    // 적용: ORCX 적립, 팝콘 증가, 소금/설탕 소모, 상태 초기화
+    user.orcx = (user.orcx || 0) + sumOrcx;
+
+    corn.popcorn = (corn.popcorn || 0) + popAdd;
+    corn.additives = corn.additives || {};
+    corn.additives.salt  = saltHave  - needSalt;
+    corn.additives.sugar = sugarHave - needSugar;
+
+    corn.phase     = 'IDLE';   // 수확 후 대기
+    corn.plantedAt = null;
+    corn.g         = 0;
+
+    await user.save();
     await corn.save();
 
-    res.json({
+    return res.json({
       ok: true,
-      gain,
-      agri: { corn: corn.corn || 0 }
+      grade: isA ? 'A' : 'B',
+      harvestCount,
+      distribution: dist,       // 예: { high:2, mid:1, low:1, popcorn:1 }
+      amounts,                  // 예: { high:1000, mid:900, low:800 }
+      totalOrcx: sumOrcx,
+      addedPopcorn: popAdd,
+      consumed: { salt: needSalt, sugar: needSugar },
+      wallet: { orcx: user.orcx },
+      popcorn: corn.popcorn
     });
   } catch (e) {
-    console.error('[POST /api/corn/harvest] error:', e);
-    res.status(500).json({ error: 'server error' });
+    console.error('[harvest]', e);
+    return res.status(500).json({ ok:false, error: 'server error' });
   }
-});   // 🌟 이것도 닫기
+});
+  // 🌟 이것도 닫기
 
 // ✅ corn 상태 요약 (게이지용) 여기 추가했어요 =========>664-682
 app.post('/api/corn/summary', async (req,res)=>{
@@ -1002,6 +1073,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
