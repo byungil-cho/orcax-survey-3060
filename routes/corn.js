@@ -449,7 +449,6 @@ router.post('/api/corn-repay', async (req, res) => {
 
 /*===여기부터 추가한 사항임=====*/
 // routes/corn.js (없으면 새 파일로 만들고 server-unified.js에서 app.use('/api/corn', router)로 연결)
-const express = require('express');
 const mongoose = require('mongoose');
 const router = express.Router();
 
@@ -580,3 +579,4 @@ router.get('/summary', async (req, res) => {
 });
 
 module.exports = router;
+
