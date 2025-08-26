@@ -681,19 +681,21 @@ app.post('/api/corn/summary', async (req,res)=>{
   }
 });
 
-  // 옥수수 요약 (자원 상태 불러오기)
 app.post('/api/corn/summary', async (req, res) => {
   try {
     const { kakaoId } = req.body;
     if (!kakaoId) {
-      return res.json({ ok: false, message: 'kakaoId required' });
+      return res.json({ ok: false, message: '❌ kakaoId 없음' });
     }
 
     const user = await users.findOne({ kakaoId });
     const corn = await corn_data.findOne({ kakaoId });
 
-    if (!user || !corn) {
-      return res.json({ ok: false, message: 'user or corn not found' });
+    if (!user) {
+      return res.json({ ok: false, message: '❌ user not found' });
+    }
+    if (!corn) {
+      return res.json({ ok: false, message: '❌ corn_data not found' });
     }
 
     res.json({
@@ -938,6 +940,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
