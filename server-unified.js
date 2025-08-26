@@ -839,7 +839,70 @@ if (!app.locals.__orcax_added_corn_summary) {
     }
   });
 }
+// 👇 여기 아래에 추가
+// ===========================================
+/**
+ * 옥수수 성장 API
+ * - 3시간 단위 구간 성장
+ * - 구간당 물 3개, 거름 1개 필요
+ * - 정상/시듦/리셋 상태 업데이트
+ */
+app.post('/api/corn/grow', async (req, res) => {
+  try {
+    const { kakaoId } = req.body || {};
+    if (!kakaoId) return res.status(400).json({ ok:false, message:'kakaoId required' });
 
+    const corn = await corn_data.findOne({ kakaoId });
+    if (!corn) return res.status(404).json({ ok:false, message:'corn_data not found' });
+
+    // 기본 상태
+    if (!corn.grow) {
+      corn.grow = { day:1, phase:1, water:0, fert:0, status:'normal' };
+    }
+
+    const g = corn.grow;
+    if (g.status !== 'normal') {
+      return res.json({ ok:false, message:`growth blocked: ${g.status}`, grow:g });
+    }
+
+    // 유저 자원 확인
+    const user = await users.findOne({ kakaoId });
+    if (!user) return res.status(404).json({ ok:false, message:'user not found' });
+
+    if (user.water < 1 || user.fertilizer < 1) {
+      return res.json({ ok:false, message:'not enough resources', grow:g });
+    }
+
+    // 자원 소모
+    user.water -= 1;
+    user.fertilizer -= 1;
+    await user.save();
+
+    // 구간 자원 카운트
+    g.water = (g.water || 0) + 1;
+    g.fert  = (g.fert  || 0) + 1;
+
+    // 구간 클리어 체크
+    if (g.water >= 3 && g.fert >= 1) {
+      g.phase += 1;
+      g.water = 0;
+      g.fert = 0;
+
+      // 하루 완료
+      if (g.phase > 5) {
+        g.day += 1;
+        g.phase = 1;
+      }
+    }
+
+    await corn_data.updateOne({ kakaoId }, { $set:{ grow:g } });
+
+    res.json({ ok:true, grow:g, water:user.water, fertilizer:user.fertilizer });
+  } catch(e) {
+    console.error('[POST /api/corn/grow] error:', e);
+    res.status(500).json({ ok:false, error:String(e?.message || e) });
+  }
+});
 /** 5) POST /api/corn/exchange – 팝콘 ↔ 비료 1:1 교환 (추가만) */
 if (!app.locals.__orcax_added_corn_exchange) {
   app.locals.__orcax_added_corn_exchange = true;
@@ -945,3 +1008,4 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
