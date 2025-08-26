@@ -44,6 +44,7 @@ const marketdataRoutes = require('./routes/marketdata');
 const marketRoutes = require('./routes/marketdata');
 const seedPriceRoutes = require('./routes/seed-price');
 const cornRoutes = require('./routes/cornRoutes');
+const cornRouter = require('./routes/corn'); // 경로 맞춰서
 /* ===== PORT ATTACH (ADD-ONLY) ===== */
 if (!process.env.PORT) { process.env.PORT = '3060'; }
 
@@ -1020,6 +1021,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
   }
 
 })(app);
+
 
 
 
