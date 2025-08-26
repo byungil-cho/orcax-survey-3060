@@ -448,14 +448,6 @@ router.post('/api/corn-repay', async (req, res) => {
 });
 
 /*===여기부터 추가한 사항임=====*/
-// routes/corn.js (없으면 새 파일로 만들고 server-unified.js에서 app.use('/api/corn', router)로 연결)
-const mongoose = require('mongoose');
-const router = express.Router();
-
-/* ====== MODELS (기존 모델명/경로 쓰셔도 됩니다) ====== */
-const User = require('../models/user'); // users 컬렉션 (토큰 저장)
-const CornData = require('../models/cornData'); // corn_data 컬렉션 (seed/salt/sugar)
-const CornSettings = require('../models/cornSettings'); // priceboard 저장 (없으면 아래 기본가 사용)
 
 /* ====== 가격보드 읽기 (없으면 기본값) ====== */
 async function getPriceboard() {
@@ -579,4 +571,5 @@ router.get('/summary', async (req, res) => {
 });
 
 module.exports = router;
+
 
