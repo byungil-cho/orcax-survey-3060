@@ -777,8 +777,7 @@ app.post('/api/corn/harvest', async (req, res) => {
     return res.status(500).json({ ok:false, error: 'server error' });
   }
 });
-   // 🌟 이것도 닫기
-
+  
 // ✅ corn 상태 요약 (게이지용) 여기 추가했어요 =========>664-682
 app.post('/api/corn/summary', async (req,res)=>{
   try {
@@ -1016,11 +1015,6 @@ if (!app.locals.__orcax_added_corn_status_alias) {
   });
 }
 
-/* ===== CORN ROUTER ATTACH (ADD-ONLY) =====
-   - Attach external corn router at /api/corn without touching existing routers.
-   - Resolves several common paths; warns if not found.
-*/   // ⬅⬅⬅ 여기 반드시 닫기
-
 (function attachCornRouter(appRef){
   try {
     if (!appRef.locals) appRef.locals = {};
@@ -1060,6 +1054,8 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+  //
+
 
 
 
