@@ -647,27 +647,23 @@ app.post('/api/corn/plant', async (req, res) => {
     if (!kakaoId) {
       return res.status(400).json({ error: 'kakaoId 필요' });
     }
-    }); 
+
     const corn = await ensureCornDoc(kakaoId);
     if (!corn) {
       return res.status(404).json({ error: 'Corn data not found' });
     }
 
-    // 🚫 이미 심어져 있는 상태라면 막기
     if (corn.phase === "GROW") {
       return res.status(400).json({ error: '이미 심어진 옥수수가 있습니다.' });
     }
 
-    // 🚫 씨앗 부족
     if ((corn.seed || 0) < 1) {
       return res.status(400).json({ error: '씨앗 부족' });
     }
 
-    // ✅ 심기 진행
     corn.seed -= 1;
     corn.phase = "GROW";
     corn.plantedAt = new Date();
-
     await corn.save();
 
     res.json({
@@ -676,11 +672,12 @@ app.post('/api/corn/plant', async (req, res) => {
       phase: corn.phase,
       plantedAt: corn.plantedAt
     });
-  } catch (e) {
+
+  } catch (e) {   // 👈 반드시 catch 있어야 함
     console.error('[POST /api/corn/plant] error:', e);
     res.status(500).json({ error: 'server error' });
   }
-});
+});   // 👈 여기서 라우트 닫기
 
 /* ===================== 🌽 수확 ===================== */
 app.post('/api/corn/harvest', async (req, res) => {
@@ -988,6 +985,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
