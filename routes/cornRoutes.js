@@ -1,95 +1,110 @@
-const express = require("express");
+// routes/cornRoutes.js
+const express = require('express');
 const router = express.Router();
-const mongoose = require("mongoose");
+const cornEngine = require('../engine/cornEngine');
+const User = require('../models/users');
 
-const CornData = require("../models/CornData");
-const User = require("../models/user");   // 🔥 꼭 필요
-
-// ==========================
-// 구매 API
-// ==========================
-router.post("/buy", async (req, res) => {
-  try {
-    const { kakaoId, item, amount = 1 } = req.body;
-    if (!kakaoId || !item) {
-      return res.status(400).json({ success: false, message: "kakaoId와 item 필요" });
-    }
-
-    const user = await User.findOne({ kakaoId });
-    const cornDoc = await CornData.findOne({ kakaoId });
-    if (!user || !cornDoc) {
-      return res.status(404).json({ success: false, message: "유저 없음" });
-    }
-
-    const PRICES = { seed: 2, salt: 1, sugar: 1 };
-    if (!PRICES[item]) {
-      return res.status(400).json({ success: false, message: "잘못된 item" });
-    }
-
-    const totalPrice = PRICES[item] * amount;
-    const tokens = user.wallet?.tokens ?? user.tokens ?? 0;
-
-    if (tokens < totalPrice) {
-      return res.json({ success: false, message: "토큰 부족" });
-    }
-
-    // 토큰 차감
-    if (user.wallet) user.wallet.tokens = tokens - totalPrice;
-    else user.tokens = tokens - totalPrice;
-
-    // 아이템 지급
-    if (item === "seed") cornDoc.seed = (cornDoc.seed ?? 0) + amount;
-    if (item === "salt") cornDoc.additives.salt = (cornDoc.additives?.salt ?? 0) + amount;
-    if (item === "sugar") cornDoc.additives.sugar = (cornDoc.additives?.sugar ?? 0) + amount;
-
+// 헬퍼
+async function ensureCornDoc(kakaoId) {
+  let user = await User.findOne({ kakaoId });
+  if (!user) {
+    user = new User({ kakaoId, tokens: 0, seed: 0, salt: 0, sugar: 0, popcorn: 0, fertilizer: 0, level: 0 });
     await user.save();
-    await cornDoc.save();
+  }
+  return user;
+}
 
-    // ✅ DB 구조에 맞게 corn은 숫자 그대로 반환
-    res.json({
-      success: true,
-      message: `${item} ${amount}개 구매 완료`,
-      tokens: user.wallet?.tokens ?? user.tokens,
-      inventory: {
-        corn: cornDoc.corn ?? 0,                // 👈 옥수수 (숫자 필드 그대로)
-        popcorn: cornDoc.popcorn ?? 0,          // 팝콘
-        seed: cornDoc.seed ?? 0,                // 씨옥수수
-        salt: cornDoc.additives?.salt ?? 0,     // 소금
-        sugar: cornDoc.additives?.sugar ?? 0    // 설탕
-      }
-    });
-  } catch (e) {
-    console.error("corn/buy error:", e);
-    res.status(500).json({ success: false, message: "server error" });
+// 씨앗 심기
+router.post('/plant', async (req, res) => {
+  try {
+    const { kakaoId } = req.body;
+    const user = await ensureCornDoc(kakaoId);
+    const seedImg = cornEngine.plantSeed(user);
+    user.seed -= 1;
+    user.phase = 'GROW';
+    user.plantedAt = new Date();
+    await user.save();
+    res.json({ ok: true, seedImg, phase: user.phase });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
-// ==========================
-// 옥수수 상태 조회 API
-// ==========================
-router.get("/status", async (req, res) => {
+// 성장
+router.get('/grow', async (req, res) => {
   try {
     const { kakaoId } = req.query;
-    const user = await User.findOne({ kakaoId });
-    const cornDoc = await CornData.findOne({ kakaoId });
-    if (!user || !cornDoc) {
-      return res.status(404).json({ success: false, message: "유저 없음" });
-    }
+    const user = await ensureCornDoc(kakaoId);
+    const state = cornEngine.growStep(user, new Date());
+    res.json({ ok: true, ...state });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-    res.json({
-      success: true,
-      nickname: user.nickname,
-      inventory: {
-        corn: cornDoc.corn ?? 0,                // 옥수수
-        popcorn: cornDoc.popcorn ?? 0,          // 팝콘
-        seed: cornDoc.seed ?? 0,                // 씨옥수수
-        salt: cornDoc.additives?.salt ?? 0,     // 소금
-        sugar: cornDoc.additives?.sugar ?? 0    // 설탕
-      }
-    });
-  } catch (e) {
-    console.error("corn/status error:", e);
-    res.status(500).json({ success: false, message: "server error" });
+// 수확
+router.post('/harvest', async (req, res) => {
+  try {
+    const { kakaoId } = req.body;
+    const user = await ensureCornDoc(kakaoId);
+    const result = cornEngine.harvestCorn(user);
+    user.cornCount = (user.cornCount || 0) + result.cornCount;
+    await user.save();
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 뻥튀기
+router.post('/pop', async (req, res) => {
+  try {
+    const { kakaoId, grade, cornCount } = req.body;
+    const user = await ensureCornDoc(kakaoId);
+    const tokens = cornEngine.popCorn(user, grade, cornCount);
+    await user.save();
+    res.json({ ok: true, tokens });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 팝콘 ↔ 거름
+router.post('/exchange', async (req, res) => {
+  try {
+    const { kakaoId, popcorn } = req.body;
+    const user = await ensureCornDoc(kakaoId);
+    const result = cornEngine.exchangePopcorn(user, popcorn);
+    await user.save();
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 레벨업
+router.post('/level', async (req, res) => {
+  try {
+    const { kakaoId } = req.body;
+    const user = await ensureCornDoc(kakaoId);
+    const result = cornEngine.levelUp(user);
+    await user.save();
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 예약제
+router.post('/schedule', async (req, res) => {
+  try {
+    const { kakaoId } = req.body;
+    const user = await ensureCornDoc(kakaoId);
+    const result = cornEngine.schedulePlant(user, new Date());
+    await user.save();
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
