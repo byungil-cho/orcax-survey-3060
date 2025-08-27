@@ -1051,9 +1051,12 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     appRef.locals.__CORN_ROUTER_ATTACHED__ = true;
     console.log('🌽 corn router attached at /api/corn');
   } catch (e) {
-    console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
-  
-})(app);
+  console.error('[buy-additive]', e);
+  res.status(500).json({ error: 'server error' });
+}   // ← 여기까지만 있어서 문제
+
+}); // 🌟 이 한 줄을 반드시 추가해야 닫힘
+
 
 
 
