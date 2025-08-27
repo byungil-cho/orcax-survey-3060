@@ -1027,12 +1027,13 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     if (appRef.locals.__CORN_ROUTER_ATTACHED__) return;
 
     const tryPaths = [
-      './routes/corn',
-      './routes/corn.js',
-      './router/corn',
-      './api/corn',
-      './routers/corn'
-    ];
+  './routes/corn',
+  './routes/corn.js',
+  './routes/corn-grow',   // 🌟 여기 추가
+  './router/corn',
+  './api/corn',
+  './routers/corn'
+];
 
     let mod = null, resolved = null, errLast = null;
     for (const p of tryPaths) {
@@ -1064,6 +1065,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
