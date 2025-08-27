@@ -1058,9 +1058,8 @@ if (!app.locals.__orcax_added_corn_status_alias) {
       console.error('[status]', e);
       res.status(500).json({ ok:false, error:'server error' });
     }
-  });
-}
-(app);
+  });(app);
+
 
 
 
