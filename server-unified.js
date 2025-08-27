@@ -1052,8 +1052,9 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.log('🌽 corn router attached at /api/corn');
   } catch (e) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
-  }
+  
 })(app);
+
 
 
 
