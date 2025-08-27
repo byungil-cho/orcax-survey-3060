@@ -1016,18 +1016,22 @@ if (!app.locals.__orcax_added_corn_status_alias) {
   });
 }
 
-(function attachCornRouter(appRef){
+/**
+ * IIFE 형태의 corn 외부 라우터 자동 부착
+ * - 존재하면 /api/corn 경로에 연결
+ * - 모듈 없으면 경고만 출력하고 종료(서버 계속 동작)
+ */
+(function attachCornRouter(appRef) {
   try {
     if (!appRef.locals) appRef.locals = {};
     if (appRef.locals.__CORN_ROUTER_ATTACHED__) return;
-    const path = require('path');
+
     const tryPaths = [
       './routes/corn',
       './routes/corn.js',
       './router/corn',
       './api/corn',
-      './routers/corn',
-      './routes/corn'
+      './routers/corn'
     ];
 
     let mod = null, resolved = null, errLast = null;
@@ -1036,29 +1040,30 @@ if (!app.locals.__orcax_added_corn_status_alias) {
         resolved = p;
         mod = require(p);
         break;
-      } catch (e) { errLast = e; mod = null; resolved = null; }
+      } catch (e) {
+        errLast = e; mod = null; resolved = null;
+      }
     }
+
     if (!mod) {
       console.warn('[CORN-ATTACH] corn router module not found. Tried:', tryPaths.join(', '));
       if (errLast) console.warn('[CORN-ATTACH] last error:', errLast.message);
       return;
     }
+
     const cornRouter = (mod.default || mod);
     if (typeof cornRouter !== 'function') {
       console.warn('[CORN-ATTACH] router module does not export a function/router');
       return;
     }
+
     appRef.use('/api/corn', cornRouter);
     appRef.locals.__CORN_ROUTER_ATTACHED__ = true;
     console.log('🌽 corn router attached at /api/corn');
   } catch (e) {
-  console.error('[buy-additive]', e);
-  res.status(500).json({ error: 'server error' });
- } catch (e) {
-      console.error('[status]', e);
-      res.status(500).json({ ok:false, error:'server error' });
-    }
-  });(app);
+    console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
+  }
+})(app);
 
 
 
