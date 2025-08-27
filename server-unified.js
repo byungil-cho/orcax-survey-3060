@@ -635,11 +635,12 @@ return res.json({
     sugar: (corn.additives?.sugar || 0) 
   }
 });
+    
 } catch (e) {
   console.error('[buy-additive]', e);
   res.status(500).json({ error: 'server error' });
 }
-
+});
 /* ===================== 🌱 씨앗 심기 ===================== */
 app.post('/api/corn/plant', async (req, res) => {
   try {
@@ -1053,10 +1054,13 @@ if (!app.locals.__orcax_added_corn_status_alias) {
   } catch (e) {
   console.error('[buy-additive]', e);
   res.status(500).json({ error: 'server error' });
-}   // ← 여기까지만 있어서 문제
-
-}); // 🌟 이 한 줄을 반드시 추가해야 닫힘
-
+ } catch (e) {
+      console.error('[status]', e);
+      res.status(500).json({ ok:false, error:'server error' });
+    }
+  });
+}
+(app);
 
 
 
