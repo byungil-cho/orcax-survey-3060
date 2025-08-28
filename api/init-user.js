@@ -1,99 +1,79 @@
-'use strict';
+// api/init-user.js
 const express = require('express');
 const router = express.Router();
 
-// ❗ 실제 모델 경로에 맞춰 수정
-const User = require('../models/user');
-const CornData = require('../models/cornData');
+async function upsertAll(kakaoId, nickname = '') {
+  let user = await User.findOne({ kakaoId });
 
-const N = (v, d=0) => (Number.isFinite(Number(v)) ? Number(v) : d);
+// 여기에 실제 DB 모델 import (예: User, CornData)
+// const User = require('../models/User');
+// const CornData = require('../models/CornData');
 
-// ✅ 한 곳에서만 정의되는 업서트 함수
-async function upsertAll(kakaoId, nickname='') {
-  // users
-  const user = await User.findOneAndUpdate(
-    { kakaoId },
-    {
-      $setOnInsert: {
-        kakaoId,
-        nickname,
-        // ⚠ email은 null 금지. 더미 이메일 부여
-        email: `user-${kakaoId}@noemail.local`,
-        water: 10, fertilizer: 10, orcx: 0,
-        seedPotato: 0, seedBarley: 0,
-        'storage.gamja': 0, 'storage.bori': 0,
-        'growth.potato': 0, 'growth.barley': 0,
-        createdAt: new Date()
-      },
-      ...(nickname ? { $set: { nickname } } : {})
-    },
-    { new: true, upsert: true }
-  );
-
-  // corn_data
-  const corn = await CornData.findOneAndUpdate(
-    { kakaoId },
-    {
-      $setOnInsert: {
-        kakaoId,
-        corn: 0, popcorn: 0,
-        seed: 0, seeds: 0, g: 0,   // seeds는 과거 호환
-        phase: 'IDLE', plantedAt: null,
-        additives: { salt: 0, sugar: 0 }
-      }
-    },
-    { new: true, upsert: true }
-  );
-
-  return {
-    kakaoId: user.kakaoId,
-    nickname: user.nickname ?? nickname ?? '',
-    orcx: N(user.orcx),
-    water: N(user.water),
-    fertilizer: N(user.fertilizer),
-    seedPotato: N(user.seedPotato),
-    seedBarley: N(user.seedBarley),
-    gamja: N(user?.storage?.gamja),
-    bori: N(user?.storage?.bori),
-    growthPotato: N(user?.growth?.potato),
-    growthBarley: N(user?.growth?.barley),
-
-    corn: N(corn?.corn),
-    popcorn: N(corn?.popcorn),
-    seed: N(corn?.seed),
-    seeds: N(corn?.seeds),
-    g: N(corn?.g),
-    phase: corn?.phase ?? 'IDLE',
-    plantedAt: corn?.plantedAt ?? null,
-    salt: N(corn?.additives?.salt),
-    sugar: N(corn?.additives?.sugar),
-  };
+// 통합 upsert 함수
+async function upsertAll(kakaoId, nickname = '') {
+  // TODO: 실제 모델 로직 채워넣기
+  // const user = await User.findOneAndUpdate(...);
+  // const corn = await CornData.findOneAndUpdate(...);
+  return { kakaoId, nickname, ok: true };
 }
 
-// GET /api/init-user (메인에서 /api 붙였으므로 여기선 /init-user 만 사용)
-router.get('/init-user', async (req, res) => {
+// GET /api/init-user
+router.get('/api/init-user', async (req, res) => {
   try {
-    const { kakaoId, nickname='' } = req.query || {};
-    if (!kakaoId) return res.status(400).json({ ok:false, message:'kakaoId required' });
-    const data = await upsertAll(kakaoId, nickname);
-    res.json({ ok:true, ...data });
+    const { kakaoId, nickname = '' } = req.query || {};
+    if (!kakaoId) return res.status(400).json({ ok: false, message: 'kakaoId required' });
+
+    const result = await upsertAll(kakaoId, nickname);
+    res.json({ ok: true, ...result });
   } catch (e) {
-    if (e?.code === 11000) return res.json({ ok:true, duplicated:true });
-    console.error('[GET /init-user] error:', e);
-    res.status(500).json({ ok:false, error: String(e?.message||e) });
+    console.error('[GET /api/init-user] error:', e);
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
+// 감자 & 보리 유저 처리 로직
 
-router.post('/init-user', async (req, res) => {
+  // 신규 유저일 경우 초기 자산 지급
+  if (!user) {
+    user = new User({
+      kakaoId,
+      nickname,
+      water: 10,
+      fertilizer: 10,
+      tokens: 10,
+      potato: 0,
+      barley: 0,
+      seedPotato: 0,
+      seedBarley: 0,
+      createdAt: new Date()
+    });
+    await user.save();
+  }
+
+  // 기존 유저이든 신규 유저이든 똑같이 데이터 반환
+  return {
+    kakaoId: user.kakaoId,
+    nickname: user.nickname,
+    water: user.water ?? 0,
+    fertilizer: user.fertilizer ?? 0,
+    tokens: user.tokens ?? 0,
+    potato: user.potato ?? 0,
+    barley: user.barley ?? 0,
+    seedPotato: user.seedPotato ?? 0,
+    seedBarley: user.seedBarley ?? 0,
+    created: user.createdAt
+  };
+}
+// POST /api/init-user
+router.post('/api/init-user', async (req, res) => {
   try {
-    const { kakaoId, nickname='' } = req.body || {};
-    if (!kakaoId) return res.status(400).json({ ok:false, message:'kakaoId required' });
-    const data = await upsertAll(kakaoId, nickname);
-    res.json({ ok:true, ...data });
+    const { kakaoId, nickname = '' } = req.body || {};
+    if (!kakaoId) return res.status(400).json({ ok: false, message: 'kakaoId required' });
+
+    const result = await upsertAll(kakaoId, nickname);
+    res.json({ ok: true, ...result });
   } catch (e) {
-    if (e?.code === 11000) return res.json({ ok:true, duplicated:true });
-    console.error('[POST /init-user] error:', e);
-    res.status(500).json({ ok:false, error: String(e?.message||e) });
+    console.error('[POST /api/init-user] error:', e);
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
 
