@@ -9,8 +9,7 @@ const cors = require('cors');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const path = require('path');
-const cornEngine = require('./engine/cornEngine');
-const initUserRouter = require('./api/init-user');
+
 // ====== 기존 모델/라우터 ======
 const User = require('./models/users');
 
@@ -211,8 +210,6 @@ app.use('/api/processing', processingRoutes);
 app.use('/api/marketdata', marketdataRoutes);
 app.use('/api/market', marketRoutes);
 app.use('/api/corn', cornRoutes);
-app.use('/api', initUserRouter);
-app.use('/api', require('./api/init-user'))
 // ⚠️ 외부 init-user 라우터는 제거 (중복/충돌 방지)
 // app.use('/api/init-user', initUserRoutes);
 app.use('/api/login', loginRoutes);
@@ -1030,13 +1027,12 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     if (appRef.locals.__CORN_ROUTER_ATTACHED__) return;
 
     const tryPaths = [
-  './routes/corn',
-  './routes/corn.js',
-  './routes/corn-grow',   // 🌟 여기 추가
-  './router/corn',
-  './api/corn',
-  './routers/corn'
-];
+      './routes/corn',
+      './routes/corn.js',
+      './router/corn',
+      './api/corn',
+      './routers/corn'
+    ];
 
     let mod = null, resolved = null, errLast = null;
     for (const p of tryPaths) {
