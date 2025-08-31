@@ -222,6 +222,17 @@ app.post('/api/init-user', async (req, res) => {
     return res.status(500).json({ success:false, message:'server error' });
   }
 });
+app.post('/api/admin/tickets/:id/reject',
+  (req, res, next) => {
+    const key = req.headers['x-admin-key'];
+    const kid = String(req.headers['x-kakao-id'] || '');
+    const ADMINS = (process.env.ADMIN_ADMINS || '').split(',').map(s=>s.trim()).filter(Boolean);
+    if (!key || key !== process.env.ADMIN_KEY) return res.status(403).json({ ok:false, error:'forbidden' });
+    if (ADMINS.length && !ADMINS.includes(kid)) return res.status(403).json({ ok:false, error:'not an admin' });
+    next();
+  },
+  async (req, res) => { /* 기존 처리 */ }
+);
 
 /* ====== 라우터 장착(기존) ====== */
 app.use('/api/factory', factoryRoutes);
@@ -1183,6 +1194,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
