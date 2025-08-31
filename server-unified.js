@@ -43,7 +43,6 @@ app.use((req, res, next) => {
   next();
 });
 // ===== Finance Tickets (입금/출금/상환 요청) =====
-const mongoose = require('mongoose'); // 이미 있다면 중복 선언 제거
 
 // 공용: 카카오ID 추출
 function getKakaoId(req){
