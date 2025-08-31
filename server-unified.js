@@ -10,6 +10,29 @@ const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const path = require('path');
 const cornPopRouter = require('./routes/corn-pop');
+// ---- ✨ 전역 CORS: GitHub Pages/localhost/ngrok 허용 (x-kakao-id 포함)
+const allow = [
+  /^https?:\/\/localhost(:\d+)?$/,
+  /^https:\/\/.*\.ngrok\.io$/,
+  'https://byungil-cho.github.io'
+];
+app.use((req, res, next) => {
+  const origin = req.headers.origin || '';
+  const ok = !origin || allow.some(p => typeof p === 'string' ? p === origin : p.test(origin));
+  if (ok) {
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+    res.setHeader('Vary', 'Origin');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  // ✅ x-kakao-id 꼭 포함
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-kakao-id');
+  // 캐시/중간 프록시 무시
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
 
 // ====== 기존 모델/라우터 ======
 const User = require('./models/users');
@@ -1074,6 +1097,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
