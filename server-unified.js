@@ -97,6 +97,98 @@ app.post('/api/finance/withdraw-request', async (req, res) => {
     res.status(500).json({ ok:false, error: e.message });
   }
 });
+// ── (이미 있다면 생략) 공용 모델/유틸 ──────────────────────────────
+
+function getKakaoId(req){
+  return req.headers['x-kakao-id'] || req.query.kakaoId || (req.body && req.body.kakaoId) || '';
+}
+
+const FinanceTicket =
+  mongoose.models.FinanceTicket ||
+  mongoose.model('FinanceTicket', new mongoose.Schema({
+    kakaoId: { type: String, index: true, required: true },
+    type: { type: String, enum: ['deposit','withdraw','repay'], required: true },
+    amount: { type: Number, required: true },
+    method: { type: String, default: null },  // deposit: 'bank' | 'solana'
+    wallet: { type: String, default: null },  // withdraw: solana wallet
+    status: { type: String, enum: ['pending','approved','rejected'], default: 'pending' },
+    note:   { type: String, default: '' },
+    createdAt: { type: Date, default: Date.now },
+    approvedAt: { type: Date, default: null },
+    rejectedAt: { type: Date, default: null }
+  }, { collection: 'finance_tickets' }));
+
+// ── 어드민 보호(간단키) ───────────────────────────────────────────
+function requireAdmin(req, res, next){
+  const key = req.headers['x-admin-key'];
+  if (!key || key !== process.env.ADMIN_KEY) {
+    return res.status(403).json({ ok:false, error:'forbidden' });
+  }
+  next();
+}
+
+// ── 전체 티켓 조회(어드민) ────────────────────────────────────────
+app.get('/api/admin/tickets', requireAdmin, async (req, res) => {
+  try {
+    const { status, type } = req.query; // e.g. status=pending|approved|rejected|all
+    const q = {};
+    if (status && status !== 'all') q.status = status;
+    if (type) q.type = type;
+    const items = await FinanceTicket.find(q).sort({ createdAt:-1 }).limit(200).lean();
+    res.json({ ok:true, items });
+  } catch (e) {
+    res.status(500).json({ ok:false, error:e.message });
+  }
+});
+
+// ── 입금 승인(어드민 체크박스) ─────────────────────────────────────
+app.post('/api/admin/tickets/:id/approve', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { txHash, amount: overrideAmount } = req.body || {};
+    const t = await FinanceTicket.findById(id);
+    if (!t) return res.status(404).json({ ok:false, error:'ticket not found' });
+    if (t.type !== 'deposit' || t.status !== 'pending')
+      return res.status(400).json({ ok:false, error:'not pending deposit' });
+
+    const credit = Number(overrideAmount || t.amount || 0);
+    if (!(credit > 0)) return res.status(400).json({ ok:false, error:'invalid amount' });
+
+    // 1) 유저 토큰 충전 (users 컬렉션의 orcx 증가)
+    await mongoose.connection.collection('users')
+      .updateOne({ kakaoId: t.kakaoId }, { $inc: { orcx: credit } });
+
+    // 2) 티켓 승인
+    await FinanceTicket.updateOne(
+      { _id: t._id, status: 'pending' },
+      { $set: { status:'approved', approvedAt:new Date(), note:(t.note||'') + (txHash?` tx=${txHash}`:'') } }
+    );
+
+    // 새 잔액(선택): 조회해서 내려주기
+    const user = await mongoose.connection.collection('users').findOne({ kakaoId: t.kakaoId }, { projection:{ orcx:1 } });
+    res.json({ ok:true, kakaoId: t.kakaoId, credited: credit, balance: user?.orcx ?? null });
+  } catch (e) {
+    res.status(500).json({ ok:false, error:e.message });
+  }
+});
+
+// ── 거절(선택) ───────────────────────────────────────────────────
+app.post('/api/admin/tickets/:id/reject', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body || {};
+    const t = await FinanceTicket.findById(id);
+    if (!t) return res.status(404).json({ ok:false, error:'ticket not found' });
+    if (t.status !== 'pending') return res.status(400).json({ ok:false, error:'not pending' });
+    await FinanceTicket.updateOne(
+      { _id: t._id, status: 'pending' },
+      { $set: { status:'rejected', rejectedAt:new Date(), note:(t.note||'') + (reason?` reason=${reason}`:'') } }
+    );
+    res.json({ ok:true });
+  } catch (e) {
+    res.status(500).json({ ok:false, error:e.message });
+  }
+});
 
 // ====== 기존 모델/라우터 ======
 const User = require('./models/users');
