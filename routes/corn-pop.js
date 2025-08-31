@@ -2,23 +2,27 @@
 const express = require('express');
 const router = express.Router();
 
+// ✅ 누락됐던 모델 임포트
+const User = require('../models/user');           // 경로는 프로젝트 구조에 맞게
+const CornData = require('../models/CornData');
+
 // 🔐 CORS & 캐시(간단 설정; 필요시 전역 CORS 미들웨어 사용)
-router.use((req, res, next)=>{
-  res.header('Access-Control-Allow-Origin', '*'); // 특정 도메인만 허용하려면 바꾸세요
+router.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*'); // 운영 시 특정 도메인으로 제한 권장
   res.header('Access-Control-Allow-Headers', 'Content-Type, x-kakao-id');
   res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.set('Pragma', 'no-cache'); res.set('Expires', '0');
-  if(req.method === 'OPTIONS') return res.sendStatus(204);
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
 
-// ✅ 카카오ID 표준화 미들웨어
-router.use((req, res, next)=>{
+// ✅ 카카오ID 표준화 미들웨어 (헤더/바디/쿼리 모두 허용)
+router.use((req, res, next) => {
   const kid = (req.headers['x-kakao-id'] ||
                (req.body && req.body.kakaoId) ||
                req.query.kakaoId);
-  if(!kid) return res.status(401).json({ ok:false, error:'kakaoId missing' });
+  if (!kid) return res.status(401).json({ ok:false, error:'kakaoId missing' });
   req.kakaoId = String(kid);
   next();
 });
@@ -43,14 +47,12 @@ function pickToken(grade = 'F') {
   const arr = TOKEN_TABLE[grade] || TOKEN_TABLE.F;
   return arr[Math.floor(Math.random() * arr.length)];
 }
-
 function popcornBonusByQty(qty) {
   if (qty === 9) return 2;
   if (qty === 7) return 1;
   if (qty === 5) return 1;
   return 0;
 }
-
 function gradeFromDays(daysSpent) {
   if (daysSpent <= 5) return 'A';
   if (daysSpent === 6) return 'B';
@@ -60,9 +62,9 @@ function gradeFromDays(daysSpent) {
   return 'F';
 }
 
-async function ensureCornDoc(kakaoId){
+async function ensureCornDoc(kakaoId) {
   let doc = await CornData.findOne({ kakaoId });
-  if(!doc) doc = await CornData.create({ kakaoId });
+  if (!doc) doc = await CornData.create({ kakaoId });
   return doc;
 }
 
@@ -91,7 +93,7 @@ async function advanceGrowthForUser(kakaoId, opts = {}) {
 
     // 경과 구간(3시간 단위)
     let segs = Math.floor((now - last) / SEG_MS);
-    if (segs <= 0) continue;
+    if (segs <= 0) { item.lastTickAt = now; continue; }
 
     // 아이템 기본 필드 보정
     item.day = Number(item.day || 1);
@@ -150,25 +152,9 @@ async function advanceGrowthForUser(kakaoId, opts = {}) {
 }
 
 // ====== 상태 ======
-router.get('/status', async (req,res)=>{
-  const kakaoId = req.kakaoId;
-  // ...
-});
-
-router.post('/plant', async (req,res)=>{
-  const kakaoId = req.kakaoId;
-  const qty = Number(req.body?.qty || 5);
-  const color = (req.body?.color || 'yellow');
-  // ...
-});
-
-router.post('/pop', async (req,res)=>{
-  const kakaoId = req.kakaoId;
-  const qty = Number(req.body?.qty || 0);
-  // ...
-});
-
-// 나머지 /tick, /exchange, /exchange-nft 도 동일하게 req.kakaoId 사용
+router.get('/status', async (req, res) => {
+  try {
+    const kakaoId = req.kakaoId;
 
     // 상태 조회 시에도 자연 성장 반영(게으른 평가)
     await advanceGrowthForUser(kakaoId);
@@ -182,10 +168,7 @@ router.post('/pop', async (req,res)=>{
     const readyCount = readyItems.length;
 
     // 대표 색/등급(가장 최근 active 또는 ready 우선)
-    const rep =
-      readyItems[0] ||
-      items.find(x=>x?.status==='active') ||
-      items[0] || {};
+    const rep = readyItems[0] || items.find(x => x?.status === 'active') || items[0] || {};
     const repColor = rep.color || corn.seedType || 'yellow';
     const repGrade = rep.grade || corn.grade || 'F';
 
@@ -193,13 +176,10 @@ router.post('/pop', async (req,res)=>{
       ok: true,
       user: {
         orcx: Number(user?.orcx ?? user?.wallet?.orcx ?? 0),
-
-        // 프론트 표준 위치
         inventory: {
           water: Number(user?.inventory?.water ?? 0),
           fertilizer: Number(user?.inventory?.fertilizer ?? 0),
         },
-
         // 하위호환
         water: Number(user?.inventory?.water ?? 0),
         fertilizer: Number(user?.inventory?.fertilizer ?? 0),
@@ -225,19 +205,18 @@ router.post('/pop', async (req,res)=>{
 });
 
 // ====== 심기(자리 생성) ======
-// 씨옥수수 구매/보유 체크는 상위 로직에서 하고, 여기선 "자리 생성"만 담당
 router.post('/plant', async (req, res) => {
   try {
-    const { kakaoId, qty = 5, color = 'yellow' } = req.body || {};
-    const n = Number(qty);
-    if (!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
+    const kakaoId = req.kakaoId;
+    const n = Number(req.body?.qty ?? 5);
+    const color = (req.body?.color || 'yellow');
     if (![1,5,7,9].includes(n)) return res.status(400).json({ ok:false, error:'qty must be 1 or 5|7|9' });
 
     const corn = await ensureCornDoc(kakaoId);
     corn.corn = Array.isArray(corn.corn) ? corn.corn : [];
 
     const now = new Date();
-    for (let i=0;i<n;i++){
+    for (let i = 0; i < n; i++) {
       corn.corn.push({
         color, grade: null,
         day: 1, segment: 1,
@@ -260,9 +239,7 @@ router.post('/plant', async (req, res) => {
 // ====== 강제 성장 틱(개발/동기화용) ======
 router.post('/tick', async (req, res) => {
   try {
-    const { kakaoId } = req.body || {};
-    if (!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
-
+    const kakaoId = req.kakaoId;
     const result = await advanceGrowthForUser(kakaoId);
     return res.json({ ok:true, ...result });
   } catch (e) {
@@ -273,9 +250,8 @@ router.post('/tick', async (req, res) => {
 // ====== 뻥튀기: harvest_ready 아이템 qty(5|7|9)개를 한 번에 처리 ======
 router.post('/pop', async (req, res) => {
   try {
-    const { kakaoId } = req.body || {};
+    const kakaoId = req.kakaoId;
     const qty = Number(req.body?.qty || 0);
-    if (!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
     if (![5,7,9].includes(qty)) return res.status(400).json({ ok:false, error:'qty must be 5 or 7 or 9' });
 
     const user = await User.findOne({ kakaoId });
@@ -363,9 +339,8 @@ router.post('/pop', async (req, res) => {
 // ====== 교환: 팝콘 -> 비료(1:1) ======
 router.post('/exchange', async (req, res) => {
   try {
-    const { kakaoId } = req.body || {};
+    const kakaoId = req.kakaoId;
     const qty = Number(req.body?.qty || 0);
-    if (!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
     if (!(qty > 0)) return res.status(400).json({ ok:false, error:'qty>0 required' });
 
     const user = await User.findOne({ kakaoId });
@@ -389,10 +364,8 @@ router.post('/exchange', async (req, res) => {
 // ====== 교환: 팝콘 1000 → NFT 교환권 1 ======
 router.post('/exchange-nft', async (req, res) => {
   try {
-    const { kakaoId } = req.body || {};
+    const kakaoId = req.kakaoId;
     const qty = Number(req.body?.qty || 1);
-    if (!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
-
     const corn = await ensureCornDoc(kakaoId);
     const need = 1000 * qty;
 
