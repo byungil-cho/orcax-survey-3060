@@ -228,7 +228,14 @@ const PORT = process.env.PORT || 3060;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
-
+// 서버 설정 조회 (지갑 주소 제공)
+app.get('/api/finance/config', (req, res) => {
+  res.json({
+    ok: true,
+    solanaAdminWallet: process.env.SOLANA_ADMIN_WALLET
+      || 'VxuxprfZzUuUonU7cBJtGngs1LGF5DcqR4iRFKwP7DZ' // ← 최종 폴백
+  });
+});
 
 // ====== 세션 (감자에서 사용) ======
 app.use(session({
@@ -1067,6 +1074,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
