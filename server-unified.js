@@ -33,6 +33,19 @@ app.use((req, res, next) => {
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
+// ✅ kakaoId 전역 어댑터 (기존 라우트는 그대로 둠)
+// 헤더로 안 왔어도 쿼리/바디에 있으면 x-kakao-id에 채워줌
+app.use((req, res, next) => {
+  const kid =
+    req.headers['x-kakao-id'] ||
+    req.query.kakaoId ||
+    (req.body && req.body.kakaoId) ||
+    '';
+  if (kid && !req.headers['x-kakao-id']) {
+    req.headers['x-kakao-id'] = String(kid);
+  }
+  next();
+});
 
 // ====== 기존 모델/라우터 ======
 const User = require('./models/users');
@@ -1241,6 +1254,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
