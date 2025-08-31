@@ -87,10 +87,11 @@ const cornRoutes = require('./routes/cornRoutes');
 /* ===== PORT ATTACH (ADD-ONLY) ===== */
 if (!process.env.PORT) { process.env.PORT = '3060'; }
 
-// ====== (신규) 옥수수 전용 컬렉션 ======
+// ====== (신규) 옥수수 전용 컬렉션 ======90-111
+// ✅ corn을 Number로 통일
 const CornData = mongoose.models.CornData || mongoose.model('CornData', new mongoose.Schema({
   kakaoId: { type: String, index: true, unique: true },
-  corn: { type: Array, default: [] },  // 배열로 교체
+  corn: { type: Number, default: 0 },              // ← 여기!
   popcorn: { type: Number, default: 0 },
   additives: {
     salt:  { type: Number, default: 0 },
@@ -159,17 +160,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 /* ===== 유틸: corn 문서 보장 ===== */
-async function ensureCornDoc(kakaoId){
+async function ensureCornDoc(kakaoId) {
   let doc = await CornData.findOne({ kakaoId });
-  if (!doc) {
-    doc = await CornData.create({
-      kakaoId,
-      corn: 0,
-      popcorn: 0,
-      additives: { salt:0, sugar:0 },
-      seed: 0
-    });
-  }
+  if (!doc) doc = await CornData.create({ kakaoId });
+  if (!doc.additives) doc.additives = { salt: 0, sugar: 0 };
   return doc;
 }
 
@@ -771,6 +765,7 @@ return res.json({
   }
 });
     
+    
 } catch (e) {
   console.error('[buy-additive]', e);
   res.status(500).json({ error: 'server error' });
@@ -1061,32 +1056,34 @@ if (!app.locals.__orcax_added_get_userdata) {
   });
 }
 
-/** 4) GET /api/corn/summary – corn-farm 상단 리소스를 한 번에 조회 (추가만) */
-if (!app.locals.__orcax_added_corn_summary) {
-  app.locals.__orcax_added_corn_summary = true;
-  app.get('/api/corn/summary', async (req, res) => {
-    try {
-      const kakaoId = (req.query && req.query.kakaoId) || (req.body && req.body.kakaoId);
-      if (!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
+ if (!user) return res.// ✅ 필요한 경우에만 추가 (GET과 동일 로직)
+app.post('/api/corn/summary', async (req, res) => {
+  try {
+    const kakaoId = req.body?.kakaoId || req.query?.kakaoId;
+    if (!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
 
-      const user = await User.findOne({ kakaoId });
-      if (!user) return res.status(404).json({ ok:false, error:'User not found' });
+    const [user, corn] = await Promise.all([
+      User.findOne({ kakaoId }),
+      ensureCornDoc(kakaoId)
+    ]);
+    if (!user) return res.status(404).json({ ok:false, error:'User not found' });
 
-      const corn = await __ensureCornDoc(kakaoId);
+    res.json({
+      ok: true,
+      wallet:    { orcx: Number(user.orcx || 0) },
+      inventory: { water: Number(user.water || 0), fertilizer: Number(user.fertilizer || 0) },
+      agri:      { corn: Number(corn.corn || 0), seeds: Number((corn.seeds||0) + (corn.seed||0)) },
+      additives: { salt: Number(corn.additives?.salt || 0), sugar: Number(corn.additives?.sugar || 0) },
+      food:      { popcorn: Number(corn.popcorn || 0) },
+      phase:     corn.phase || 'IDLE',
+      plantedAt: corn.plantedAt || null
+    });
+  } catch (e) {
+    res.status(500).json({ ok:false, error:'server error' });
+  }
+});
+status(404).json({ ok:false, error:'User not found' });
 
-      res.json({
-        ok: true,
-        wallet:    { orcx: __ORCAX_n(user.orcx) },
-        inventory: { water: __ORCAX_n(user.water), fertilizer: __ORCAX_n(user.fertilizer) },
-        agri:      { corn: __ORCAX_n(corn.corn), seeds: __ORCAX_n((corn.seeds || 0) + (corn.seed || 0)) },
-        additives: { salt: __ORCAX_n(corn.additives && corn.additives.salt), sugar: __ORCAX_n(corn.additives && corn.additives.sugar) },
-        food:      { popcorn: __ORCAX_n(corn.popcorn) }
-      });
-    } catch (e) {
-      res.status(500).json({ ok:false, error:'server error' });
-    }
-  });
-}
 
 /** 5) POST /api/corn/exchange – 팝콘 ↔ 비료 1:1 교환 (추가만) */
 if (!app.locals.__orcax_added_corn_exchange) {
@@ -1199,6 +1196,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
