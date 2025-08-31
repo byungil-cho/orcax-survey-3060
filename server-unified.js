@@ -259,8 +259,75 @@ app.get('/api/finance/config', (req, res) => {
       || 'VxuxprfZzUuUonU7cBJtGngs1LGF5DcqR4iRFKwP7DZ' // ← 최종 폴백
   });
 });
+// 공용: 카카오ID 추출=============추가됨//
+function getKakaoId(req){
+  return req.headers['x-kakao-id'] ||
+         req.query.kakaoId ||
+         (req.body && req.body.kakaoId) || '';
+}
 
-// ====== 세션 (감자에서 사용) ======
+// Mongoose 모델(없으면 생성, 있으면 재사용)
+const FinanceTicket =
+  mongoose.models.FinanceTicket ||
+  mongoose.model('FinanceTicket', new mongoose.Schema({
+    kakaoId: { type: String, index: true, required: true },
+    type: { type: String, enum: ['deposit','withdraw','repay'], required: true },
+    amount: { type: Number, required: true },
+    method: { type: String, default: null }, // deposit용: 'bank' | 'solana'
+    wallet: { type: String, default: null }, // withdraw용: 지갑주소
+    status: { type: String, enum: ['pending','approved','rejected'], default: 'pending' },
+    note: { type: String, default: '' },
+    createdAt: { type: Date, default: Date.now }
+  }, { collection: 'finance_tickets' }));
+
+// 내 티켓 조회
+app.get('/api/finance/my-tickets', async (req, res) => {
+  try {
+    const kakaoId = getKakaoId(req);
+    if (!kakaoId) return res.status(401).json({ ok:false, error:'kakaoId missing' });
+    const items = await FinanceTicket.find({ kakaoId })
+      .sort({ createdAt: -1 }).limit(50).lean();
+    res.json({ ok:true, items });
+  } catch (e) {
+    res.status(500).json({ ok:false, error: e.message });
+  }
+});
+
+// 입금 신청(무통장/솔라나)
+app.post('/api/finance/deposit-request', async (req, res) => {
+  try {
+    const kakaoId = getKakaoId(req);
+    if (!kakaoId) return res.status(401).json({ ok:false, error:'kakaoId missing' });
+
+    const amount = Number(req.body?.amount || 0);
+    const method = String(req.body?.method || 'bank');
+    if (!(amount > 0)) return res.status(400).json({ ok:false, error:'amount>0 required' });
+
+    const t = await FinanceTicket.create({ kakaoId, type:'deposit', amount, method });
+    res.json({ ok:true, id: String(t._id) });
+  } catch (e) {
+    res.status(500).json({ ok:false, error: e.message });
+  }
+});
+
+// 출금 신청
+app.post('/api/finance/withdraw-request', async (req, res) => {
+  try {
+    const kakaoId = getKakaoId(req);
+    if (!kakaoId) return res.status(401).json({ ok:false, error:'kakaoId missing' });
+
+    const amount = Number(req.body?.amount || 0);
+    const wallet = (req.body?.wallet || '').trim();
+    if (!(amount > 0) || !wallet) return res.status(400).json({ ok:false, error:'amount>0 & wallet required' });
+
+    const t = await FinanceTicket.create({ kakaoId, type:'withdraw', amount, wallet });
+    res.json({ ok:true, id: String(t._id) });
+  } catch (e) {
+    res.status(500).json({ ok:false, error: e.message });
+  }
+});
+
+// ====== 세션 (감자에서 사용) ======여기까지 추가됨
 app.use(session({
   secret: 'secret-key',
   resave: false,
@@ -1097,6 +1164,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
