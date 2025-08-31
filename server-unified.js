@@ -10,6 +10,14 @@ const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const path = require('path');
 const cornPopRouter = require('./routes/corn-pop');
+// CORS allowedHeaders에 'x-kakao-id'가 포함돼 있어야 함
+app.get('/api/finance/config', (req, res) => {
+  res.json({
+    ok: true,
+    solanaAdminWallet: process.env.SOLANA_ADMIN_WALLET
+      || 'VxuxprfZzUuUonU7cBJtGngs1LGF5DcqR4iRFKwP7DZ'
+  });
+});
 
 // ====== 기존 모델/라우터 ======
 const User = require('./models/users');
