@@ -10,13 +10,93 @@ const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const path = require('path');
 const cornPopRouter = require('./routes/corn-pop');
-// CORS allowedHeaders에 'x-kakao-id'가 포함돼 있어야 함
+
+// 서버 설정 조회 (지갑 주소 제공)
 app.get('/api/finance/config', (req, res) => {
   res.json({
     ok: true,
     solanaAdminWallet: process.env.SOLANA_ADMIN_WALLET
-      || 'VxuxprfZzUuUonU7cBJtGngs1LGF5DcqR4iRFKwP7DZ'
+      || 'VxuxprfZzUuUonU7cBJtGngs1LGF5DcqR4iRFKwP7DZ' // ← 최종 폴백
   });
+});
+// ---- ✨ 전역 CORS: GitHub Pages/localhost/ngrok 허용 (x-kakao-id 포함)
+const allow = [
+  /^https?:\/\/localhost(:\d+)?$/,
+  /^https:\/\/.*\.ngrok\.io$/,
+  'https://byungil-cho.github.io'
+];
+app.use((req, res, next) => {
+  const origin = req.headers.origin || '';
+  const ok = !origin || allow.some(p => typeof p === 'string' ? p === origin : p.test(origin));
+  if (ok) {
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+    res.setHeader('Vary', 'Origin');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  // ✅ x-kakao-id 꼭 포함
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-kakao-id');
+  // 캐시/중간 프록시 무시
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
+// ===== Finance Tickets (입금/출금/상환 요청) =====
+const mongoose = require('mongoose'); // 이미 있다면 중복 선언 제거
+
+// 공용: 카카오ID 추출
+function getKakaoId(req){
+  return req.headers['x-kakao-id'] ||
+         req.query.kakaoId ||
+         (req.body && req.body.kakaoId) || '';
+}
+
+// 내 티켓 조회
+app.get('/api/finance/my-tickets', async (req, res) => {
+  try {
+    const kakaoId = getKakaoId(req);
+    if (!kakaoId) return res.status(401).json({ ok:false, error:'kakaoId missing' });
+    const items = await FinanceTicket.find({ kakaoId })
+      .sort({ createdAt: -1 }).limit(50).lean();
+    res.json({ ok:true, items });
+  } catch (e) {
+    res.status(500).json({ ok:false, error: e.message });
+  }
+});
+
+// 입금 신청(무통장/솔라나)
+app.post('/api/finance/deposit-request', async (req, res) => {
+  try {
+    const kakaoId = getKakaoId(req);
+    if (!kakaoId) return res.status(401).json({ ok:false, error:'kakaoId missing' });
+
+    const amount = Number(req.body?.amount || 0);
+    const method = String(req.body?.method || 'bank');
+    if (!(amount > 0)) return res.status(400).json({ ok:false, error:'amount>0 required' });
+
+    const t = await FinanceTicket.create({ kakaoId, type:'deposit', amount, method });
+    res.json({ ok:true, id: String(t._id) });
+  } catch (e) {
+    res.status(500).json({ ok:false, error: e.message });
+  }
+});
+
+// 출금 신청
+app.post('/api/finance/withdraw-request', async (req, res) => {
+  try {
+    const kakaoId = getKakaoId(req);
+    if (!kakaoId) return res.status(401).json({ ok:false, error:'kakaoId missing' });
+
+    const amount = Number(req.body?.amount || 0);
+    const wallet = (req.body?.wallet || '').trim();
+    if (!(amount > 0) || !wallet) return res.status(400).json({ ok:false, error:'amount>0 & wallet required' });
+
+    const t = await FinanceTicket.create({ kakaoId, type:'withdraw', amount, wallet });
+    res.json({ ok:true, id: String(t._id) });
+  } catch (e) {
+    res.status(500).json({ ok:false, error: e.message });
+  }
 });
 
 // ====== 기존 모델/라우터 ======
