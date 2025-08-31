@@ -33,19 +33,6 @@ app.use((req, res, next) => {
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
-// ✅ kakaoId 전역 어댑터 (기존 라우트는 그대로 둠)
-// 헤더로 안 왔어도 쿼리/바디에 있으면 x-kakao-id에 채워줌
-app.use((req, res, next) => {
-  const kid =
-    req.headers['x-kakao-id'] ||
-    req.query.kakaoId ||
-    (req.body && req.body.kakaoId) ||
-    '';
-  if (kid && !req.headers['x-kakao-id']) {
-    req.headers['x-kakao-id'] = String(kid);
-  }
-  next();
-});
 
 // ====== 기존 모델/라우터 ======
 const User = require('./models/users');
@@ -340,64 +327,6 @@ app.post('/api/finance/withdraw-request', async (req, res) => {
   }
 });
 
-// ── (이미 있다면 생략) 공용 모델/유틸 ──────────────────────────────2번채추가 함함
-function getKakaoId(req){
-  return req.headers['x-kakao-id'] || req.query.kakaoId || (req.body && req.body.kakaoId) || '';
-}
-
-// ── 어드민 보호(간단키) ───────────────────────────────────────────
-function requireAdmin(req, res, next){
-  const key = req.headers['x-admin-key'];
-  if (!key || key !== process.env.ADMIN_KEY) {
-    return res.status(403).json({ ok:false, error:'forbidden' });
-  }
-  next();
-}
-
-// ── 전체 티켓 조회(어드민) ────────────────────────────────────────
-app.get('/api/admin/tickets', requireAdmin, async (req, res) => {
-  try {
-    const { status, type } = req.query; // e.g. status=pending|approved|rejected|all
-    const q = {};
-    if (status && status !== 'all') q.status = status;
-    if (type) q.type = type;
-    const items = await FinanceTicket.find(q).sort({ createdAt:-1 }).limit(200).lean();
-    res.json({ ok:true, items });
-  } catch (e) {
-    res.status(500).json({ ok:false, error:e.message });
-  }
-});
-
-// ── 입금 승인(어드민 체크박스) ─────────────────────────────────────
-app.post('/api/admin/tickets/:id/approve', requireAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { txHash, amount: overrideAmount } = req.body || {};
-    const t = await FinanceTicket.findById(id);
-    if (!t) return res.status(404).json({ ok:false, error:'ticket not found' });
-    if (t.type !== 'deposit' || t.status !== 'pending')
-      return res.status(400).json({ ok:false, error:'not pending deposit' });
-
-    const credit = Number(overrideAmount || t.amount || 0);
-    if (!(credit > 0)) return res.status(400).json({ ok:false, error:'invalid amount' });
-
-    // 1) 유저 토큰 충전 (users 컬렉션의 orcx 증가)
-    await mongoose.connection.collection('users')
-      .updateOne({ kakaoId: t.kakaoId }, { $inc: { orcx: credit } });
-
-    // 2) 티켓 승인
-    await FinanceTicket.updateOne(
-      { _id: t._id, status: 'pending' },
-      { $set: { status:'approved', approvedAt:new Date(), note:(t.note||'') + (txHash?` tx=${txHash}`:'') } }
-    );
-
-    // 새 잔액(선택): 조회해서 내려주기
-    const user = await mongoose.connection.collection('users').findOne({ kakaoId: t.kakaoId }, { projection:{ orcx:1 } });
-    res.json({ ok:true, kakaoId: t.kakaoId, credited: credit, balance: user?.orcx ?? null });
-  } catch (e) {
-    res.status(500).json({ ok:false, error:e.message });
-  }
-});
 
 // ── 거절(선택) ───────────────────────────────────────────────────
 app.post('/api/admin/tickets/:id/reject', requireAdmin, async (req, res) => {
@@ -1254,6 +1183,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
