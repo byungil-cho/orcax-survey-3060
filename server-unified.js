@@ -1056,34 +1056,66 @@ if (!app.locals.__orcax_added_get_userdata) {
   });
 }
 
- if (!user) return res.// ✅ 필요한 경우에만 추가 (GET과 동일 로직)
+// ✅ POST /api/corn/summary (GET과 동일 로직, 안전 버전)1059-1118
 app.post('/api/corn/summary', async (req, res) => {
   try {
-    const kakaoId = req.body?.kakaoId || req.query?.kakaoId;
-    if (!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
+    const kakaoId =
+      req.body?.kakaoId ||
+      req.query?.kakaoId ||
+      req.headers['x-kakao-id'];
+
+    if (!kakaoId) {
+      return res.status(400).json({ ok: false, error: 'kakaoId required' });
+    }
+
+    // users 문서 찾기 (모델이 있으면 모델 사용, 없으면 컬렉션 사용)
+    const findUserByKakaoId = async (kid) => {
+      if (mongoose.models.User) {
+        return await mongoose.models.User.findOne({ kakaoId: String(kid) }).lean();
+      }
+      return await mongoose.connection
+        .collection('users')
+        .findOne({ kakaoId: String(kid) });
+    };
 
     const [user, corn] = await Promise.all([
-      User.findOne({ kakaoId }),
-      ensureCornDoc(kakaoId)
+      findUserByKakaoId(kakaoId),
+      ensureCornDoc(String(kakaoId)),   // ensureCornDoc은 위쪽에 선언되어 있어야 함
     ]);
-    if (!user) return res.status(404).json({ ok:false, error:'User not found' });
 
-    res.json({
+    if (!user) {
+      return res.status(404).json({ ok: false, error: 'User not found' });
+    }
+
+    // 응답 구성
+    return res.json({
       ok: true,
       wallet:    { orcx: Number(user.orcx || 0) },
-      inventory: { water: Number(user.water || 0), fertilizer: Number(user.fertilizer || 0) },
-      agri:      { corn: Number(corn.corn || 0), seeds: Number((corn.seeds||0) + (corn.seed||0)) },
-      additives: { salt: Number(corn.additives?.salt || 0), sugar: Number(corn.additives?.sugar || 0) },
-      food:      { popcorn: Number(corn.popcorn || 0) },
-      phase:     corn.phase || 'IDLE',
-      plantedAt: corn.plantedAt || null
+      inventory: {
+        water:      Number(user.water || 0),
+        fertilizer: Number(user.fertilizer || 0),
+        // (선택) 씨감자/씨보리도 여기서 함께 내려주면 프런트가 바로 표시 가능
+        seedPotato: Number(user.seedPotato ?? user?.seeds?.potato ?? 0),
+        seedBarley: Number(user.seedBarley ?? user?.seeds?.barley ?? 0),
+      },
+      agri:      {
+        corn:  Number(corn?.corn || 0),
+        seeds: Number((corn?.seeds || 0) + (corn?.seed || 0)),
+      },
+      additives: {
+        salt:  Number(corn?.additives?.salt  || 0),
+        sugar: Number(corn?.additives?.sugar || 0),
+      },
+      food:      { popcorn: Number(corn?.popcorn || 0) },
+      phase:     corn?.phase || 'IDLE',
+      plantedAt: corn?.plantedAt || null,
+      updatedAt: corn?.updatedAt || null,
     });
   } catch (e) {
-    res.status(500).json({ ok:false, error:'server error' });
+    console.error('POST /api/corn/summary error:', e);
+    return res.status(500).json({ ok: false, error: 'server error' });
   }
 });
-status(404).json({ ok:false, error:'User not found' });
-
 
 /** 5) POST /api/corn/exchange – 팝콘 ↔ 비료 1:1 교환 (추가만) */
 if (!app.locals.__orcax_added_corn_exchange) {
@@ -1196,6 +1228,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
