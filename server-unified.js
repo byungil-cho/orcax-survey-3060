@@ -332,21 +332,6 @@ function getKakaoId(req){
   return req.headers['x-kakao-id'] || req.query.kakaoId || (req.body && req.body.kakaoId) || '';
 }
 
-const FinanceTicket =
-  mongoose.models.FinanceTicket ||
-  mongoose.model('FinanceTicket', new mongoose.Schema({
-    kakaoId: { type: String, index: true, required: true },
-    type: { type: String, enum: ['deposit','withdraw','repay'], required: true },
-    amount: { type: Number, required: true },
-    method: { type: String, default: null },  // deposit: 'bank' | 'solana'
-    wallet: { type: String, default: null },  // withdraw: solana wallet
-    status: { type: String, enum: ['pending','approved','rejected'], default: 'pending' },
-    note:   { type: String, default: '' },
-    createdAt: { type: Date, default: Date.now },
-    approvedAt: { type: Date, default: null },
-    rejectedAt: { type: Date, default: null }
-  }, { collection: 'finance_tickets' }));
-
 // ── 어드민 보호(간단키) ───────────────────────────────────────────
 function requireAdmin(req, res, next){
   const key = req.headers['x-admin-key'];
@@ -1256,6 +1241,7 @@ if (!app.locals.__orcax_added_corn_status_alias) {
     console.warn('[CORN-ATTACH] failed to attach corn router:', e && e.message);
   }
 })(app);
+
 
 
 
