@@ -429,7 +429,6 @@ app.listen(PORT, () => {
 });
 
 // 상단부에 추가/정리
-const express = require('express');
 const router = express.Router();
 
 const CornData = require('../models/cornData');   // ⬅️ 추가 (파일명이 CornData.js)
