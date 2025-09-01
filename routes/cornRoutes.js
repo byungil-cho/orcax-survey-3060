@@ -4,6 +4,8 @@ const router = express.Router();
 const cornEngine = require('../engine/cornEngine');
 const User = require('../models/users');
 
+router.get('/health', (req,res)=>res.json({ok:true,route:'corn'}));
+
 // 헬퍼
 async function ensureCornDoc(kakaoId) {
   let user = await User.findOne({ kakaoId });
