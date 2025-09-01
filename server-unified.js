@@ -60,7 +60,7 @@ app.get('/api/finance/my-tickets', async (req, res) => {
     if (!kakaoId) return res.status(401).json({ ok:false, error:'kakaoId missing' });
     const items = await FinanceTicket.find({ kakaoId })
       .sort({ createdAt: -1 }).limit(50).lean();
-    res.json({ ok:true, items });
+    res.json({ ok:true, items }); 
   } catch (e) {
     res.status(500).json({ ok:false, error: e.message });
   }
