@@ -412,6 +412,23 @@ app.post('/api/init-user', async (req, res) => {
     return res.status(500).json({ success:false, message:'server error' });
   }
 });
+// 여기추가됨 415 0901 10시35분
+if (!app.locals.__mypage_seed_compat) {
+  app.locals.__mypage_seed_compat = true;
+  const User = require('./models/user');
+  app.get('/api/mypage/compat', async (req,res)=>{
+    const kakaoId = req.query.kakaoId || req.headers['x-kakao-id'];
+    if(!kakaoId) return res.status(400).json({error:'kakaoId required'});
+    const u = await User.findOne({kakaoId});
+    if(!u) return res.status(404).json({error:'user not found'});
+    const inv = u.inventory||{};
+    res.json({ nickname:u.nickname||'', tokens:u.tokens??0, inventory:{
+      water:inv.water??0, fertilizer:inv.fertilizer??0,
+      seedPotato:inv.seedPotato??u.seedPotato??0,
+      seedBarley:inv.seedBarley??u.seedBarley??0
+    }});
+  });
+}
 
 /* ====== 라우터 장착(기존) ====== */
 app.use('/api/factory', factoryRoutes);
