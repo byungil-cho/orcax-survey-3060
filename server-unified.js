@@ -451,6 +451,42 @@ app.use(session({
   store: MongoStore.create({ mongoUrl }),
 }));
 
+// ---- [ADD-ONLY] 씨앗 재고 조회 API ---------------------------------
+let User;
+try { User = require('./models/User'); } catch { User = require('./models/user'); } // 대소문자 환경 대응
+
+function __ORCAX_n(v){ const n = Number(v); return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0; }
+
+if (!app.locals.__orcax_user_seeds) {
+  app.locals.__orcax_user_seeds = true;
+
+  // GET /api/user/seeds?kakaoId=xxxx
+  app.get('/api/user/seeds', async (req, res) => {
+    try {
+      const kakaoId = (req.query.kakaoId || req.body?.kakaoId || '').trim();
+      if (!kakaoId) return res.status(400).json({ ok:false, error: 'kakaoId required' });
+
+      const user = await User.findOne({ kakaoId }).lean();
+      if (!user) return res.status(404).json({ ok:false, error: 'user not found' });
+
+      const inv = user.inventory || {};
+      const seedPotato = __ORCAX_n(inv.seedPotato ?? inv.seeds?.potato ?? inv.seed?.potato);
+      const seedBarley = __ORCAX_n(inv.seedBarley ?? inv.seeds?.barley ?? inv.seed?.barley);
+
+      return res.json({
+        ok: true,
+        kakaoId,
+        seeds: { potato: seedPotato, barley: seedBarley },
+        inventory: { water: __ORCAX_n(inv.water), fertilizer: __ORCAX_n(inv.fertilizer) }
+      });
+    } catch (e) {
+      console.error('GET /api/user/seeds error', e);
+      return res.status(500).json({ ok:false, error: 'server error' });
+    }
+  });
+}
+// -------------------------------------------------------------------
+
 // ====== 공통/헬스 ======
 app.get('/api/power-status', (req, res) => {
   const mongoReady = mongoose.connection.readyState === 1;
