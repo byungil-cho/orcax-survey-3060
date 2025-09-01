@@ -11,6 +11,8 @@ const MongoStore = require('connect-mongo');
 const path = require('path');
 const cornPopRouter = require('./routes/corn-pop');
 const initUserRouter = require('./routes/init-user');
+const initUserRouter = require('./api/init-user');
+const cornRoutes = require('./routes/cornRoutes');
 
 // 서버 설정 조회 (지갑 주소 제공)
 app.get('/api/finance/config', (req, res) => {
@@ -256,7 +258,7 @@ const processingRoutes = require('./routes/processing');
 const marketdataRoutes = require('./routes/marketdata');
 const marketRoutes = require('./routes/marketdata');
 const seedPriceRoutes = require('./routes/seed-price');
-const cornRoutes = require('./routes/cornRoutes');
+
 /* ===== PORT ATTACH (ADD-ONLY) ===== */
 if (!process.env.PORT) { process.env.PORT = '3060'; }
 
