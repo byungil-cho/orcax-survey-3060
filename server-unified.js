@@ -11,7 +11,6 @@ const MongoStore = require('connect-mongo');
 const path = require('path');
 const cornPopRouter = require('./routes/corn-pop');
 const initUserRouter = require('./routes/init-user');
-const cornRoutes = require('./routes/cornRoutes');
 
 // 서버 설정 조회 (지갑 주소 제공)
 app.get('/api/finance/config', (req, res) => {
