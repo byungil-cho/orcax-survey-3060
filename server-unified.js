@@ -259,39 +259,6 @@ const marketdataRoutes = require('./routes/marketdata');
 const marketRoutes = require('./routes/marketdata');
 const seedPriceRoutes = require('./routes/seed-price');
 
-/* ===== PORT ATTACH (ADD-ONLY) ===== */
-if (!process.env.PORT) { process.env.PORT = '3060'; }
-
-// ====== (신규) 옥수수 전용 컬렉션 ======
-
-  kakaoId: { type: String, index: true, unique: true },
-  corn: { type: Array, default: [] },  // 배열로 교체
-  popcorn: { type: Number, default: 0 },
-  additives: {
-    salt:  { type: Number, default: 0 },
-    sugar: { type: Number, default: 0 }
-  },
-  seed: { type: Number, default: 0 },
-  g: { type: Number, default: 0 },
-  phase: { type: String, default: 'fallow' },
-  plantedAt: { type: Date },
-  seeds: { type: Number, default: 0 },
-  loan: {
-    amount: { type: Number, default: 0 },
-    interest: { type: Number, default: 0 },
-    status: { type: String, default: 'fallow' }
-  },
-  updatedAt: { type: Date, default: Date.now }
-}, { collection: 'corn_data' }));
-
-const CornSettings = mongoose.models.CornSettings || mongoose.model('CornSettings', new mongoose.Schema({
-  priceboard: {
-    salt:     { type: Number, default: 10 },
-    sugar:    { type: Number, default: 20 },
-    seed:     { type: Number, default: 30 },
-    currency: { type: String, default: 'ORCX' }
-  }
-}, { collection: 'corn_settings' }));
 
 /* ====== 공통 미들웨어 (★ 라우트보다 먼저) ====== */
 const allowOrigins = [
