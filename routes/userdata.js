@@ -60,6 +60,34 @@ router.post('/make-product', async (req, res) => {
       console.log("⛔ 보리 부족!");
       return res.json({ success:false, message:'보리 부족!' });
     }
+// ---- [ADD-ONLY] 씨앗 표시 유틸 ----
+function paintSeeds(seeds){
+  const pot = Number(seeds?.potato || 0);
+  const bar = Number(seeds?.barley || 0);
+  // 페이지마다 ID가 다를 수 있어 다중 매핑
+  ['r-seedpot','seed-potato','rSeedPotato','seedPotato'].forEach(id=>{
+    const el = document.getElementById(id); if (el) el.textContent = pot;
+  });
+  ['r-seedbar','seed-barley','rSeedBarley','seedBarley'].forEach(id=>{
+    const el = document.getElementById(id); if (el) el.textContent = bar;
+  });
+}
+
+async function fetchSeeds(kakaoId){
+  try{
+    const url = `${API_BASE}/api/user/seeds?kakaoId=${encodeURIComponent(kakaoId)}`;
+    const r = await fetch(url, { credentials:'include' });
+    const j = await r.json();
+    if (j?.ok) paintSeeds(j.seeds);
+  }catch(_){}
+}
+
+// 기존 로그인/유저 페인트 이후 한 줄만 호출 (ADD-ONLY)
+document.addEventListener('DOMContentLoaded', ()=>{
+  const kid = (window.S?.user?.kakaoId) || localStorage.getItem('kakaoId');
+  if (kid) fetchSeeds(kid);
+});
+
 
     // 자원 차감
     if(material === 'potato') user.storage.gamja -= 1;
