@@ -1072,6 +1072,35 @@ app.post('/api/corn/summary', async (req, res) => {
 });
 
 /* ===== [ADD][SAFE] OrcaX corn/userdata compatibility additions (no base edits) ===== */
+// ✅ 감자 마이페이지 호환 응답
+if (!app.locals.__mypage_seed_compat) {
+  app.locals.__mypage_seed_compat = true;
+  const User = require('./models/user');
+
+  app.get('/api/mypage/compat', async (req, res) => {
+    try {
+      const kakaoId = req.query.kakaoId || req.headers['x-kakao-id'];
+      if (!kakaoId) return res.status(400).json({ error: 'kakaoId required' });
+
+      const u = await User.findOne({ kakaoId });
+      if (!u) return res.status(404).json({ error: 'user not found' });
+
+      const inv = u.inventory || {};
+      res.json({
+        nickname: u.nickname || '',
+        tokens: Number(u.tokens ?? u.balance ?? 0),
+        inventory: {
+          water:      Number(inv.water      ?? u.water      ?? 0),
+          fertilizer: Number(inv.fertilizer ?? u.fertilizer ?? 0),
+          seedPotato: Number(inv.seedPotato ?? u.seedPotato ?? 0),
+          seedBarley: Number(inv.seedBarley ?? u.seedBarley ?? 0),
+        }
+      });
+    } catch (e) {
+      res.status(500).json({ error: 'server error' });
+    }
+  });
+}
 
 /** 1) 사전 정규화 미들웨어: seeds → seed, query→body (userdata) */
 try {
