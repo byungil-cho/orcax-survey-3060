@@ -644,6 +644,32 @@ app.post('/api/user/inventory/use', async (req, res) => {
   }
 });
 
+// server-unified.js 또는 routes/processingRoutes.js
+app.post('/api/processing/get-inventory', async (req, res) => {
+  try {
+    const { kakaoId } = req.body;
+    if (!kakaoId) return res.status(400).json({ error: 'kakaoId required' });
+
+    // 예시: 사용자 문서에서 가공식품 꺼내오기
+    const user = await User.findOne({ kakaoId });
+    const raw = user?.processingInventory || user?.inventory?.processed || user?.processed || [];
+
+    // ✅ 어떤 모양이 와도 map으로 변환
+    const map = Array.isArray(raw)
+      ? raw.reduce((m, it) => {
+          const k = it.type || it.name || it.product; 
+          const v = Number(it.count ?? it.qty ?? it.amount ?? 0);
+          if (k) m[k] = (m[k] || 0) + v; 
+          return m;
+        }, {})
+      : (typeof raw === 'object' && raw) ? raw : {};
+
+    res.json({ inventory: map });   // ✅ 표준 형태: { inventory: {품목:수량,...} }
+  } catch (e) {
+    res.status(500).json({ error: 'server error' });
+  }
+});
+
 // ====== v2data (기존) ======
 app.post('/api/user/v2data', async (req, res) => {
   const { kakaoId } = req.body;
