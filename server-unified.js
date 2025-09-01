@@ -12,7 +12,7 @@ const path = require('path');
 const cornPopRouter = require('./routes/corn-pop');
 const initUserRouter = require('./api/init-user');
 const cornRoutes = require('./routes/cornRoutes');
-const CornData = require('../models/CornData');  // 로 고치기
+const CornData = require('../models/cornData');   // ✅ 소문자 경로로 통일
 
 // 서버 설정 조회 (지갑 주소 제공)
 app.get('/api/finance/config', (req, res) => {
@@ -465,7 +465,7 @@ app.listen(PORT, () => {
 const express = require('express');
 const router = express.Router();
 
-const CornData = require('../models/CornData');   // ⬅️ 추가 (파일명이 CornData.js)
+const CornData = require('../models/cornData');   // ⬅️ 추가 (파일명이 CornData.js)
 const User = require('../models/user');          // (토큰/물/거름은 User에서)
 
 // 없으면 추가: Corn 전용 문서 보장
@@ -476,7 +476,7 @@ async function ensureCornDoc(kakaoId) {
 }
 
 // (선택) 헬스체크
-router.get('/health', (req,res)=>res.json({ ok:true, model:'CornData' }));
+router.get('/health', (req,res)=>res.json({ ok:true, model:'cornData' }));
 
 module.exports = router;
 
