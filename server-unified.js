@@ -1120,6 +1120,72 @@ app.post('/api/corn/summary', async (req, res) => {
     res.status(500).json({ ok: false, error: String(e) });
   }
 });
+// ==== [ADD-ONLY] 통합 인벤토리 조회 (/api/user/overview) =================
+if (!app.locals.__orcax_user_overview) {
+  app.locals.__orcax_user_overview = true;
+
+  function __orcax_getUserModel(){
+    if (app.locals.__orcax_user_model) return app.locals.__orcax_user_model;
+    try { app.locals.__orcax_user_model = require('./models/User'); }
+    catch { app.locals.__orcax_user_model = require('./models/user'); }
+    return app.locals.__orcax_user_model;
+  }
+  const __n = v => { const n = Number(v); return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0; };
+  const pick = (obj, paths) => {
+    for (const p of paths) {
+      const val = p.split('.').reduce((o,k)=> (o&&o[k]!=null?o[k]:undefined), obj);
+      if (val != null) return val;
+    }
+    return 0;
+  };
+
+  // GET /api/user/overview?kakaoId=...
+  app.get('/api/user/overview', async (req,res)=>{
+    try{
+      const kakaoId = (req.query.kakaoId || req.body?.kakaoId || '').trim();
+      if (!kakaoId) return res.status(400).json({ ok:false, error:'kakaoId required' });
+
+      const User = __orcax_getUserModel();
+      const user = await User.findOne({ kakaoId }).lean();
+      if (!user) return res.status(404).json({ ok:false, error:'user not found' });
+
+      const inv = user.inventory || {};
+
+      // 공용 자원
+      const water      = __n(pick(user, ['inventory.water','water']));
+      const fertilizer = __n(pick(user, ['inventory.fertilizer','fertilizer']));
+      const tokens     = __n(pick(user, ['tokens','balance','wallet.orcx']));
+
+      // 수확분(감자/보리) - 다양한 스키마 대비
+      const potato     = __n(pick(user, [
+        'inventory.potato','potato','inventory.products.potato','storage.agri.potato'
+      ]));
+      const barley     = __n(pick(user, [
+        'inventory.barley','barley','inventory.products.barley','storage.agri.barley'
+      ]));
+
+      // 씨앗(씨감자/씨보리)
+      const seedPotato = __n(pick(user, [
+        'inventory.seedPotato','seedPotato','inventory.seeds.potato','seeds.potato','seed.potato'
+      ]));
+      const seedBarley = __n(pick(user, [
+        'inventory.seedBarley','seedBarley','inventory.seeds.barley','seeds.barley','seed.barley'
+      ]));
+
+      res.json({
+        ok:true,
+        kakaoId,
+        nickname: user.nickname || user.name || '',
+        tokens, inventory:{ water, fertilizer, potato, barley },
+        seeds:{ potato: seedPotato, barley: seedBarley }
+      });
+    }catch(e){
+      console.error('GET /api/user/overview error', e);
+      res.status(500).json({ ok:false, error:'server error' });
+    }
+  });
+}
+// ==========================================================================
 
 /* ===== [ADD][SAFE] OrcaX corn/userdata compatibility additions (no base edits) ===== */
 // ✅ 감자 마이페이지 호환 응답
