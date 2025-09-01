@@ -33,7 +33,7 @@ app.use((req, res, next) => {
   const ok = !origin || allow.some(p => typeof p === 'string' ? p === origin : p.test(origin));
   if (ok) {
     res.setHeader('Access-Control-Allow-Origin', origin || '*');
-    res.setHeader('Vary', 'Origin');
+    res.setHeader('Vary', 'Origin'); 
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   // ✅ x-kakao-id 꼭 포함
