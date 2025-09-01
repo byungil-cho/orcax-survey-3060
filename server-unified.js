@@ -451,14 +451,19 @@ app.use(session({
   store: MongoStore.create({ mongoUrl }),
 }));
 
-// ---- [ADD-ONLY] 씨앗 재고 조회 API ---------------------------------
-let User;
-try { User = require('./models/User'); } catch { User = require('./models/user'); } // 대소문자 환경 대응
-
-function __ORCAX_n(v){ const n = Number(v); return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0; }
-
+// ---- [FIX] 씨앗 재고 조회 API (중복 선언 방지 버전) --------------------
 if (!app.locals.__orcax_user_seeds) {
   app.locals.__orcax_user_seeds = true;
+
+  // 모델 지연 로더: 기존 선언과 충돌 없이 1회만 캐시
+  function __orcax_getUserModel(){
+    if (app.locals.__orcax_user_model) return app.locals.__orcax_user_model;
+    try { app.locals.__orcax_user_model = require('./models/User'); }
+    catch { app.locals.__orcax_user_model = require('./models/user'); }
+    return app.locals.__orcax_user_model;
+  }
+
+  function __ORCAX_n(v){ const n = Number(v); return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0; }
 
   // GET /api/user/seeds?kakaoId=xxxx
   app.get('/api/user/seeds', async (req, res) => {
@@ -466,7 +471,8 @@ if (!app.locals.__orcax_user_seeds) {
       const kakaoId = (req.query.kakaoId || req.body?.kakaoId || '').trim();
       if (!kakaoId) return res.status(400).json({ ok:false, error: 'kakaoId required' });
 
-      const user = await User.findOne({ kakaoId }).lean();
+      const UserModel = __orcax_getUserModel();
+      const user = await UserModel.findOne({ kakaoId }).lean();
       if (!user) return res.status(404).json({ ok:false, error: 'user not found' });
 
       const inv = user.inventory || {};
@@ -485,7 +491,7 @@ if (!app.locals.__orcax_user_seeds) {
     }
   });
 }
-// -------------------------------------------------------------------
+// -----------------------------------------------------------------------
 
 // ====== 공통/헬스 ======
 app.get('/api/power-status', (req, res) => {
