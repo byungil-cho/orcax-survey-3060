@@ -12,7 +12,7 @@ const path = require('path');
 const cornPopRouter = require('./routes/corn-pop');
 const initUserRouter = require('./api/init-user');
 const cornRoutes = require('./routes/cornRoutes');
-const CornData = require('./models/cornData');   // ✅ 소문자 경로로 통일
+const CornData = require('./models/CornData');   // ✅ 소문자 경로로 통일
 
 // 서버 설정 조회 (지갑 주소 제공)
 app.get('/api/finance/config', (req, res) => {
