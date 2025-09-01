@@ -263,7 +263,7 @@ const seedPriceRoutes = require('./routes/seed-price');
 if (!process.env.PORT) { process.env.PORT = '3060'; }
 
 // ====== (신규) 옥수수 전용 컬렉션 ======
-const CornData = mongoose.models.CornData || mongoose.model('CornData', new mongoose.Schema({
+
   kakaoId: { type: String, index: true, unique: true },
   corn: { type: Array, default: [] },  // 배열로 교체
   popcorn: { type: Number, default: 0 },
