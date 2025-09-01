@@ -10,6 +10,8 @@ const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const path = require('path');
 const cornPopRouter = require('./routes/corn-pop');
+const initUserRouter = require('./routes/init-user');
+const cornRoutes = require('./routes/cornRoutes');
 
 // 서버 설정 조회 (지갑 주소 제공)
 app.get('/api/finance/config', (req, res) => {
@@ -97,6 +99,7 @@ app.post('/api/finance/withdraw-request', async (req, res) => {
     res.status(500).json({ ok:false, error: e.message });
   }
 });
+
 // ── (이미 있다면 생략) 공용 모델/유틸 ──────────────────────────────
 
 function getKakaoId(req){
@@ -189,6 +192,37 @@ app.post('/api/admin/tickets/:id/reject', requireAdmin, async (req, res) => {
     res.status(500).json({ ok:false, error:e.message });
   }
 });
+
+// server-unified.js  (✅ 추가만)
+if (!app.locals.__mypage_seed_compat) {
+  app.locals.__mypage_seed_compat = true;
+  const User = require('./models/user');
+
+  app.get('/api/mypage/compat', async (req, res) => {
+    try {
+      const kakaoId = req.query.kakaoId || req.headers['x-kakao-id'];
+      if (!kakaoId) return res.status(400).json({ error: 'kakaoId required' });
+
+      const user = await User.findOne({ kakaoId });
+      if (!user) return res.status(404).json({ error: 'user not found' });
+
+      const inv = user.inventory || {};
+      res.json({
+        nickname: user.nickname || '',
+        tokens: user.tokens ?? user.balance ?? 0,
+        inventory: {
+          water:      inv.water      ?? 0,
+          fertilizer: inv.fertilizer ?? 0,
+          // 두 표기 모두 커버
+          seedPotato: inv.seedPotato ?? user.seedPotato ?? 0,
+          seedBarley: inv.seedBarley ?? user.seedBarley ?? 0,
+        }
+      });
+    } catch (e) {
+      res.status(500).json({ error: 'server error' });
+    }
+  });
+}
 
 // ====== 기존 모델/라우터 ======
 const User = require('./models/users');
@@ -391,6 +425,7 @@ app.use('/api/marketdata', marketdataRoutes);
 app.use('/api/market', marketRoutes);
 app.use('/api/corn', cornRoutes);
 app.use('/api/corn', cornPopRouter);
+app.use('/api/init-user', initUserRouter); 
 
 // ⚠️ 외부 init-user 라우터는 제거 (중복/충돌 방지)
 // app.use('/api/init-user', initUserRoutes);
