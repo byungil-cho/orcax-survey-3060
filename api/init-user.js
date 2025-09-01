@@ -7,6 +7,8 @@ const CornData = require('../models/cornData');
 
 const N = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
 
+router.get('/health', (req,res)=>res.json({ok:true,route:'init-user'}));
+
 async function upsertAll(kakaoId, nickname = '') {
   const user = await User.findOneAndUpdate(
     { kakaoId },
