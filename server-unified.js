@@ -450,47 +450,6 @@ app.use(session({
   saveUninitialized: true,
   store: MongoStore.create({ mongoUrl }),
 }));
-// === [🌽 옥수수 통합 API 시작] ===
-
-const { ObjectId } = require('mongodb');
-
-app.get('/api/merged/status', async (req, res) => {
-  try {
-    const kakaoId = req.user?.kakaoId;
-    if (!kakaoId) return res.status(401).json({ error: 'Unauthorized' });
-
-    const usersCol = db.collection('users');
-    const cornCol = db.collection('corn_data');
-
-    const userData = await usersCol.findOne({ kakaoId });
-    const cornData = await cornCol.findOne({ kakaoId });
-
-    if (!userData) return res.status(404).json({ error: 'User not found' });
-
-    res.json({
-      ok: true,
-      timestamp: new Date(),
-      user: {
-        kakaoId: userData.kakaoId,
-        nickname: userData.nickname,
-        orcx: userData.orcx,
-        water: userData.water,
-        fertilizer: userData.fertilizer,
-        seedPotato: userData.seedPotato,
-        seedBarley: userData.seedBarley,
-        storage: userData.storage,
-        growth: userData.growth,
-        products: userData.products
-      },
-      corn: cornData || null
-    });
-  } catch (err) {
-    console.error('[ERROR] /api/merged/status', err);
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
-});
-
-// === [🌽 옥수수 통합 API 끝] ===
 
 // ====== 공통/헬스 ======
 app.get('/api/power-status', (req, res) => {
