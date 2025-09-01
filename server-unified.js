@@ -10,7 +10,6 @@ const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const path = require('path');
 const cornPopRouter = require('./routes/corn-pop');
-const initUserRouter = require('./routes/init-user');
 const initUserRouter = require('./api/init-user');
 const cornRoutes = require('./routes/cornRoutes');
 
