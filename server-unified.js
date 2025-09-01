@@ -431,7 +431,6 @@ app.listen(PORT, () => {
 // 상단부에 추가/정리
 const router = express.Router();
 
-const CornData = require('../models/CornData'); // ⬅️ 추가 (파일명이 CornData.js)
 const User = require('../models/user');          // (토큰/물/거름은 User에서)
 
 // 없으면 추가: Corn 전용 문서 보장
